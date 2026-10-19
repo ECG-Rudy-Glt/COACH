@@ -50,6 +50,20 @@ flowchart LR
 
 More diagrams (data flow, plan pipeline, LLM safety boundary, data model): [docs/architecture.md](docs/architecture.md).
 
+## Screenshots
+
+Synthetic demo data (French UI), iPhone-sized viewport. Three themes: light, dark and "eco" (black & white, for e-ink/low-power screens).
+
+| Home — light | Home — dark | Home — eco |
+|---|---|---|
+| <img src="docs/img/home-light.png" width="240" alt="Home screen, light theme"> | <img src="docs/img/home-dark.png" width="240" alt="Home screen, dark theme"> | <img src="docs/img/home-eco.png" width="240" alt="Home screen, eco theme"> |
+
+| Weekly plan with training cycle | Session feedback | Nutrition and weight trend |
+|---|---|---|
+| <img src="docs/img/plan-light.png" width="240" alt="Weekly plan showing the current training block"> | <img src="docs/img/session-light.png" width="240" alt="Session screen where the user reports adaptations"> | <img src="docs/img/nutrition-light.png" width="240" alt="Nutrition targets, meals and weight trend"> |
+
+Regenerate them with `scripts/demo_server.py` + `scripts/screenshots.py` (see the docstrings).
+
 ## Quick start (5 minutes, Docker)
 
 Requirements: Docker with the Compose plugin, ~1 GB RAM, Internet access for the first start (exercise library import).
