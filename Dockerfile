@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="COACH" \
       org.opencontainers.image.description="Self-hosted adaptive sports coach: rules-based training plans, nutrition suggestions, optional LLM coach." \
