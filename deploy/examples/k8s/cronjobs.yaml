@@ -1,0 +1,38 @@
+# Daily logical dump kept 14 days. Copy it off the cluster and encrypt it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sport-coach-backups
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup
+spec:
+  schedule: "30 23 * * *"
+  timeZone: Europe/Paris
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: dump
+              image: postgres:16
+              envFrom: [{ secretRef: { name: sport-coach-secrets } }]
+              command:
+                - sh
+                - -ec
+                - |
+                  f=/backups/sport-coach-$(date +%F).dump
+                  PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "$f.tmp"
+                  mv "$f.tmp" "$f"
+                  find /backups -name 'sport-coach-*.dump' -mtime +14 -delete
+                  ls -lh /backups
+              volumeMounts: [{ name: backups, mountPath: /backups }]
+          volumes: [{ name: backups, persistentVolumeClaim: { claimName: sport-coach-backups } }]

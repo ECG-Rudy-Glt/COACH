@@ -1,0 +1,27 @@
+- id: cy.hours
+  domain: cycling
+  order: 1
+  text: "Combien d'heures de vélo faites-vous par semaine ?"
+  type: number
+  unit: h
+  fact_key: cycling.weekly_hours
+  show_if: { all: [ { fact: sports.practiced, contains: cycling } ] }
+
+- id: cy.type
+  domain: cycling
+  order: 2
+  text: "Quel type de vélo pratiquez-vous ?"
+  type: multi
+  options: [route, VTT, gravel, home trainer, vélo utilitaire]
+  allow_other: true
+  fact_key: cycling.types
+  show_if: { all: [ { fact: sports.practiced, contains: cycling } ] }
+
+- id: cy.power
+  domain: cycling
+  order: 3
+  text: "Avez-vous un capteur de puissance ?"
+  type: single
+  options: [oui, non]
+  fact_key: cycling.has_power_meter
+  show_if: { all: [ { fact: sports.practiced, contains: cycling } ] }

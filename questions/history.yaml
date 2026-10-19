@@ -1,0 +1,173 @@
+- id: his.years
+  domain: history
+  order: 1
+  text: "Depuis combien d'années pratiquez-vous du sport de façon régulière ?"
+  type: number
+  unit: années
+  fact_key: history.sport_years
+  required: true
+
+- id: his.break
+  domain: history
+  order: 2
+  text: "Avez-vous eu une interruption de plus d'un mois ces 12 derniers mois ?"
+  type: single
+  options: [non, oui blessure, oui autre raison]
+  fact_key: history.recent_break
+  required: true
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.injuries
+  domain: history
+  order: 3
+  text: "Avez-vous des blessures actuelles ou récurrentes ?"
+  type: multi
+  options: [aucune, genou, cheville, hanche, dos, épaule, tendon d'Achille, tibia]
+  allow_other: true
+  fact_key: history.injuries
+  required: true
+
+- id: his.injury_detail
+  domain: history
+  order: 4
+  text: "Décrivez-les (depuis quand, gêne à quelle activité)."
+  type: text
+  fact_key: history.injury_detail
+  show_if: { all: [ { not: { fact: history.injuries, contains: aucune } }, { fact: history.injuries, exists: true } ] }
+
+- id: his.activity_now
+  domain: history
+  order: 5
+  text: "Combien de séances par semaine faites-vous actuellement, en moyenne sur les 8 dernières semaines ?"
+  type: number
+  unit: séances
+  fact_key: history.sessions_per_week_8w
+  required: true
+
+# ---- Parcours long terme : ce qui s'est passé avant aujourd'hui ----
+- id: his.start_age
+  domain: history
+  order: 6
+  text: "À quel âge avez-vous commencé à faire du sport régulièrement ?"
+  type: number
+  unit: ans
+  fact_key: history.start_age
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.sports_past
+  domain: history
+  order: 7
+  text: "Quels sports avez-vous pratiqués au fil des années ? Ajoutez une ligne par sport et par période."
+  type: entries
+  help: "Même ceux que vous avez arrêtés. Laissez « jusqu'en » vide si vous les pratiquez encore."
+  fact_key: history.sports_timeline
+  fields:
+    - { id: sport, label: Sport, type: single, options: [course à pied, trail, musculation, vélo, natation, CrossFit, Hyrox, sports collectifs, arts martiaux, escalade, yoga ou Pilates, danse, autre] }
+    - { id: from, label: Depuis, type: year }
+    - { id: to, label: Jusqu'en, type: year, optional: true }
+    - { id: level, label: Niveau, type: single, options: [loisir, régulier, compétition] }
+    - { id: volume, label: Rythme (ex. 3 séances par semaine), type: text, optional: true }
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.peaks
+  domain: history
+  order: 8
+  text: "Quelles sont vos meilleures performances, tous sports confondus ?"
+  type: entries
+  fact_key: history.peak_performances
+  fields:
+    - { id: discipline, label: Discipline, type: single, options: [course à pied, trail, musculation, vélo, natation, CrossFit, Hyrox, autre] }
+    - { id: performance, label: Performance (ex. 10 km en 41:30), type: text }
+    - { id: year, label: Année, type: year }
+    - { id: context, label: Contexte, type: text, optional: true }
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.competitions
+  domain: history
+  order: 9
+  text: "Avez-vous participé à des compétitions ou des événements ?"
+  type: entries
+  fact_key: history.competitions
+  fields:
+    - { id: event, label: Épreuve, type: text }
+    - { id: year, label: Année, type: year }
+    - { id: result, label: Résultat ou temps, type: text, optional: true }
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.injury_timeline
+  domain: history
+  order: 10
+  text: "Quelles blessures avez-vous eues dans le passé, même guéries ?"
+  type: entries
+  fact_key: history.injury_timeline
+  fields:
+    - { id: zone, label: Zone, type: single, options: [genou, cheville, hanche, dos, épaule, tendon d'Achille, tibia, pied, poignet ou coude, muscle, autre] }
+    - { id: year, label: Année, type: year }
+    - { id: severity, label: Gravité, type: single, options: [légère, modérée, grave] }
+    - { id: weeks_off, label: Arrêt (semaines), type: number, optional: true }
+    - { id: sequelae, label: Séquelles, type: single, options: [aucune, gêne occasionnelle, gêne permanente], optional: true }
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.surgeries
+  domain: history
+  order: 11
+  text: "Avez-vous subi des opérations ou des traitements lourds liés au sport ?"
+  type: text
+  fact_key: history.surgeries
+
+- id: his.weight_history
+  domain: history
+  order: 12
+  text: "Comment votre poids a-t-il évolué ? Indiquez quelques repères (poids de forme, maximum, minimum)."
+  type: entries
+  fact_key: history.weight_history
+  fields:
+    - { id: year, label: Année, type: year }
+    - { id: weight, label: Poids (kg), type: number }
+    - { id: context, label: Contexte, type: single, options: [en forme, après une prise, après une perte, stable, après une blessure, autre] }
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.inactive
+  domain: history
+  order: 13
+  text: "Quelles périodes d'arrêt ou de baisse d'activité avez-vous connues ?"
+  type: entries
+  fact_key: history.inactive_periods
+  fields:
+    - { id: from, label: De, type: year }
+    - { id: to, label: À, type: year }
+    - { id: reason, label: Raison, type: single, options: [blessure, maladie, travail, famille, motivation, déménagement, autre] }
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.stop_reasons
+  domain: history
+  order: 14
+  text: "Qu'est-ce qui vous a fait arrêter ou ralentir par le passé ?"
+  type: multi
+  options: [manque de temps, blessure, lassitude, perte de motivation, déménagement, travail, budget, résultats décevants]
+  allow_other: true
+  fact_key: history.stop_reasons
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }
+
+- id: his.worked
+  domain: history
+  order: 15
+  text: "Qu'est-ce qui a le mieux fonctionné pour vous dans le passé ?"
+  type: text
+  fact_key: history.what_worked
+
+- id: his.failed
+  domain: history
+  order: 16
+  text: "Et qu'est-ce qui n'a pas fonctionné ?"
+  type: text
+  fact_key: history.what_failed
+
+- id: his.coached
+  domain: history
+  order: 17
+  text: "Avez-vous déjà été suivi par un coach ou un entraîneur ?"
+  type: single
+  options: [jamais, ponctuellement, pendant longtemps]
+  fact_key: history.coached
+  show_if: { all: [ { fact: history.sport_years, gte: 1 } ] }

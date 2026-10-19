@@ -1,0 +1,177 @@
+# COACH — self-hosting stack.   Quick start:  scripts/init-secrets.sh && docker compose up -d
+#
+# Networks
+#   data   internal (no route to the Internet) : database, backups. Only the app and one-shot jobs may join it.
+#   edge   regular bridge with outbound access   : the app (LLM, Garmin, wger import) and the optional HTTPS proxy.
+#   llm    regular bridge                        : the optional local model server (profile `ollama`), reachable only by the app.
+# Secrets are Docker file secrets mounted under /run/secrets (nothing sensitive in the environment or in `docker inspect`).
+# Profiles (opt-in):  https (Caddy, automatic TLS) · backup (daily pg_dump) · ollama (local LLM) · tools (one-off helpers)
+name: coach
+
+x-app-env: &app-env
+  DB_HOST: db
+  DB_NAME: ${POSTGRES_DB:-coach}
+  DB_USER: ${POSTGRES_USER:-coach}
+  DB_PASSWORD_FILE: /run/secrets/postgres_password
+  SECRETS_KEY_FILE: /run/secrets/secrets_key
+  LLM_API_KEY_FILE: /run/secrets/llm_api_key
+  LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+  LLM_MODEL: ${LLM_MODEL:-}
+  LLM_MODEL_FAST: ${LLM_MODEL_FAST:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_MONTHLY_BUDGET_EUR: ${LLM_MONTHLY_BUDGET_EUR:-5}
+  LLM_PRICE_IN_EUR_PER_MTOK: ${LLM_PRICE_IN_EUR_PER_MTOK:-}
+  LLM_PRICE_OUT_EUR_PER_MTOK: ${LLM_PRICE_OUT_EUR_PER_MTOK:-}
+  REGISTRATION: ${REGISTRATION:-open}
+  COOKIE_SECURE: ${COOKIE_SECURE:-0}
+  AUTO_SYNC: ${AUTO_SYNC:-1}
+  GARMIN_SYNC_HOURS: ${GARMIN_SYNC_HOURS:-6}
+  AUTO_NOTIFY: ${AUTO_NOTIFY:-0}
+  NOTIFY_HOUR: ${NOTIFY_HOUR:-18}
+  NTFY_URL: ${NTFY_URL:-}
+  NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-}
+  NTFY_TOKEN_FILE: /run/secrets/ntfy_token
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+  SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid_private_key
+  VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.org}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+x-app-secrets: &app-secrets
+  - postgres_password
+  - secrets_key
+  - llm_api_key
+  - ntfy_token
+  - smtp_password
+  - vapid_private_key
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-coach}
+      POSTGRES_USER: ${POSTGRES_USER:-coach}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    security_opt: ["no-new-privileges:true"]
+
+  app:
+    build: .
+    image: ${COACH_IMAGE:-coach:local}
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment: *app-env
+    secrets: *app-secrets
+    volumes:
+      - media:/srv/media
+    networks: [data, edge, llm]
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+
+  # Exercise library (wger + free-exercise-db): imported once on first start, skipped afterwards.
+  # Needs Internet access; re-run it any time to refresh:  docker compose run --rm exercises-init python -m app.exercises.importer
+  exercises-init:
+    image: ${COACH_IMAGE:-coach:local}
+    command: ["python", "-m", "app.exercises.importer", "--if-empty"]
+    restart: "no"
+    depends_on:
+      app: { condition: service_healthy }
+    environment: *app-env
+    secrets: *app-secrets
+    networks: [data, edge]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  proxy:
+    profiles: [https]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app: { condition: service_healthy }
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+
+  backup:
+    profiles: [backup]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-coach}
+      POSTGRES_USER: ${POSTGRES_USER:-coach}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    secrets: [postgres_password]
+    volumes:
+      - ./deploy/docker/backup.sh:/backup.sh:ro
+      - backups:/backups
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+
+  # Local LLM server. After the first start:  docker compose exec ollama ollama pull qwen2.5:7b
+  # then set LLM_PROVIDER=ollama in .env (no data leaves the machine).
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    networks: [llm]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  data:
+    internal: true
+  edge: {}
+  llm: {}
+
+volumes:
+  pgdata:
+  media:
+  backups:
+  caddy_data:
+  caddy_config:
+  ollama:
+
+secrets:
+  postgres_password: { file: ./secrets/postgres_password }
+  secrets_key:       { file: ./secrets/secrets_key }
+  llm_api_key:       { file: ./secrets/llm_api_key }
+  ntfy_token:        { file: ./secrets/ntfy_token }
+  smtp_password:     { file: ./secrets/smtp_password }
+  vapid_private_key: { file: ./secrets/vapid_private_key }

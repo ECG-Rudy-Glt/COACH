@@ -1,0 +1,14 @@
+# Reverse proxy with automatic HTTPS (Let's Encrypt) — enabled by `docker compose --profile https up -d`.
+# Needs DOMAIN pointing at this host and ports 80/443 reachable. For a LAN-only setup use DOMAIN=localhost
+# (Caddy issues a locally-trusted certificate) or put your own proxy in front of the app and skip this profile.
+{$DOMAIN:localhost} {
+	encode zstd gzip
+	reverse_proxy app:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		X-Frame-Options DENY
+		-Server
+	}
+}

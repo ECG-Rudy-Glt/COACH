@@ -1,0 +1,66 @@
+# API + PWA. Example Service of type LoadBalancer (MetalLB annotation below is optional; use an Ingress or your own exposure,
+# see docs/exposure.md). The app has its own accounts and sessions, but prefer a private network or an access proxy in front.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sport-coach
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: sport-coach } }
+  template:
+    metadata: { labels: { app: sport-coach } }
+    spec:
+      securityContext: { fsGroup: 1000 }
+      containers:
+        - name: app
+          image: sport-coach
+          ports: [{ containerPort: 8000 }]
+          envFrom: [{ secretRef: { name: sport-coach-secrets } }]
+          env:
+            - { name: MEDIA_DIR, value: /srv/media }
+            - { name: AUTO_SYNC, value: "1" }            # automatic Garmin sync
+            - { name: GARMIN_SYNC_HOURS, value: "6" }
+            - { name: LLM_MONTHLY_BUDGET_EUR, value: "5" }  # hard monthly cap on AI spend
+            - { name: LLM_MODEL, value: claude-haiku-4-5-20251001 }  # cheaper model; use a larger one for richer reviews
+            - { name: LLM_PRICE_IN_EUR_PER_MTOK, value: "1" }  # price estimate used for the cap
+            - { name: LLM_PRICE_OUT_EUR_PER_MTOK, value: "5" }
+            - { name: AUTO_NOTIFY, value: "1" }     # push/e-mail reminders; each user must also enable a channel in the app
+            - { name: NOTIFY_HOUR, value: "18" }
+            - { name: VAPID_SUBJECT, value: "mailto:you@example.org" }  # VAPID contact: must be a real mailto:/https: address (Apple rejects others)
+            - { name: NTFY_URL, value: "http://ntfy.ntfy.svc.cluster.local" }  # in-cluster ntfy
+            - { name: NTFY_PUBLIC_URL, value: "https://ntfy.example.org" }        # address typed in the phone's ntfy app
+            - { name: REGISTRATION, value: first }  # first | open | closed
+            - { name: TRUST_PROXY, value: "1" }     # behind a proxy/ingress you control: read the client IP from X-Forwarded-For
+          volumeMounts: [{ name: media, mountPath: /srv/media }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 256Mi }
+      volumes: [{ name: media, persistentVolumeClaim: { claimName: sport-coach-media } }]
+---
+# Cache local des illustrations d'exercices (récupérées une fois depuis wger / free-exercise-db).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sport-coach-media
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 2Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sport-coach
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.0.2.10
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector: { app: sport-coach }
+  ports: [{ port: 80, targetPort: 8000 }]

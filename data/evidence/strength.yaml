@@ -1,0 +1,262 @@
+# Base de publications verifiees : musculation, hypertrophie, recuperation.
+# Chaque entree a ete retrouvee et lue sur PubMed (resume) le 2026-10-18.
+- id: STR-001
+  topic: hypertrophy
+  citation: "Schoenfeld BJ, Ogborn D, Krieger JW (2017). Dose-response relationship between weekly resistance training volume and increases in muscle mass: A systematic review and meta-analysis. Journal of Sports Sciences."
+  year: 2017
+  doi: "10.1080/02640414.2016.1210197"
+  pmid: "27433992"
+  url: "https://pubmed.ncbi.nlm.nih.gov/27433992/"
+  design: "méta-analyse"
+  finding_fr: "15 études, 34 groupes : relation dose-réponse graduée. Chaque série hebdomadaire de plus ajoute environ 0,37 % de gain de masse musculaire ; 10 séries ou plus par muscle donnent en moyenne plus de gain que moins de 5 (tendance, p = 0,074)."
+  limits_fr: "Nombre d'études limité (15). Pas de plafond établi ni de plage de 10 à 20 séries démontrée en tant que telle ; le seuil catégoriel n'est qu'une tendance."
+  applies_to: ["M1", "M2"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-002
+  topic: hypertrophy
+  citation: "Schoenfeld BJ, Ogborn D, Krieger JW (2016). Effects of Resistance Training Frequency on Measures of Muscle Hypertrophy: A Systematic Review and Meta-Analysis. Sports Medicine."
+  year: 2016
+  doi: "10.1007/s40279-016-0543-8"
+  pmid: "27102172"
+  url: "https://pubmed.ncbi.nlm.nih.gov/27102172/"
+  design: "méta-analyse"
+  finding_fr: "10 études : une fréquence plus élevée donne un effet sur l'hypertrophie supérieur (0,49 contre 0,30). À volume équivalent, entraîner un muscle 2 fois par semaine est supérieur à 1 fois ; 3 fois contre 2 fois reste indéterminé."
+  limits_fr: "Seulement 10 études. Les comparaisons à fréquence par muscle égale n'ont pas pu être chiffrées (échantillon insuffisant) ; la part due au volume supplémentaire reste difficile à isoler."
+  applies_to: ["M1"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-003
+  topic: strength
+  citation: "Grgic J, Schoenfeld BJ, Davies TB, Lazinica B, et al. (2018). Effect of Resistance Training Frequency on Gains in Muscular Strength: A Systematic Review and Meta-Analysis. Sports Medicine."
+  year: 2018
+  doi: "10.1007/s40279-018-0872-x"
+  pmid: "29470825"
+  url: "https://pubmed.ncbi.nlm.nih.gov/29470825/"
+  design: "méta-analyse"
+  finding_fr: "22 études : la force augmente avec la fréquence (effet 0,74 pour 1 séance par semaine jusqu'à 1,08 pour 4 ou plus), mais l'effet disparaît à volume égal. La fréquence sert surtout à répartir davantage de volume."
+  limits_fr: "Majorité d'études sur des sujets peu entraînés, qualité méthodologique moyenne. Ne concerne que la force, pas l'hypertrophie."
+  applies_to: ["M1"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-004
+  topic: hypertrophy
+  citation: "Schoenfeld BJ, Grgic J, Ogborn D, Krieger JW (2017). Strength and Hypertrophy Adaptations Between Low- vs. High-Load Resistance Training: A Systematic Review and Meta-analysis. Journal of Strength and Conditioning Research."
+  year: 2017
+  doi: "10.1519/JSC.0000000000002200"
+  pmid: "28834797"
+  url: "https://pubmed.ncbi.nlm.nih.gov/28834797/"
+  design: "méta-analyse"
+  finding_fr: "21 études, séries menées jusqu'à l'échec : la force maximale (1RM) progresse davantage avec des charges lourdes (plus de 60 % du 1RM), mais l'hypertrophie est similaire sur toute la plage de charges."
+  limits_fr: "Toutes les séries étaient menées à l'échec musculaire, ce qui ne reflète pas la pratique avec RIR 1-3. Durée minimale des études de 6 semaines ; ne dit rien sur les séries arrêtées avant l'échec."
+  applies_to: ["M11", "I4"]
+  confidence: "élevée"
+  verified_on: "2026-10-18"
+- id: STR-005
+  topic: hypertrophy
+  citation: "Refalo MC, Helms ER, Trexler ET, Hamilton DL, et al. (2023). Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy: A Systematic Review with Meta-analysis. Sports Medicine."
+  year: 2023
+  doi: "10.1007/s40279-022-01784-y"
+  pmid: "36334240"
+  url: "https://pubmed.ncbi.nlm.nih.gov/36334240/"
+  design: "méta-analyse"
+  finding_fr: "15 études : aucune preuve que l'échec musculaire soit supérieur à s'arrêter avant l'échec pour l'hypertrophie (effet 0,12, non significatif). Avantage trivial pour des séries proches de l'échec au sens large (0,19)."
+  limits_fr: "Définitions de l'échec très variables entre études, peu d'études par sous-groupe. Ne porte que sur l'hypertrophie, pas sur la force ni sur la fatigue ou le risque de blessure."
+  applies_to: ["M12"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-006
+  topic: hypertrophy
+  citation: "Robinson ZP, Pelland JC, Remmert JF, Refalo MC, et al. (2024). Exploring the Dose-Response Relationship Between Estimated Resistance Training Proximity to Failure, Strength Gain, and Muscle Hypertrophy: A Series of Meta-Regressions. Sports Medicine."
+  year: 2024
+  doi: "10.1007/s40279-024-02069-2"
+  pmid: "38970765"
+  url: "https://pubmed.ncbi.nlm.nih.gov/38970765/"
+  design: "méta-analyse"
+  finding_fr: "Méta-régressions sur le RIR estimé : la force progresse de façon similaire sur une large plage de RIR, alors que l'hypertrophie augmente un peu quand les séries se terminent plus près de l'échec."
+  limits_fr: "Analyse exploratoire : le RIR a été estimé à partir des descriptions des protocoles, ajustement modeste du modèle. La relation exacte reste incertaine selon les auteurs."
+  applies_to: ["M12"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-007
+  topic: strength
+  citation: "Zourdos MC, Klemp A, Dolan C, Quiles JM, et al. (2016). Novel Resistance Training-Specific Rating of Perceived Exertion Scale Measuring Repetitions in Reserve. Journal of Strength and Conditioning Research."
+  year: 2016
+  doi: "10.1519/JSC.0000000000001049"
+  pmid: "26049792"
+  url: "https://pubmed.ncbi.nlm.nih.gov/26049792/"
+  design: "étude observationnelle"
+  finding_fr: "29 squatteurs (15 expérimentés, 14 novices) : le RPE basé sur les répétitions en réserve (RIR) est inversement lié à la vitesse de la barre (r = -0,88 et -0,77). Le RIR est un moyen pratique de réguler la charge du jour."
+  limits_fr: "Petit échantillon, un seul exercice (squat). Étude de comparaison transversale, pas un essai d'entraînement : elle ne montre pas que piloter par RIR améliore les résultats."
+  applies_to: ["M12"]
+  confidence: "faible"
+  verified_on: "2026-10-18"
+- id: STR-008
+  topic: strength
+  citation: "Moesgaard L, Beck MM, Christiansen L, Aagaard P, et al. (2022). Effects of Periodization on Strength and Muscle Hypertrophy in Volume-Equated Resistance Training Programs: A Systematic Review and Meta-analysis. Sports Medicine."
+  year: 2022
+  doi: "10.1007/s40279-021-01636-1"
+  pmid: "35044672"
+  url: "https://pubmed.ncbi.nlm.nih.gov/35044672/"
+  design: "méta-analyse"
+  finding_fr: "35 études à volume égal : l'entraînement périodisé améliore un peu plus le 1RM que le non périodisé (ES 0,31), l'ondulé plus que le linéaire chez les entraînés. Aucune différence pour l'hypertrophie."
+  limits_fr: "Effets modestes, intervalles de confiance proches de zéro. Peu d'études comparant d'autres modèles de périodisation ; l'avantage sur le 1RM n'apparaît pas chez les novices."
+  applies_to: ["G7", "M11"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-009
+  topic: hypertrophy
+  citation: "Zhang X, Weakley J, Li H, Li Z, et al. (2025). Superset Versus Traditional Resistance Training Prescriptions: A Systematic Review and Meta-analysis Exploring Acute and Chronic Effects on Mechanical, Metabolic, and Perceptual Variables. Sports Medicine."
+  year: 2025
+  doi: "10.1007/s40279-025-02176-8"
+  pmid: "39903375"
+  url: "https://pubmed.ncbi.nlm.nih.gov/39903375/"
+  design: "méta-analyse"
+  finding_fr: "19 études : les supersets réduisent la durée de séance sans baisse du volume total, de la force, de l'endurance de force ni de l'hypertrophie (SMD -0,05). Effort perçu et fatigue métabolique plus élevés."
+  limits_fr: "Seulement 19 études, 313 participants, forte hétérogénéité sur certains critères. Les supersets de même muscle réduisent le volume soulevé."
+  applies_to: ["M13"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-010
+  topic: hypertrophy
+  citation: "Schoenfeld BJ, Pope ZK, Benik FM, Hester GM, et al. (2016). Longer Interset Rest Periods Enhance Muscle Strength and Hypertrophy in Resistance-Trained Men. Journal of Strength and Conditioning Research."
+  year: 2016
+  doi: "10.1519/JSC.0000000000001272"
+  pmid: "26605807"
+  url: "https://pubmed.ncbi.nlm.nih.gov/26605807/"
+  design: "essai contrôlé randomisé"
+  finding_fr: "21 hommes entraînés, 8 semaines : repos de 3 min entre séries donne plus de force (squat, développé couché) et plus d'épaisseur musculaire de la cuisse qu'un repos de 1 min, à programme égal."
+  limits_fr: "Petit échantillon, 8 semaines, hommes jeunes entraînés uniquement. Les séances de 8-12 RM sur corps entier ne sont pas généralisables à tous les programmes."
+  applies_to: []
+  confidence: "faible"
+  verified_on: "2026-10-18"
+- id: STR-011
+  topic: strength
+  citation: "Grgic J, Schoenfeld BJ, Skrepnik M, Davies TB, et al. (2018). Effects of Rest Interval Duration in Resistance Training on Measures of Muscular Strength: A Systematic Review. Sports Medicine."
+  year: 2018
+  doi: "10.1007/s40279-017-0788-x"
+  pmid: "28933024"
+  url: "https://pubmed.ncbi.nlm.nih.gov/28933024/"
+  design: "revue systématique"
+  finding_fr: "23 études : des gains de force solides sont possibles même avec des repos courts (moins de 60 s), mais des repos de plus de 2 min semblent nécessaires chez les entraînés ; 60 à 120 s suffisent chez les novices."
+  limits_fr: "Revue sans méta-analyse, études peu nombreuses et hétérogènes, qualité moyenne. Concerne la force, pas l'hypertrophie."
+  applies_to: []
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-012
+  topic: strength
+  citation: "Plotkin D, Coleman M, Van Every D, Maldonado J, et al. (2022). Progressive overload without progressing load? The effects of load or repetition progression on muscular adaptations. PeerJ."
+  year: 2022
+  doi: "10.7717/peerj.14142"
+  pmid: "36199287"
+  url: "https://pubmed.ncbi.nlm.nih.gov/36199287/"
+  design: "essai contrôlé randomisé"
+  finding_fr: "43 sujets entraînés, 8 semaines, jambes : augmenter la charge à répétitions fixes ou les répétitions à charge fixe sont deux progressions viables, avec des différences minimes de force et de taille musculaire."
+  limits_fr: "8 semaines, exercices des membres inférieurs seulement, intervalles de confiance parfois larges. Ne teste pas la double progression telle que décrite en M5 ; elle en est proche."
+  applies_to: ["M5", "M11"]
+  confidence: "faible"
+  verified_on: "2026-10-18"
+- id: STR-013
+  topic: strength
+  citation: "Spiering BA, Mujika I, Sharp MA, Foulis SA (2021). Maintaining Physical Performance: The Minimal Dose of Exercise Needed to Preserve Endurance and Strength Over Time. Journal of Strength and Conditioning Research."
+  year: 2021
+  doi: "10.1519/JSC.0000000000003964"
+  pmid: "33629972"
+  url: "https://pubmed.ncbi.nlm.nih.gov/33629972/"
+  design: "revue narrative"
+  finding_fr: "Force et masse musculaire (jeunes) se maintiennent jusqu'à 32 semaines avec 1 séance par semaine et 1 série par exercice, si l'intensité relative (charge) est conservée. L'intensité est la variable clé du maintien."
+  limits_fr: "Revue narrative brève, non systématique. Données insuffisantes pour les athlètes ; chez les plus âgés il faut 2 séances et 2-3 séries. Ne dit rien sur le maintien pendant un déficit calorique."
+  applies_to: ["M2", "M6"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: STR-014
+  topic: strength
+  citation: "Murphy C, Koehler K (2022). Energy deficiency impairs resistance training gains in lean mass but not strength: A meta-analysis and meta-regression. Scandinavian Journal of Medicine & Science in Sports."
+  year: 2022
+  doi: "10.1111/sms.14075"
+  pmid: "34623696"
+  url: "https://pubmed.ncbi.nlm.nih.gov/34623696/"
+  design: "méta-analyse"
+  finding_fr: "En déficit énergétique, la musculation donne moins de gain de masse maigre (ES -0,57) mais des gains de force comparables (ES -0,31, non significatif). Un déficit d'environ 500 kcal/j annule le gain de masse maigre."
+  limits_fr: "Nombre d'essais limité et protocoles variés. La conclusion sur 500 kcal vient d'une méta-régression : un ordre de grandeur, pas un seuil exact. Force des jambes non analysée séparément."
+  applies_to: ["M2", "M4"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: REC-001
+  topic: recovery
+  citation: "Saw AE, Main LC, Gastin PB (2016). Monitoring the athlete training response: subjective self-reported measures trump commonly used objective measures: a systematic review. British Journal of Sports Medicine."
+  year: 2016
+  doi: "10.1136/bjsports-2015-094758"
+  pmid: "26423706"
+  url: "https://pubmed.ncbi.nlm.nih.gov/26423706/"
+  design: "revue systématique"
+  finding_fr: "56 études : les mesures subjectives (humeur, stress perçu) réagissent à la charge d'entraînement aiguë et chronique avec plus de sensibilité et de régularité que les mesures objectives (sang, FC), et peuvent suffire seules."
+  limits_fr: "Études hétérogènes, populations d'athlètes surtout, recherche close en 2014. Ne démontre pas qu'adapter la charge sur ces mesures améliore la performance ou réduit les blessures."
+  applies_to: ["R1", "R2", "R4"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: REC-002
+  topic: sleep
+  citation: "Cunha LA, Costa JA, Marques EA, Brito J, et al. (2023). The Impact of Sleep Interventions on Athletic Performance: A Systematic Review. Sports Medicine - Open."
+  year: 2023
+  doi: "10.1186/s40798-023-00599-z"
+  pmid: "37462808"
+  url: "https://pubmed.ncbi.nlm.nih.gov/37462808/"
+  design: "revue systématique"
+  finding_fr: "25 études chez des athlètes : allonger le sommeil nocturne ou faire des siestes sont les interventions les plus efficaces pour améliorer le sommeil et la performance physique ou cognitive."
+  limits_fr: "Preuves de qualité limitée (reconnue par les auteurs), interventions et critères très hétérogènes, population d'athlètes. Effets de l'hygiène du sommeil et d'autres mesures non démontrés (peu d'études)."
+  applies_to: ["R2"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: REC-003
+  topic: sleep
+  citation: "Craven J, McCartney D, Desbrow B, Sabapathy S, et al. (2022). Effects of Acute Sleep Loss on Physical Performance: A Systematic and Meta-Analytical Review. Sports Medicine."
+  year: 2022
+  doi: "10.1007/s40279-022-01706-y"
+  pmid: "35708888"
+  url: "https://pubmed.ncbi.nlm.nih.gov/35708888/"
+  design: "méta-analyse"
+  finding_fr: "69 publications : une perte de sommeil aiguë (6 h ou moins) réduit la performance de 7,6 % en moyenne, dont la force. Effet surtout après privation ou réveil précoce, et pour les efforts de l'après-midi plutôt que du matin."
+  limits_fr: "Hétérogénéité très élevée (I2 = 98 %), 89 % d'hommes, perte de sommeil aiguë. Ne renseigne pas sur l'effet d'un manque de sommeil chronique modéré en entraînement réel."
+  applies_to: ["R1", "R2"]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: REC-004
+  topic: recovery
+  citation: "Coleman M, Burke R, Augustin F, Piñero A, et al. (2024). Gaining more from doing less? The effects of a one-week deload period during supervised resistance training on muscular adaptations. PeerJ."
+  year: 2024
+  doi: "10.7717/peerj.16777"
+  pmid: "38274324"
+  url: "https://pubmed.ncbi.nlm.nih.gov/38274324/"
+  design: "essai contrôlé randomisé"
+  finding_fr: "39 sujets entraînés, programme de 9 semaines : une semaine d'arrêt complet à mi-parcours n'a pas modifié l'hypertrophie, la puissance ni l'endurance des jambes, mais la force des jambes a moins progressé que sans pause."
+  limits_fr: "Arrêt total d'une semaine, pas une décharge à volume réduit comme G2. Un seul essai de 9 semaines, volume élevé. Ne montre aucun bénéfice de récupération démontré à la décharge."
+  applies_to: ["G2"]
+  confidence: "faible"
+  verified_on: "2026-10-18"
+- id: REC-005
+  topic: injury
+  citation: "Lauersen JB, Andersen TE, Andersen LB (2018). Strength training as superior, dose-dependent and safe prevention of acute and overuse sports injuries: a systematic review, qualitative analysis and meta-analysis. British Journal of Sports Medicine."
+  year: 2018
+  doi: "10.1136/bjsports-2018-099078"
+  pmid: "30131332"
+  url: "https://pubmed.ncbi.nlm.nih.gov/30131332/"
+  design: "méta-analyse"
+  finding_fr: "6 essais randomisés, 7 738 sportifs de 12 à 40 ans : la musculation de prévention réduit fortement les blessures (RR 0,34). Plus de volume de musculation est associé à moins de blessures."
+  limits_fr: "Seulement 6 essais, programmes variés, sportifs jeunes ; les blessures sont peu nombreuses (177). Le lien dose-réponse vient d'une méta-régression post hoc, et le résultat ne vaut pas pour la reprise après blessure."
+  applies_to: []
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+- id: REC-006
+  topic: injury
+  citation: "van Dyk N, Behan FP, Whiteley R (2019). Including the Nordic hamstring exercise in injury prevention programmes halves the rate of hamstring injuries: a systematic review and meta-analysis of 8459 athletes. British Journal of Sports Medicine."
+  year: 2019
+  doi: "10.1136/bjsports-2018-100045"
+  pmid: "30808663"
+  url: "https://pubmed.ncbi.nlm.nih.gov/30808663/"
+  design: "méta-analyse"
+  finding_fr: "15 études, 8 459 athlètes : les programmes incluant le Nordic hamstring réduisent le risque de blessure des ischio-jambiers (RR 0,49), soit environ moitié moins, y compris dans l'analyse limitée aux essais randomisés (RR 0,52)."
+  limits_fr: "Concerne uniquement les ischio-jambiers. Sur 15 études, 8 présentent un risque de biais élevé (le résultat reste favorable sans elles, RR 0,55)."
+  applies_to: []
+  confidence: "moyenne"
+  verified_on: "2026-10-18"

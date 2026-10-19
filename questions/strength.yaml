@@ -1,0 +1,54 @@
+- id: str.frequency
+  domain: strength
+  order: 1
+  text: "Combien de séances de musculation faites-vous par semaine ?"
+  type: number
+  unit: séances
+  fact_key: strength.sessions_per_week
+  show_if: { all: [ { fact: sports.practiced, contains: strength } ] }
+  required: true
+
+- id: str.level
+  domain: strength
+  order: 2
+  text: "Comment évaluez-vous votre niveau en musculation ?"
+  type: single
+  options: [débutant, intermédiaire, avancé]
+  fact_key: strength.level
+  show_if: { all: [ { fact: sports.practiced, contains: strength } ] }
+  required: true
+
+- id: str.lifts
+  domain: strength
+  order: 3
+  text: "Quelles charges soulevez-vous sur les mouvements de base ? (développé couché, squat, soulevé de terre, tractions)"
+  type: text
+  fact_key: strength.known_lifts
+  show_if: { all: [ { fact: strength.level, in: [intermédiaire, avancé] } ] }
+
+- id: str.split
+  domain: strength
+  order: 4
+  text: "Quels types de programmes suivez-vous actuellement ?"
+  type: multi
+  options: [aucun, full body, haut/bas, push/pull/legs]
+  allow_other: true
+  fact_key: strength.current_split
+  show_if: { all: [ { all: [ { fact: sports.practiced, contains: strength } ] }, { fact: strength.level, in: [intermédiaire, avancé] } ] }
+
+- id: str.pullups
+  domain: strength
+  order: 5
+  text: "Combien de tractions strictes pouvez-vous enchaîner ?"
+  type: number
+  fact_key: strength.pullups_max
+  show_if: { all: [ { all: [ { fact: sports.practiced, contains: strength } ] }, { fact: strength.level, in: [intermédiaire, avancé] } ] }
+
+- id: str.history_years
+  domain: strength
+  order: 6
+  text: "Depuis combien d'années faites-vous de la musculation, avec ou sans interruptions ?"
+  type: number
+  unit: ans
+  fact_key: strength.history_years
+  show_if: { all: [ { all: [ { fact: sports.practiced, contains: strength } ] }, { fact: strength.level, in: [intermédiaire, avancé] } ] }

@@ -1,0 +1,19 @@
+name: Feature request
+description: Propose an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes: { label: Problem / goal, description: "What are you trying to achieve?" }
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes: { label: Proposed solution }
+  - type: textarea
+    id: safety
+    attributes: { label: Safety and evidence, description: "For training/nutrition rules: the source, evidence level, who it must NOT apply to. For LLM features: what is the worst case if the model is adversarial?" }
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options: [{ label: I can work on this (see CONTRIBUTING.md) }]

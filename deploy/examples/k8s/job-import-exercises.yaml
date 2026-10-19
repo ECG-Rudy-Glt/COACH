@@ -1,0 +1,21 @@
+# One-off import of the exercise library (wger + free-exercise-db + custom). Not part of kustomization.yaml; re-runnable (upsert):
+#   kubectl -n sport-coach delete job import-exercises --ignore-not-found
+#   kubectl apply -f deploy/examples/k8s/job-import-exercises.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: import-exercises
+  namespace: sport-coach
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: import
+          image: ghcr.io/ecg-rudy-glt/coach:latest
+          command: ["python", "-m", "app.exercises.importer"]
+          envFrom: [{ secretRef: { name: sport-coach-secrets } }]
+          resources:
+            limits: { memory: 384Mi }

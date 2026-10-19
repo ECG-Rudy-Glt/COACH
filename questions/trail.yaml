@@ -1,0 +1,127 @@
+# Approfondissement trail : posé si le trail est pratiqué ou si une course est l'objectif.
+- id: tr.distance
+  domain: trail
+  order: 1
+  text: "Quelle distance vise votre objectif trail ?"
+  type: single
+  options: [moins de 25 km, 25 à 50 km, 50 à 80 km, 80 à 120 km, plus de 120 km, pas encore défini]
+  fact_key: trail.target_distance
+  show_if: { any: [ { fact: sports.practiced, contains: trail }, { fact: goal.primary, eq: "préparation d'une course" } ] }
+
+- id: tr.elevation
+  domain: trail
+  order: 2
+  text: "Quel dénivelé positif total vise-t-il ?"
+  type: number
+  unit: m D+
+  fact_key: trail.target_elevation_m
+  show_if: { all: [ { fact: trail.target_distance, exists: true }, { not: { fact: trail.target_distance, eq: pas encore défini } } ] }
+
+- id: tr.event_date
+  domain: trail
+  order: 3
+  text: "Quelle est la date de l'objectif ?"
+  type: date
+  fact_key: trail.event_date
+  show_if: { all: [ { fact: trail.target_distance, exists: true }, { not: { fact: trail.target_distance, eq: pas encore défini } } ] }
+
+- id: tr.terrain_type
+  domain: trail
+  order: 4
+  text: "Quel type de terrain sur la course visée ?"
+  type: multi
+  options: [sentiers roulants, technique et rocailleux, boue, neige ou glace, haute montagne]
+  allow_other: true
+  fact_key: trail.event_terrain
+  show_if: { all: [ { fact: trail.target_distance, exists: true } ] }
+
+- id: tr.vert_week
+  domain: trail
+  order: 5
+  text: "Combien de dénivelé positif faites-vous par semaine en ce moment ?"
+  type: number
+  unit: m D+
+  fact_key: trail.weekly_vert_m
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }, { fact: running.trail_experience, in: [quelques sorties, régulièrement, en compétition] } ] }
+
+- id: tr.longest_vert
+  domain: trail
+  order: 6
+  text: "Quel est le plus gros dénivelé positif de votre plus grosse sortie récente ?"
+  type: number
+  unit: m D+
+  fact_key: trail.longest_vert_m
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }, { fact: running.trail_experience, in: [quelques sorties, régulièrement, en compétition] } ] }
+
+- id: tr.downhill
+  domain: trail
+  order: 7
+  text: "Comment vivez-vous les descentes ?"
+  type: single
+  options: [à l'aise, correct, quadriceps douloureux le lendemain, peur ou manque de technique]
+  fact_key: trail.downhill_comfort
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }, { fact: running.trail_experience, in: [quelques sorties, régulièrement, en compétition] } ] }
+
+- id: tr.uphill_style
+  domain: trail
+  order: 8
+  text: "Dans les montées raides, comment progressez-vous ?"
+  type: single
+  options: [je cours presque tout, j'alterne marche et course, je marche surtout]
+  fact_key: trail.uphill_style
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }, { fact: running.trail_experience, in: [quelques sorties, régulièrement, en compétition] } ] }
+
+- id: tr.poles
+  domain: trail
+  order: 9
+  text: "Utilisez-vous des bâtons ?"
+  type: single
+  options: [jamais, débutant, à l'aise]
+  fact_key: trail.poles
+  show_if: { all: [ { fact: trail.target_distance, in: [50 à 80 km, 80 à 120 km, plus de 120 km] } ] }
+
+- id: tr.fueling
+  domain: trail
+  order: 10
+  text: "Comment vous ravitaillez-vous sur les longues sorties ?"
+  type: multi
+  options: [rien, gels, barres, aliments solides, boisson d'effort]
+  allow_other: true
+  fact_key: trail.fueling
+  show_if: { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }
+
+- id: tr.gi
+  domain: trail
+  order: 11
+  text: "Avez-vous des troubles digestifs pendant l'effort ?"
+  type: single
+  options: [jamais, parfois, souvent]
+  fact_key: trail.gi_issues
+  show_if: { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }
+
+- id: tr.night
+  domain: trail
+  order: 12
+  text: "Votre objectif comporte-t-il de la course de nuit ?"
+  type: single
+  options: [non, oui j'en ai déjà fait, oui première fois]
+  fact_key: trail.night
+  show_if: { all: [ { fact: trail.target_distance, in: [50 à 80 km, 80 à 120 km, plus de 120 km] } ] }
+
+- id: tr.gear
+  domain: trail
+  order: 13
+  text: "De quel équipement disposez-vous ?"
+  type: multi
+  options: [gilet ou sac, bâtons, frontale, chaussures trail, montre GPS]
+  fact_key: trail.gear
+  show_if: { all: [ { fact: trail.target_distance, exists: true } ] }
+
+- id: tr.legs_prehab
+  domain: trail
+  order: 14
+  text: "Faites-vous du renforcement spécifique chevilles, quadriceps et mollets ?"
+  type: single
+  options: [jamais, parfois, régulièrement]
+  fact_key: trail.legs_prehab
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: trail }, { fact: trail.target_distance, exists: true } ] }, { fact: running.trail_experience, in: [quelques sorties, régulièrement, en compétition] } ] }

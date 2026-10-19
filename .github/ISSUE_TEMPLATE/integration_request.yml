@@ -1,0 +1,18 @@
+name: Integration request (wearable / service / LLM provider)
+description: Ask for or offer a new data source, service or model provider
+labels: [integration]
+body:
+  - type: input
+    id: name
+    attributes: { label: Name, placeholder: "Coros, Suunto, Strava, Mistral, …" }
+    validations: { required: true }
+  - type: dropdown
+    id: kind
+    attributes: { label: Type, options: [Wearable / activity source, Nutrition or health service, LLM provider, Notification channel, Other] }
+  - type: textarea
+    id: access
+    attributes: { label: How can data be obtained, description: "Official API? OAuth? File export (FIT/TCX/GPX)? Terms of service link." }
+    validations: { required: true }
+  - type: textarea
+    id: notes
+    attributes: { label: Notes, description: "See docs/integrations.md and skills/add-activity-source." }

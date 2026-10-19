@@ -1,0 +1,28 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes: { value: "Never paste real health data, tokens, keys or your domain. Use synthetic examples." }
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: "And what did you expect?" }
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes: { label: Steps to reproduce }
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: Version / commit, placeholder: "0.1.0 or git sha" }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Plan engine, Nutrition, Questionnaire, Exercises, Garmin / wearables, AI coach / LLM providers, Notifications, PWA / UI, Docker / deployment, Security (non-sensitive), Docs]
+  - type: textarea
+    id: env
+    attributes: { label: Environment, description: "OS, Docker version, browser/phone, LLM provider (no keys)", render: text }
+  - type: textarea
+    id: logs
+    attributes: { label: Relevant logs (redacted), render: text }

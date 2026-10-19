@@ -1,0 +1,64 @@
+- id: hy.hyrox_done
+  domain: hybrid
+  order: 1
+  text: "Avez-vous déjà participé à une course Hyrox ?"
+  type: single
+  options: [jamais, une fois, plusieurs fois]
+  fact_key: hybrid.hyrox_done
+  show_if: { all: [ { fact: sports.practiced, contains: hyrox } ] }
+
+- id: hy.hyrox_time
+  domain: hybrid
+  order: 2
+  text: "Quel est votre meilleur temps total ?"
+  type: duration
+  fact_key: hybrid.hyrox_best_min
+  show_if: { all: [ { fact: hybrid.hyrox_done, in: [une fois, plusieurs fois] } ] }
+
+- id: hy.hyrox_cat
+  domain: hybrid
+  order: 3
+  text: "Dans quelle catégorie visez-vous ?"
+  type: single
+  options: [Open, Pro, Doubles, Relais]
+  allow_other: true
+  fact_key: hybrid.hyrox_category
+  show_if: { all: [ { fact: sports.practiced, contains: hyrox } ] }
+
+- id: hy.hyrox_weak
+  domain: hybrid
+  order: 4
+  text: "Quelles stations sont vos points faibles ?"
+  type: multi
+  options: [SkiErg, sled push, sled pull, burpee broad jumps, rameur, farmers carry, sandbag lunges, wall balls, course]
+  fact_key: hybrid.hyrox_weak_stations
+  show_if: { all: [ { fact: sports.practiced, contains: hyrox } ] }
+
+- id: hy.cf_years
+  domain: hybrid
+  order: 5
+  text: "Depuis combien d'années faites-vous du CrossFit ?"
+  type: number
+  unit: années
+  fact_key: hybrid.crossfit_years
+  show_if: { all: [ { fact: sports.practiced, contains: crossfit } ] }
+
+- id: hy.cf_skills
+  domain: hybrid
+  order: 6
+  text: "Quels mouvements maîtrisez-vous ?"
+  type: multi
+  options: [muscle-up, double unders, handstand push-up, snatch, clean and jerk, pistol squat, aucun]
+  allow_other: true
+  fact_key: hybrid.crossfit_skills
+  show_if: { all: [ { all: [ { fact: sports.practiced, contains: crossfit } ] }, { fact: hybrid.crossfit_years, gte: 1 } ] }
+
+- id: hy.cf_access
+  domain: hybrid
+  order: 7
+  text: "Où vous entraînez-vous ?"
+  type: single
+  options: [box, garage ou salle perso, aucun lieu fixe]
+  allow_other: true
+  fact_key: hybrid.access
+  show_if: { any: [ { fact: sports.practiced, contains: crossfit }, { fact: sports.practiced, contains: hyrox } ] }

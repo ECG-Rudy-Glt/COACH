@@ -1,0 +1,15 @@
+name: Rule or publication correction
+description: A training/nutrition rule or a cited publication looks wrong, outdated or missing
+labels: [evidence]
+body:
+  - type: input
+    id: ref
+    attributes: { label: Rule ID or publication ID, placeholder: "C1, M5, RUN-003 …" }
+  - type: textarea
+    id: issue
+    attributes: { label: What is wrong or missing }
+    validations: { required: true }
+  - type: textarea
+    id: source
+    attributes: { label: Source you opened, description: "DOI / PMID / URL. Only sources you have actually read." }
+    validations: { required: true }

@@ -1,0 +1,59 @@
+# Page « Mes performances » : pour chaque exercice, le record et le niveau actuel.
+# kind : weight_reps (charge x répétitions) | reps | time (mm:ss ou h:mm:ss) | watts | rounds
+- sport: strength
+  title: Musculation
+  items:
+    - { id: squat, label: Squat, kind: weight_reps }
+    - { id: bench, label: Développé couché, kind: weight_reps }
+    - { id: deadlift, label: Soulevé de terre, kind: weight_reps }
+    - { id: ohp, label: Développé militaire, kind: weight_reps }
+    - { id: row, label: Rowing barre, kind: weight_reps }
+    - { id: hipthrust, label: Hip thrust, kind: weight_reps }
+    - { id: legpress, label: Presse à cuisses, kind: weight_reps }
+    - { id: pullups, label: Tractions strictes, kind: reps }
+    - { id: pushups, label: Pompes, kind: reps }
+    - { id: dips, label: Dips, kind: reps }
+
+- sport: running
+  also: [trail]
+  title: Course à pied
+  items:
+    - { id: run_1k, label: 1 km, kind: time }
+    - { id: run_5k, label: 5 km, kind: time }
+    - { id: run_10k, label: 10 km, kind: time }
+    - { id: run_half, label: Semi-marathon, kind: time }
+    - { id: run_marathon, label: Marathon, kind: time }
+
+- sport: cycling
+  title: Vélo
+  items:
+    - { id: ftp, label: FTP, kind: watts }
+    - { id: bike_20min, label: Puissance moyenne sur 20 min, kind: watts }
+
+- sport: hyrox
+  title: Hyrox
+  items:
+    - { id: hx_total, label: Course complète, kind: time }
+    - { id: hx_ski, label: SkiErg 1 000 m, kind: time }
+    - { id: hx_sledpush, label: Sled push, kind: time }
+    - { id: hx_sledpull, label: Sled pull, kind: time }
+    - { id: hx_burpee, label: Burpee broad jumps, kind: time }
+    - { id: hx_row, label: Rameur 1 000 m, kind: time }
+    - { id: hx_farmers, label: Farmers carry, kind: time }
+    - { id: hx_lunges, label: Sandbag lunges, kind: time }
+    - { id: hx_wallballs, label: Wall balls, kind: time }
+
+- sport: crossfit
+  title: CrossFit
+  items:
+    - { id: cf_fran, label: Fran, kind: time }
+    - { id: cf_grace, label: Grace, kind: time }
+    - { id: cf_helen, label: Helen, kind: time }
+    - { id: cf_murph, label: Murph, kind: time }
+    - { id: cf_cindy, label: Cindy (tours en 20 min), kind: rounds }
+
+- sport: swimming
+  title: Natation
+  items:
+    - { id: swim_100, label: 100 m, kind: time }
+    - { id: swim_400, label: 400 m, kind: time }

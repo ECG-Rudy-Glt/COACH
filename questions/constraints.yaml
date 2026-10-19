@@ -1,0 +1,57 @@
+- id: con.days
+  domain: constraints
+  order: 1
+  text: "Combien de jours par semaine pouvez-vous vous entraîner ?"
+  type: number
+  unit: jours
+  fact_key: constraints.training_days
+  required: true
+
+- id: con.session_length
+  domain: constraints
+  order: 2
+  text: "Quelle est la durée maximale d'une séance en semaine ?"
+  type: duration
+  fact_key: constraints.weekday_session_max_min
+  required: true
+
+- id: con.weekend_long
+  domain: constraints
+  order: 3
+  text: "Pouvez-vous faire une longue séance le week-end ? (durée maximale)"
+  type: duration
+  fact_key: constraints.weekend_session_max_min
+
+- id: con.equipment
+  domain: constraints
+  order: 4
+  text: "De quel matériel de musculation disposez-vous ?"
+  type: multi
+  options: [salle complète, haltères, barre et rack, kettlebells, poids de corps, élastiques]
+  fact_key: constraints.equipment
+  show_if: { all: [ { fact: sports.practiced, contains: strength } ] }
+
+- id: con.work
+  domain: constraints
+  order: 5
+  text: "Votre travail est-il plutôt sédentaire ou physique ?"
+  type: single
+  options: [sédentaire, mixte, physique]
+  fact_key: constraints.work_activity
+  required: true
+
+- id: con.sleep
+  domain: constraints
+  order: 6
+  text: "Combien d'heures dormez-vous en moyenne par nuit ?"
+  type: number
+  unit: h
+  fact_key: constraints.sleep_hours
+  required: true
+
+- id: con.stress
+  domain: constraints
+  order: 7
+  text: "Comment évaluez-vous votre niveau de stress habituel ? (1 faible, 5 élevé)"
+  type: scale
+  fact_key: constraints.stress_level

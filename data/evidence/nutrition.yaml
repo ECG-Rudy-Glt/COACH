@@ -1,0 +1,281 @@
+# Base de publications vérifiées : nutrition, composition corporelle, hydratation.
+# Chaque entrée a été retrouvée (notice PubMed / Europe PMC, résumé lu) le 2026-10-18.
+- id: NUT-001
+  topic: nutrition
+  citation: "Mifflin MD, St Jeor ST, Hill LA, Scott BJ, Daugherty SA, Koh YO (1990). A new predictive equation for resting energy expenditure in healthy individuals. Am J Clin Nutr."
+  year: 1990
+  doi: "10.1093/ajcn/51.2.241"
+  pmid: "2305711"
+  url: "https://pubmed.ncbi.nlm.nih.gov/2305711/"
+  design: "étude observationnelle"
+  finding_fr: "Équation tirée de 498 adultes sains (19-78 ans, minces et obèses), métabolisme mesuré par calorimétrie : 10×poids + 6,25×taille − 5×âge + 5 (hommes) ou − 161 (femmes), R² = 0,71. Harris-Benedict surestimait de 5 %."
+  limits_fr: "Régression sur une cohorte américaine : R² de 0,71, donc erreur individuelle réelle. La masse maigre n'entre pas dans l'équation ; voir NUT-003 pour les sportifs."
+  applies_to: [N1]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-002
+  topic: nutrition
+  citation: "Frankenfield D, Roth-Yousey L, Compher C (2005). Comparison of predictive equations for resting metabolic rate in healthy nonobese and obese adults: a systematic review. J Am Diet Assoc."
+  year: 2005
+  doi: "10.1016/j.jada.2005.02.005"
+  pmid: "15883556"
+  url: "https://pubmed.ncbi.nlm.nih.gov/15883556/"
+  design: "revue systématique"
+  finding_fr: "Parmi quatre équations courantes, Mifflin-St Jeor prédit le métabolisme de repos à ±10 % de la mesure chez le plus grand nombre d'adultes, avec la plus petite plage d'erreur ; des erreurs notables subsistent chez certains individus."
+  limits_fr: "Adultes non obèses et obèses, pas de sportifs ciblés ; personnes âgées et minorités ethniques sous-représentées. Concerne le métabolisme de repos, pas la dépense totale."
+  applies_to: [N1]
+  confidence: "élevée"
+  verified_on: "2026-10-18"
+
+- id: NUT-003
+  topic: nutrition
+  citation: "ten Haaf T, Weijs PJ (2014). Resting energy expenditure prediction in recreational athletes of 18-35 years: confirmation of Cunningham equation and an improved weight-based alternative. PLoS One."
+  year: 2014
+  doi: "10.1371/journal.pone.0108460"
+  pmid: "25275434"
+  url: "https://pubmed.ncbi.nlm.nih.gov/25275434/"
+  design: "étude observationnelle"
+  finding_fr: "Chez 90 sportifs récréatifs (9 h d'activité par semaine), Mifflin, Harris-Benedict, OMS, Schofield et Owen prédisaient le métabolisme de repos à ±10 % pour moins de 50 % des sujets. Cunningham (masse maigre) et une équation poids-taille-âge-sexe faisaient mieux."
+  limits_fr: "Un seul échantillon néerlandais de 18 à 35 ans. Cunningham exige une masse maigre mesurée. Non testé chez les sportifs plus âgés ou d'élite. Raison de traiter l'estimation comme un ordre de grandeur."
+  applies_to: [N1]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-004
+  topic: body_composition
+  citation: "Hall KD (2008). What is the required energy deficit per unit weight loss? Int J Obes (Lond)."
+  year: 2008
+  doi: "10.1038/sj.ijo.0803720"
+  pmid: "17848938"
+  url: "https://pubmed.ncbi.nlm.nih.gov/17848938/"
+  design: "revue narrative"
+  finding_fr: "Modèle de Forbes modifié : le déficit nécessaire par kilo perdu augmente avec la masse grasse initiale. La règle de 3 500 kcal par livre (≈ 7 700 kcal/kg) ne colle qu'avec plus de 30 kg de masse grasse et surestime le déficit requis chez les sujets plus maigres."
+  limits_fr: "Analyse par modèle mathématique, pas un essai. À utiliser comme ordre de grandeur : la règle fixe n'est pas fiable pour prédire la perte d'un sportif mince, d'où le suivi des moyennes hebdomadaires."
+  applies_to: [N4, M4]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-005
+  topic: body_composition
+  citation: "Garthe I, Raastad T, Refsnes PE, Koivisto A, Sundgot-Borgen J (2011). Effect of two different weight-loss rates on body composition and strength and power-related performance in elite athletes. Int J Sport Nutr Exerc Metab."
+  year: 2011
+  doi: "10.1123/ijsnem.21.2.97"
+  pmid: "21558571"
+  url: "https://pubmed.ncbi.nlm.nih.gov/21558571/"
+  design: "essai contrôlé randomisé"
+  finding_fr: "24 athlètes avec musculation 4 fois par semaine : perte de 0,7 %/sem. → masse maigre +2,1 % ; perte de 1,4 %/sem. → masse maigre inchangée (−0,2 %). Perte de poids totale proche (≈ 5,5 %), en 8,5 contre 5,3 semaines en moyenne."
+  limits_fr: "Petit échantillon (24), athlètes de force et de puissance, 5 à 9 semaines. Non testé sur des coureurs ou du trail ; les groupes diffèrent par la durée de l'intervention."
+  applies_to: [N4, M4]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-006
+  topic: body_composition
+  citation: "Aragon AA, Schoenfeld BJ, Wildman R, et al. (2017). International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr."
+  year: 2017
+  doi: "10.1186/s12970-017-0174-y"
+  pmid: "28630601"
+  url: "https://pubmed.ncbi.nlm.nih.gov/28630601/"
+  design: "position stand"
+  finding_fr: "La perte de graisse repose sur un déficit soutenu ; un rythme lent préserve mieux la masse maigre des sujets maigres ; diverses compositions de régime marchent aussi bien ; 2,3-3,1 g/kg de masse maigre peuvent aider en sèche ; le jeûne intermittent ne bat pas la restriction quotidienne."
+  limits_fr: "Position de société savante fondée sur une revue critique, pas une méta-analyse. Les auteurs signalent peu de données chez les femmes et les personnes âgées."
+  applies_to: [N2, N4, M3, M4]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-007
+  topic: body_composition
+  citation: "Helms ER, Aragon AA, Fitschen PJ (2014). Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. J Int Soc Sports Nutr."
+  year: 2014
+  doi: "10.1186/1550-2783-11-20"
+  pmid: "24864135"
+  url: "https://pubmed.ncbi.nlm.nih.gov/24864135/"
+  design: "revue narrative"
+  finding_fr: "Perte de poids d'environ 0,5 à 1 %/sem. pour maximiser la rétention musculaire ; protéines 2,3-3,1 g/kg de masse maigre, 15-30 % des calories en lipides, reste en glucides ; 3 à 6 repas ; peu d'effet du moment et de la fréquence sur la perte de gras."
+  limits_fr: "Revue narrative d'experts orientée culturisme (athlètes très secs), pas un essai. Valeurs en g/kg de masse maigre et non de poids total. Non conçue pour la course."
+  applies_to: [N2, N3, N4, M3, M4]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-008
+  topic: body_composition
+  citation: "Nunes CL, Casanova N, Francisco R, Bosy-Westphal A, Hopkins M, Sardinha LB, Silva AM (2022). Does adaptive thermogenesis occur after weight loss in adults? A systematic review. Br J Nutr."
+  year: 2022
+  doi: "10.1017/S0007114521001094"
+  pmid: "33762040"
+  url: "https://pubmed.ncbi.nlm.nih.gov/33762040/"
+  design: "revue systématique"
+  finding_fr: "33 études (2 528 adultes) : une adaptation thermogénique est observée dans 27 études, mais les mieux conçues rapportent des valeurs faibles ou non significatives ; elle semble atténuée voire absente après stabilisation du poids."
+  limits_fr: "Forte hétérogénéité des méthodes et de l'ampleur de la perte. Non centrée sur les sportifs. Conséquences sur la reprise de poids encore incertaines."
+  applies_to: [N4]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-009
+  topic: nutrition
+  citation: "Morton RW, Murphy KT, McKellar SR, et al. (2018). A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults. Br J Sports Med."
+  year: 2018
+  doi: "10.1136/bjsports-2017-097608"
+  pmid: "28698222"
+  url: "https://pubmed.ncbi.nlm.nih.gov/28698222/"
+  design: "méta-analyse"
+  finding_fr: "49 essais randomisés (1 863 participants), musculation d'au moins 6 semaines : les protéines en supplément augmentent masse et force ; au-delà de 1,62 g/kg/j d'apport total, pas de gain de masse maigre supplémentaire en moyenne."
+  limits_fr: "Adultes sains, essais de supplémentation non conçus pour la sèche. 1,62 g/kg est un point de rupture moyen, pas un plafond de sécurité ni un maximum individuel."
+  applies_to: [N2, M3]
+  confidence: "élevée"
+  verified_on: "2026-10-18"
+
+- id: NUT-010
+  topic: nutrition
+  citation: "Jäger R, Kerksick CM, Campbell BI, et al. (2017). International Society of Sports Nutrition position stand: protein and exercise. J Int Soc Sports Nutr."
+  year: 2017
+  doi: "10.1186/s12970-017-0177-8"
+  pmid: "28642676"
+  url: "https://pubmed.ncbi.nlm.nih.gov/28642676/"
+  design: "position stand"
+  finding_fr: "1,4-2,0 g/kg/j suffisent à la plupart des sportifs ; 2,3-3,1 g/kg/j peuvent aider à conserver la masse maigre de sujets entraînés en période hypocalorique. Environ 0,25 g/kg (20-40 g) par prise, réparties toutes les 3-4 h."
+  limits_fr: "Position de société savante ; recommandations par repas décrites comme mixtes selon l'âge et l'entraînement ; les apports supérieurs à 3 g/kg/j reposent sur des données émergentes."
+  applies_to: [N2, M3]
+  confidence: "élevée"
+  verified_on: "2026-10-18"
+
+- id: NUT-011
+  topic: nutrition
+  citation: "Burke LM, Hawley JA, Wong SH, Jeukendrup AE (2011). Carbohydrates for training and competition. J Sports Sci."
+  year: 2011
+  doi: "10.1080/02640414.2011.585473"
+  pmid: "21660838"
+  url: "https://pubmed.ncbi.nlm.nih.gov/21660838/"
+  design: "revue narrative"
+  finding_fr: "Les glucides se dosent selon la charge et l'épreuve. Pendant l'effort : 30-60 g/h pour les durées longues, jusqu'à 90 g/h au-delà de 2,5 h avec des mélanges de glucides ; pour environ 1 h intense, de petites quantités ou un rinçage de bouche suffisent."
+  limits_fr: "Revue narrative de 2011. L'intérêt des stratégies « train-low » chez les athlètes bien entraînés reste incertain, selon les auteurs. Cibles à adapter à l'individu."
+  applies_to: [N3]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-012
+  topic: nutrition
+  citation: "Thomas DT, Erdman KA, Burke LM (2016). Position of the Academy of Nutrition and Dietetics, Dietitians of Canada, and the American College of Sports Medicine: Nutrition and Athletic Performance. J Acad Nutr Diet."
+  year: 2016
+  doi: "10.1016/j.jand.2015.12.006"
+  pmid: "26920240"
+  url: "https://pubmed.ncbi.nlm.nih.gov/26920240/"
+  design: "position stand"
+  finding_fr: "La performance et la récupération progressent avec des stratégies nutritionnelles bien choisies (type, quantité et moment des aliments, fluides, suppléments) ; les sportifs devraient être orientés vers un diététicien pour un plan personnalisé."
+  limits_fr: "Le résumé en ligne ne donne aucune valeur chiffrée et le texte complet n'a pas été lu. Position de consensus, niveau de preuve variable selon les thèmes."
+  applies_to: [N1, N2, N3]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-013
+  topic: hydration
+  citation: "American College of Sports Medicine, Sawka MN, Burke LM, Eichner ER, Maughan RJ, Montain SJ, Stachenfeld NS (2007). American College of Sports Medicine position stand. Exercise and fluid replacement. Med Sci Sports Exerc."
+  year: 2007
+  doi: "10.1249/mss.0b013e31802ca597"
+  pmid: "17277604"
+  url: "https://pubmed.ncbi.nlm.nih.gov/17277604/"
+  design: "position stand"
+  finding_fr: "Boire pendant l'effort pour éviter une perte d'eau de plus de 2 % du poids et de fortes variations d'électrolytes. Sudation et pertes en sodium varient beaucoup d'une personne à l'autre : plan personnalisé, sudation estimée par pesée avant et après."
+  limits_fr: "Position de 2007. Le seuil de 2 % est un repère de prévention, pas une consigne de boire autant que possible (voir NUT-014). Boissons avec électrolytes et glucides utiles « dans certaines circonstances »."
+  applies_to: []
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-014
+  topic: hydration
+  citation: "Hew-Butler T, Rosner MH, Fowkes-Godek S, et al. (2015). Statement of the Third International Exercise-Associated Hyponatremia Consensus Development Conference, Carlsbad, California, 2015. Clin J Sport Med."
+  year: 2015
+  doi: "10.1097/JSM.0000000000000221"
+  pmid: "26102445"
+  url: "https://pubmed.ncbi.nlm.nih.gov/26102445/"
+  design: "position stand"
+  finding_fr: "Consensus de 17 experts : l'hyponatrémie d'effort est évitable et traitable ; son principal facteur de risque est de boire plus que les pertes. La consigne retenue est de boire des fluides agréables selon la soif plutôt que de boire par anticipation."
+  limits_fr: "Notice PubMed sans résumé : contenu confirmé par la page de l'éditeur et un compte rendu de presse, texte complet non lu. Ne détaille pas ici le rôle du sodium ingéré."
+  applies_to: []
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-015
+  topic: nutrition
+  citation: "Reynolds A, Mann J, Cummings J, Winter N, Mete E, Te Morenga L (2019). Carbohydrate quality and human health: a series of systematic reviews and meta-analyses. Lancet."
+  year: 2019
+  doi: "10.1016/S0140-6736(18)31809-9"
+  pmid: "30638909"
+  url: "https://pubmed.ncbi.nlm.nih.gov/30638909/"
+  design: "méta-analyse"
+  finding_fr: "185 études prospectives et 58 essais : les plus gros consommateurs de fibres ont 15-30 % de mortalité et d'incidence en moins (cardiovasculaire, diabète de type 2, cancer colorectal). Bénéfice maximal entre 25 et 29 g de fibres par jour ; essais : poids, tension et cholestérol plus bas."
+  limits_fr: "Données surtout observationnelles (facteurs de confusion possibles) ; certitude modérée pour les fibres. Exclut les essais de perte de poids et les participants malades. Non spécifique aux sportifs."
+  applies_to: [N8]
+  confidence: "élevée"
+  verified_on: "2026-10-18"
+
+- id: NUT-016
+  topic: nutrition
+  citation: "Lane MM, Gamage E, Du S, et al. (2024). Ultra-processed food exposure and adverse health outcomes: umbrella review of epidemiological meta-analyses. BMJ."
+  year: 2024
+  doi: "10.1136/bmj-2023-077310"
+  pmid: "38418082"
+  url: "https://pubmed.ncbi.nlm.nih.gov/38418082/"
+  design: "revue systématique"
+  finding_fr: "Revue parapluie de 45 analyses (≈ 9,9 millions de personnes) : plus d'ultra-transformés va avec 32 issues de santé défavorables, dont mortalité cardiovasculaire (RR 1,50), diabète de type 2 (RR 1,12 par dose) et anxiété."
+  limits_fr: "Associations observationnelles, causalité non démontrée. Qualité GRADE de très faible à modérée selon les critères. Dépend de la classification NOVA ; non spécifique aux sportifs."
+  applies_to: [N8]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"
+
+- id: NUT-017
+  topic: nutrition
+  citation: "Parr EB, Camera DM, Areta JL, Burke LM, Phillips SM, Hawley JA, Coffey VG (2014). Alcohol ingestion impairs maximal post-exercise rates of myofibrillar protein synthesis following a single bout of concurrent training. PLoS One."
+  year: 2014
+  doi: "10.1371/journal.pone.0088384"
+  pmid: "24533082"
+  url: "https://pubmed.ncbi.nlm.nih.gov/24533082/"
+  design: "essai contrôlé randomisé"
+  finding_fr: "Essai croisé sur 8 hommes actifs : après un entraînement mixte, 1,5 g/kg d'alcool (≈ 12 verres) réduisent la synthèse des protéines myofibrillaires, même avec 25 g de whey ; les auteurs concluent à une récupération potentiellement altérée."
+  limits_fr: "Huit sujets, dose très élevée : ne dit rien d'une consommation modérée. Mesure une synthèse protéique, pas la performance ni la composition corporelle."
+  applies_to: [N8]
+  confidence: "faible"
+  verified_on: "2026-10-18"
+
+- id: NUT-018
+  topic: nutrition
+  citation: "O'Hara C, Kent G, Flynn AC, Gibney ER, Timon CM (2025). An Evaluation of ChatGPT for Nutrient Content Estimation from Meal Photographs. Nutrients."
+  year: 2025
+  doi: "10.3390/nu17040607"
+  pmid: "40004936"
+  url: "https://pubmed.ncbi.nlm.nih.gov/40004936/"
+  design: "étude observationnelle"
+  finding_fr: "ChatGPT-4 sur 114 photos de repas : identifie bien les aliments (93 %) et classe les repas par teneur en nutriments, mais estime mal les poids de portions moyennes et grandes et sous-estime 11 nutriments sur 16 ; accord avec les diététiciens faible à modéré (ICC 0,31-0,67)."
+  limits_fr: "Un seul modèle, évalué début 2025 sur des repas de référence aux poids connus ; les outils évoluent vite. Ne valide pas l'estimation en vie courante."
+  applies_to: [N6]
+  confidence: "faible"
+  verified_on: "2026-10-18"
+
+- id: NUT-019
+  topic: nutrition
+  citation: "Stables RG, Kasper AM, Sparks SA, Morton JP, Close GL (2021). An Assessment of the Validity of the Remote Food Photography Method (Termed Snap-N-Send) in Experienced and Inexperienced Sport Nutritionists. Int J Sport Nutr Exerc Metab."
+  year: 2021
+  doi: "10.1123/ijsnem.2020-0216"
+  pmid: "33477111"
+  url: "https://pubmed.ncbi.nlm.nih.gov/33477111/"
+  design: "étude observationnelle"
+  finding_fr: "48 nutritionnistes du sport ont estimé l'énergie de 8 repas photographiés : sous-estimation, erreur typique ≈ 9-10 % (repas simples) et ≈ 14-18 % (repas complexes à ingrédients cachés) ; fiabilité entre praticiens généralement faible."
+  limits_fr: "Estimateurs humains, pas d'outil automatique ; 8 repas sur 2 jours seulement. Montre l'ordre de grandeur de l'erreur même avec des experts : estimation à présenter en fourchette."
+  applies_to: [N6]
+  confidence: "faible"
+  verified_on: "2026-10-18"
+
+- id: NUT-020
+  topic: body_composition
+  citation: "Turicchi J, O'Driscoll R, Horgan G, Duarte C, Palmeira AL, Larsen SC, Heitmann BL, Stubbs J (2020). Weekly, seasonal and holiday body weight fluctuation patterns among individuals engaged in a European multi-centre behavioural weight loss maintenance intervention. PLoS One."
+  year: 2020
+  doi: "10.1371/journal.pone.0232152"
+  pmid: "32353079"
+  url: "https://pubmed.ncbi.nlm.nih.gov/32353079/"
+  design: "étude observationnelle"
+  finding_fr: "Chez 1 421 adultes en maintien de poids : fluctuation hebdomadaire d'environ 0,35 % (hausse le week-end, baisse en semaine) ; hausse moyenne de 1,35 % autour de Noël, non entièrement compensée ensuite."
+  limits_fr: "Adultes en maintien après perte de poids, pas des sportifs en sèche. Effets de groupe variables selon pays et sexe. Ne teste pas la moyenne glissante elle-même, qui reste une pratique de bon sens."
+  applies_to: [N5]
+  confidence: "moyenne"
+  verified_on: "2026-10-18"

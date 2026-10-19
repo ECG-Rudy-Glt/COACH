@@ -1,0 +1,73 @@
+- id: he.disclaimer
+  domain: health
+  order: 1
+  text: "Cette application ne remplace ni un médecin ni un diététicien. Avez-vous compris ?"
+  type: single
+  options: [je comprends]
+  fact_key: health.disclaimer_ack
+  required: true
+  blocking: true
+
+- id: he.red_flags
+  domain: health
+  order: 2
+  text: "Ressentez-vous l'un de ces signes à l'effort ?"
+  type: multi
+  options: [aucun, douleur thoracique, malaise ou perte de connaissance, essoufflement inhabituel, palpitations]
+  fact_key: health.red_flags
+  required: true
+
+- id: he.medical_advice
+  domain: health
+  order: 3
+  text: "En avez-vous parlé à un médecin ?"
+  type: single
+  options: [oui, non]
+  fact_key: health.red_flags_discussed
+  show_if: { all: [ { fact: health.red_flags, exists: true }, { not: { fact: health.red_flags, contains: aucun } } ] }
+
+- id: he.conditions
+  domain: health
+  order: 4
+  text: "Souhaitez-vous signaler une situation particulière ?"
+  type: multi
+  options: [aucune, asthme, diabète, hypertension, thyroïde, trouble alimentaire passé, grossesse ou post-partum]
+  allow_other: true
+  fact_key: health.conditions
+  required: true
+
+- id: he.medication
+  domain: health
+  order: 5
+  text: "Prenez-vous un traitement pouvant influencer l'effort (ex. bêta-bloquants) ?"
+  type: single
+  options: [non, oui]
+  fact_key: health.medication_effort
+
+- id: he.family
+  domain: health
+  order: 6
+  text: "Y a-t-il des antécédents cardiaques ou métaboliques dans votre famille proche ?"
+  type: multi
+  options: [aucun, maladie cardiaque précoce, mort subite, hypertension, diabète, cholestérol]
+  allow_other: true
+  fact_key: health.family_history
+
+# Sécurité des suggestions alimentaires : seules questions « alimentation » conservées.
+- id: he.allergies
+  domain: health
+  order: 7
+  text: "Avez-vous des allergies ou intolérances alimentaires ?"
+  type: multi
+  options: [aucune, arachides, fruits à coque, œufs, poisson, crustacés, soja, lait, gluten]
+  allow_other: true
+  fact_key: health.food_allergies
+
+- id: he.diet
+  domain: health
+  order: 8
+  text: "Suivez-vous un régime particulier ?"
+  type: multi
+  options: [aucun, végétarien, végétalien, sans gluten, sans lactose, halal, casher]
+  allow_other: true
+  fact_key: health.diet

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a281c"/><stop offset="1" stop-color="#14100c"/></linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e0a868" stop-opacity=".30"/><stop offset="1" stop-color="#e0a868" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="318" cy="250" r="190" fill="url(#glow)"/>
+  <!-- lignes de vitesse -->
+  <g stroke="#e0a868" stroke-linecap="round" fill="none">
+    <path d="M52 215H140" stroke-width="16"/><path d="M82 262H168" stroke-width="16" opacity=".8"/><path d="M40 309H118" stroke-width="16" opacity=".6"/>
+  </g>
+  <!-- coureur en pleine foulée -->
+  <g fill="none" stroke="#f6f2e8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="330" cy="122" r="33" fill="#f6f2e8" stroke="none"/>
+    <path d="M300 178L262 282" stroke-width="44"/>
+    <path d="M296 196L356 244L398 204" stroke-width="30"/>
+    <path d="M290 198L236 238L180 218" stroke-width="30" opacity=".78"/>
+    <path d="M262 282L336 322L322 408L366 418" stroke-width="34"/>
+    <path d="M262 282L200 350L128 322" stroke-width="34" opacity=".78"/>
+  </g>
+  <path d="M96 440H440" stroke="#e0a868" stroke-width="12" stroke-linecap="round" opacity=".55"/>
+</svg>

@@ -1,0 +1,25 @@
+- id: mo.stretch
+  domain: mobility
+  order: 1
+  text: "Faites-vous des étirements ou de la mobilité ?"
+  type: single
+  options: [jamais, parfois, régulièrement]
+  fact_key: mobility.practice
+  required: true
+
+- id: mo.limits
+  domain: mobility
+  order: 2
+  text: "Quelles zones sont raides ou limitées ?"
+  type: multi
+  options: [chevilles, hanches, épaules, dos, ischio-jambiers, aucune]
+  allow_other: true
+  fact_key: mobility.limited_areas
+
+- id: mo.core
+  domain: mobility
+  order: 3
+  text: "À quelle fréquence faites-vous du gainage ou du renforcement du tronc ?"
+  type: single
+  options: [jamais, une fois par semaine, plusieurs fois par semaine]
+  fact_key: mobility.core_frequency

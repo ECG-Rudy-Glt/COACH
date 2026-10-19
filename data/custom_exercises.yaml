@@ -1,0 +1,212 @@
+# Exercices maison : Pilates, mobilité, stations Hyrox, trail. Textes originaux du projet (AGPL-3.0).
+- id: pilates-hundred
+  name: Hundred (les cent)
+  kind: pilates
+  muscles_primary: [abdominals]
+  muscles_secondary: [shoulders]
+  equipment: [mat]
+  level: intermediate
+  instructions: |
+    Allongé sur le dos, jambes à la verticale ou à 45 degrés, tête et épaules décollées du sol.
+    Bras tendus le long du corps, quelques centimètres au-dessus du sol.
+    Battez les bras par petits mouvements, inspirez sur 5 battements, expirez sur 5, pendant 10 cycles.
+    Gardez le bas du dos au contact du sol ; fléchissez les genoux si le dos se creuse.
+- id: pilates-roll-up
+  name: Roll-up (déroulé)
+  kind: pilates
+  muscles_primary: [abdominals]
+  muscles_secondary: [hamstrings]
+  equipment: [mat]
+  level: intermediate
+  instructions: |
+    Allongé sur le dos, jambes tendues, bras au-dessus de la tête.
+    Expirez en montant les bras, puis enroulez la colonne vertèbre par vertèbre jusqu'à l'assise.
+    Penchez-vous vers les pieds sans à-coup, puis redescendez lentement en déroulant le dos.
+    Fléchissez légèrement les genoux si le mouvement est difficile.
+- id: pilates-single-leg-stretch
+  name: Single leg stretch
+  kind: pilates
+  muscles_primary: [abdominals]
+  muscles_secondary: [quadriceps]
+  equipment: [mat]
+  level: beginner
+  instructions: |
+    Allongé sur le dos, tête et épaules décollées, un genou ramené vers la poitrine, l'autre jambe tendue.
+    Mains sur le genou fléchi. Changez de jambe en gardant le tronc stable.
+    Expirez à chaque changement ; le bassin ne bascule pas.
+- id: mobility-dead-bug
+  name: Dead bug
+  kind: mobility
+  muscles_primary: [abdominals]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    Allongé sur le dos, bras tendus vers le plafond, hanches et genoux à 90 degrés.
+    Tendez lentement un bras derrière la tête et la jambe opposée vers le sol, sans cambrer le dos.
+    Revenez, alternez. Le bas du dos reste plaqué au sol pendant tout le mouvement.
+- id: mobility-bird-dog
+  name: Bird dog
+  kind: mobility
+  muscles_primary: [lower back, glutes]
+  muscles_secondary: [abdominals, shoulders]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    À quatre pattes, mains sous les épaules, genoux sous les hanches.
+    Tendez un bras vers l'avant et la jambe opposée vers l'arrière, bassin et épaules à l'horizontale.
+    Tenez 2 secondes, revenez, alternez. Gardez la nuque dans le prolongement du dos.
+- id: mobility-plank
+  name: Planche (gainage)
+  kind: mobility
+  muscles_primary: [abdominals]
+  muscles_secondary: [shoulders, glutes]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    En appui sur les avant-bras et les pointes de pieds, corps aligné de la tête aux talons.
+    Serrez les fessiers et les abdominaux, ne laissez ni le bassin monter ni le dos se creuser.
+    Tenez 20 à 60 secondes en respirant normalement.
+- id: mobility-glute-bridge
+  name: Pont fessier
+  kind: mobility
+  muscles_primary: [glutes]
+  muscles_secondary: [hamstrings, lower back]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    Allongé sur le dos, genoux fléchis, pieds à plat à largeur de bassin.
+    Poussez dans les talons pour monter le bassin jusqu'à l'alignement épaules-hanches-genoux.
+    Marquez une pause en serrant les fessiers, puis redescendez en contrôlant.
+- id: mobility-cat-cow
+  name: Chat-vache
+  kind: mobility
+  muscles_primary: [middle back]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    À quatre pattes. Inspirez en creusant doucement le dos et en ouvrant la poitrine.
+    Expirez en arrondissant le dos et en rentrant le menton. Enchaînez lentement, 8 à 10 fois.
+- id: mobility-hip-flexor-stretch
+  name: Étirement des fléchisseurs de hanche (fente basse)
+  kind: stretching
+  muscles_primary: [quadriceps]
+  muscles_secondary: [glutes]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    Un genou au sol, l'autre pied devant en fente. Basculez légèrement le bassin vers l'arrière.
+    Avancez le bassin jusqu'à sentir l'étirement à l'avant de la hanche de la jambe arrière.
+    Tenez 30 secondes de chaque côté, sans cambrer le dos.
+- id: mobility-calf-stretch
+  name: Étirement des mollets au mur
+  kind: stretching
+  muscles_primary: [calves]
+  equipment: [bodyweight]
+  level: beginner
+  instructions: |
+    Face à un mur, une jambe tendue en arrière, talon au sol, l'autre genou fléchi devant.
+    Poussez le bassin vers le mur jusqu'à sentir l'étirement du mollet. Tenez 30 secondes par jambe.
+- id: hyrox-skierg
+  name: SkiErg
+  kind: hyrox
+  muscles_primary: [lats]
+  muscles_secondary: [triceps, abdominals, shoulders]
+  equipment: [skierg]
+  level: intermediate
+  instructions: |
+    Face à la machine, poignées en haut, bras tendus. Tirez les poignées vers les hanches en fléchissant
+    le tronc et les genoux, puis remontez. Le mouvement vient des dorsaux et du tronc plus que des bras.
+    Visez un rythme régulier : 1 000 m en course Hyrox.
+- id: hyrox-sled-push
+  name: Sled push (poussée de traîneau)
+  kind: hyrox
+  muscles_primary: [quadriceps, glutes]
+  muscles_secondary: [calves, shoulders]
+  equipment: [sled]
+  level: intermediate
+  instructions: |
+    Mains sur les montants du traîneau, bras tendus, tronc incliné. Poussez en petits pas rapides
+    en gardant les hanches basses et le dos neutre. Ne vous redressez pas pendant la poussée.
+- id: hyrox-sled-pull
+  name: Sled pull (traction de traîneau)
+  kind: hyrox
+  muscles_primary: [lats, middle back]
+  muscles_secondary: [biceps, hamstrings, glutes]
+  equipment: [sled]
+  level: intermediate
+  instructions: |
+    Face au traîneau, tirez la corde main sur main en reculant ou en restant campé, buste légèrement
+    en arrière. Gardez le dos droit et les jambes fléchies pour encaisser la charge.
+- id: hyrox-burpee-broad-jump
+  name: Burpee broad jump
+  kind: hyrox
+  muscles_primary: [quadriceps, chest]
+  muscles_secondary: [glutes, shoulders, abdominals]
+  equipment: [bodyweight]
+  level: intermediate
+  instructions: |
+    Descendez en burpee, poitrine au sol, remontez, puis sautez en longueur vers l'avant avec les deux pieds.
+    Réceptionnez-vous amorti et enchaînez. Trouvez un rythme tenable sur 80 m.
+- id: hyrox-rower
+  name: Rameur
+  kind: hyrox
+  muscles_primary: [lats, quadriceps]
+  muscles_secondary: [hamstrings, glutes, biceps]
+  equipment: [rower]
+  level: beginner
+  instructions: |
+    Ordre du geste : jambes, puis tronc, puis bras ; retour inverse : bras, tronc, jambes.
+    Gardez le dos gainé, ne tirez pas avec les bras avant que les jambes ne soient tendues.
+    Cadence de 24 à 30 coups par minute pour 1 000 m.
+- id: hyrox-farmers-carry
+  name: Farmers carry
+  kind: hyrox
+  muscles_primary: [forearms, traps]
+  muscles_secondary: [abdominals, glutes]
+  equipment: [kettlebell]
+  level: beginner
+  instructions: |
+    Un kettlebell ou haltère lourd dans chaque main, bras le long du corps. Marchez en gardant les épaules
+    basses, le buste droit et le regard devant. Pas rapides et réguliers sur 200 m.
+- id: hyrox-sandbag-lunges
+  name: Sandbag lunges (fentes avec sac)
+  kind: hyrox
+  muscles_primary: [quadriceps, glutes]
+  muscles_secondary: [hamstrings, abdominals]
+  equipment: [sandbag]
+  level: intermediate
+  instructions: |
+    Sac de sable sur les épaules, buste droit. Enchaînez des fentes avant, genou arrière qui frôle le sol.
+    Poussez dans le pied avant pour avancer. 100 m en course Hyrox.
+- id: hyrox-wall-balls
+  name: Wall balls
+  kind: hyrox
+  muscles_primary: [quadriceps, shoulders]
+  muscles_secondary: [glutes, triceps]
+  equipment: [medicine ball]
+  level: intermediate
+  instructions: |
+    Ballon tenu contre la poitrine, descendez en squat complet, puis remontez en lançant le ballon
+    à la hauteur de la cible. Rattrapez-le en amortissant et enchaînez directement le squat suivant.
+- id: trail-step-ups
+  name: Montées sur marche (step-ups)
+  kind: trail
+  muscles_primary: [quadriceps, glutes]
+  muscles_secondary: [calves, hamstrings]
+  equipment: [bench]
+  level: beginner
+  instructions: |
+    Face à un banc ou une marche stable, posez un pied dessus et montez en poussant dans le talon.
+    Redescendez lentement en contrôlant (travail excentrique, utile pour les descentes en trail).
+    Faites toutes les répétitions d'un côté avant de changer.
+- id: trail-eccentric-downhill
+  name: Descentes contrôlées (travail excentrique)
+  kind: trail
+  muscles_primary: [quadriceps]
+  muscles_secondary: [calves, glutes]
+  equipment: [bodyweight]
+  level: intermediate
+  instructions: |
+    Sur une pente régulière douce, descendez en petites foulées, pieds sous le centre de gravité,
+    en freinant doucement avec les quadriceps. Commencez par quelques minutes : les courbatures
+    sont fortes. Progressez en durée et en pente sur plusieurs semaines.

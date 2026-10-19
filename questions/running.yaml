@@ -1,0 +1,69 @@
+- id: run.recent_volume
+  domain: running
+  order: 1
+  text: "Combien de kilomètres courez-vous par semaine en moyenne depuis 8 semaines ?"
+  type: number
+  unit: km
+  fact_key: running.weekly_km_8w
+  show_if: { any: [ { fact: sports.practiced, contains: running }, { fact: sports.practiced, contains: trail } ] }
+  required: true
+
+- id: run.longest
+  domain: running
+  order: 2
+  text: "Quelle est votre plus longue sortie de course récente (durée) ?"
+  type: duration
+  fact_key: running.longest_recent_min
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: running }, { fact: sports.practiced, contains: trail } ] }, { fact: running.weekly_km_8w, gte: 5 } ] }
+
+- id: run.best_10k
+  domain: running
+  order: 3
+  text: "Quel est votre meilleur temps récent sur 10 km (ou équivalent estimé) ?"
+  type: duration
+  fact_key: running.best_10k_min
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: running }, { fact: sports.practiced, contains: trail } ] }, { fact: running.weekly_km_8w, gte: 5 } ] }
+
+- id: run.trail_experience
+  domain: running
+  order: 4
+  text: "Avez-vous déjà couru en trail (terrain accidenté avec dénivelé) ?"
+  type: single
+  options: [jamais, quelques sorties, régulièrement, en compétition]
+  fact_key: running.trail_experience
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: running }, { fact: sports.practiced, contains: trail } ] }, { fact: running.weekly_km_8w, gte: 5 } ] }
+
+- id: run.longest_trail
+  domain: running
+  order: 5
+  text: "Quelle est votre plus longue sortie ou course en trail (distance et dénivelé positif) ?"
+  type: text
+  fact_key: running.longest_trail
+  show_if: { all: [ { fact: running.trail_experience, in: [quelques sorties, régulièrement, en compétition] } ] }
+
+- id: run.terrain
+  domain: running
+  order: 6
+  text: "Avez-vous accès à des sentiers avec du dénivelé près de chez vous ?"
+  type: single
+  options: [non, un peu, oui facilement]
+  fact_key: running.terrain_access
+  show_if: { any: [ { fact: sports.practiced, contains: trail }, { fact: goal.target_event, exists: true } ] }
+
+- id: run.hr_max
+  domain: running
+  order: 7
+  text: "Connaissez-vous votre fréquence cardiaque maximale ?"
+  type: number
+  unit: bpm
+  fact_key: running.hr_max
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: running }, { fact: sports.practiced, contains: trail } ] }, { fact: running.weekly_km_8w, gte: 5 } ] }
+
+- id: run.history_years
+  domain: running
+  order: 8
+  text: "Depuis combien d'années courez-vous, avec ou sans interruptions ?"
+  type: number
+  unit: ans
+  fact_key: running.history_years
+  show_if: { all: [ { any: [ { fact: sports.practiced, contains: running }, { fact: sports.practiced, contains: trail } ] }, { fact: running.weekly_km_8w, gte: 5 } ] }

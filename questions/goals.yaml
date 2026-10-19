@@ -1,0 +1,97 @@
+- id: goal.sports
+  domain: goals
+  order: 1
+  text: "Quels sports pratiquez-vous ou voulez-vous pratiquer ?"
+  type: multi
+  options: [running, strength, trail, cycling, crossfit, hyrox, swimming, triathlon, climbing, team sport]
+  allow_other: true
+  option_labels: { running: "Course à pied", strength: "Musculation", trail: "Trail", cycling: "Vélo", crossfit: "CrossFit", hyrox: "Hyrox", swimming: "Natation", triathlon: "Triathlon", climbing: "Escalade", team sport: "Sport collectif" }
+  fact_key: sports.practiced
+  required: true
+
+- id: goal.primary
+  domain: goals
+  order: 2
+  text: "Quels sont vos objectifs pour les prochains mois ?"
+  type: multi
+  options: [perte de gras, prise de muscle, recomposition, performance, préparation d'une course, santé et forme]
+  fact_key: goal.primary
+  required: true
+
+- id: goal.weight_direction
+  domain: goals
+  order: 3
+  text: "Souhaitez-vous perdre, prendre ou maintenir votre poids ?"
+  type: single
+  options: [perdre, prendre, maintenir]
+  fact_key: goal.weight_direction
+  required: true
+
+- id: goal.target_weight
+  domain: goals
+  order: 4
+  text: "Quel poids visez-vous ?"
+  type: number
+  unit: kg
+  fact_key: goal.target_weight_kg
+  show_if: { all: [ { fact: goal.weight_direction, in: [perdre, prendre] } ] }
+
+- id: goal.target_date
+  domain: goals
+  order: 5
+  text: "Pour quelle date souhaitez-vous l'atteindre ?"
+  type: date
+  fact_key: goal.target_date
+  show_if: { all: [ { fact: goal.target_weight_kg, exists: true } ] }
+
+- id: goal.physique
+  domain: goals
+  order: 6
+  text: "Y a-t-il des zones du corps que vous souhaitez particulièrement développer ?"
+  type: multi
+  options: [haut du corps, épaules, dos, pectoraux, bras, abdominaux, jambes, aucune]
+  fact_key: goal.physique_focus
+  show_if: { any: [ { fact: goal.primary, in: [perte de gras, prise de muscle, recomposition] } ] }
+
+- id: goal.race
+  domain: goals
+  order: 7
+  text: "Avez-vous une course ou un événement en objectif ? (nom, distance, dénivelé positif, date)"
+  type: text
+  fact_key: goal.target_event
+  show_if: { any: [ { fact: goal.primary, eq: "préparation d'une course" }, { fact: sports.practiced, contains: trail } ] }
+
+- id: body.height
+  domain: goals
+  order: 10
+  text: "Quelle est votre taille ?"
+  type: number
+  unit: cm
+  fact_key: body.height_cm
+  required: true
+
+- id: body.weight
+  domain: goals
+  order: 11
+  text: "Quel est votre poids actuel ?"
+  type: number
+  unit: kg
+  fact_key: body.weight_kg
+  required: true
+
+- id: body.birth_year
+  domain: goals
+  order: 12
+  text: "Quelle est votre année de naissance ?"
+  type: number
+  fact_key: body.birth_year
+  required: true
+
+- id: body.sex
+  domain: goals
+  order: 13
+  text: "Quel sexe utiliser pour les calculs de dépense énergétique ?"
+  type: single
+  options: [homme, femme]
+  fact_key: body.sex_for_calc
+  required: true

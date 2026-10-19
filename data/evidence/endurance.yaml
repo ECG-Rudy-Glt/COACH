@@ -1,0 +1,283 @@
+# Base de publications vérifiées (endurance : course, trail, vélo, hybride, récupération).
+# Chaque entrée a été retrouvée et son résumé lu (notice PubMed / Europe PMC) le 2026-10-18.
+# Les chiffres viennent des résumés, pas des textes complets.
+
+- id: RUN-001
+  topic: running
+  citation: "Seiler S (2010). What is best practice for training intensity and duration distribution in endurance athletes? Int J Sports Physiol Perform."
+  year: 2010
+  doi: "10.1123/ijspp.5.3.276"
+  pmid: "20861519"
+  url: "https://pubmed.ncbi.nlm.nih.gov/20861519/"
+  design: revue narrative
+  finding_fr: "Chez des athlètes d'endurance de haut niveau, les études descriptives convergent vers environ 80 % des séances à basse intensité et 20 % à haute intensité. Aucune preuve convaincante qu'intensifier davantage améliore la performance à long terme chez des athlètes déjà entraînés."
+  limits_fr: "Revue narrative d'un expert, fondée surtout sur des études descriptives d'athlètes d'élite (10 à 13 séances par semaine). Décrit ce que font les champions, ne démontre pas que 80/20 est optimal pour un amateur."
+  applies_to: [C1]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-002
+  topic: running
+  citation: "Stöggl T, Sperlich B (2014). Polarized training has greater impact on key endurance variables than threshold, high intensity, or high volume training. Front Physiol."
+  year: 2014
+  doi: "10.3389/fphys.2014.00033"
+  pmid: "24550842"
+  url: "https://pubmed.ncbi.nlm.nih.gov/24550842/"
+  design: essai contrôlé randomisé
+  finding_fr: "48 athlètes d'endurance bien entraînés sur 9 semaines : le groupe polarisé gagne le plus en VO2pic (+11,7 %), en temps jusqu'à épuisement (+17,4 %) et en vitesse/puissance de pointe (+5,1 %), devant seuil, volume élevé et intervalles intenses."
+  limits_fr: "Seulement 9 semaines, 48 sujets répartis sur quatre groupes, sports mélangés (course, vélo, triathlon, ski de fond), athlètes bien entraînés. Pas de critère de performance en compétition ; ne vaut pas pour un débutant."
+  applies_to: [C1]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-003
+  topic: running
+  citation: "Silva Oliveira P, Boppre G, Fonseca H (2024). Comparison of polarized versus other types of endurance training intensity distribution on athletes' endurance performance: a systematic review with meta-analysis. Sports Med."
+  year: 2024
+  doi: "10.1007/s40279-024-02034-z"
+  pmid: "38717713"
+  url: "https://pubmed.ncbi.nlm.nih.gov/38717713/"
+  design: méta-analyse
+  finding_fr: "17 études (437 sujets) : la distribution polarisée améliore un peu plus le VO2pic (écart standardisé 0,24), surtout sur moins de 12 semaines et chez des athlètes très entraînés. Aucune différence sur le chrono, le temps jusqu'à épuisement et les seuils."
+  limits_fr: "Effet faible et limité à un indicateur de laboratoire (VO2pic). Risque de biais « quelques réserves » dans les essais randomisés ; sports et niveaux variés, pas spécifique à la course."
+  applies_to: [C1]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-004
+  topic: running
+  citation: "Rosenblat MA, Watt JA, Arnold JI, Treff G, Sandbakk ØB, Esteve-Lanao J, et al. (2025). Which training intensity distribution intervention will produce the greatest improvements in maximal oxygen uptake and time-trial performance in endurance athletes? A systematic review and network meta-analysis of individual participant data. Sports Med."
+  year: 2025
+  doi: "10.1007/s40279-024-02149-3"
+  pmid: "39888556"
+  url: "https://pubmed.ncbi.nlm.nih.gov/39888556/"
+  design: méta-analyse
+  finding_fr: "13 études, 348 athlètes (données individuelles) : pas de différence entre polarisé et pyramidal sur le VO2max ni sur le chrono. Le VO2max progresse peut-être mieux en polarisé chez les compétiteurs et en pyramidal chez les amateurs."
+  limits_fr: "Pas de différence significative entre polarisé et les autres modèles ; l'analyse par niveau est un sous-groupe, à confirmer. Études courtes et hétérogènes, quantification par temps en zone de fréquence cardiaque."
+  applies_to: [C1]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-005
+  topic: running
+  citation: "Buist I, Bredeweg SW, van Mechelen W, Lemmink KA, Pepping GJ, Diercks RL (2008). No effect of a graded training program on the number of running-related injuries in novice runners: a randomized controlled trial. Am J Sports Med."
+  year: 2008
+  doi: "10.1177/0363546507307505"
+  pmid: "17940147"
+  url: "https://pubmed.ncbi.nlm.nih.gov/17940147/"
+  design: essai contrôlé randomisé
+  finding_fr: "532 coureurs débutants : un programme progressif de 13 semaines fondé sur la règle des 10 % n'a pas réduit les blessures par rapport à un programme standard de 8 semaines (20,8 % contre 20,3 %)."
+  limits_fr: "Débutants préparant une course de 6,7 km, durées de programme différentes entre les groupes. Ne prouve pas que les hausses rapides sont sans risque ; la règle des 10 % n'est donc qu'un plafond de prudence."
+  applies_to: [G1]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-006
+  topic: running
+  citation: "Nielsen RØ, Parner ET, Nohr EA, Sørensen H, Lind M, Rasmussen S (2014). Excessive progression in weekly running distance and risk of running-related injuries: an association which varies according to type of injury. J Orthop Sports Phys Ther."
+  year: 2014
+  doi: "10.2519/jospt.2014.5164"
+  pmid: "25155475"
+  url: "https://pubmed.ncbi.nlm.nih.gov/25155475/"
+  design: étude observationnelle
+  finding_fr: "874 coureurs débutants suivis un an : pas de différence significative globale selon la progression hebdomadaire. Une hausse de plus de 30 % sur 2 semaines va avec plus de blessures liées à la distance (rapport de risque 1,59), à la limite de la significativité."
+  limits_fr: "Étude exploratoire, intervalle de confiance 0,96 à 2,66 (non significatif), débutants uniquement. Les auteurs demandent des essais randomisés pour confirmer."
+  applies_to: [G1]
+  confidence: faible
+  verified_on: "2026-10-18"
+
+- id: RUN-007
+  topic: running
+  citation: "Impellizzeri FM, Tenan MS, Kempton T, Novak A, Coutts AJ (2020). Acute:chronic workload ratio: conceptual issues and fundamental pitfalls. Int J Sports Physiol Perform."
+  year: 2020
+  doi: "10.1123/ijspp.2019-0864"
+  pmid: "32502973"
+  url: "https://pubmed.ncbi.nlm.nih.gov/32502973/"
+  design: revue narrative
+  finding_fr: "Critique méthodologique : le lien causal entre ratio charge aiguë/chronique et blessure n'est pas établi, la métrique est inexacte (ratio) et ambiguë. Les auteurs concluent qu'aucune preuve ne soutient son usage pour des recommandations de charge."
+  limits_fr: "Article de position critique, pas une mesure d'effet ni une revue systématique. Il invalide l'usage causal du ratio, pas forcément son rôle de simple signal d'alerte descriptif."
+  applies_to: [G4]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-008
+  topic: running
+  citation: "Maupin D, Schram B, Canetti E, Orr R (2020). The relationship between acute:chronic workload ratios and injury risk in sports: a systematic review. Open Access J Sports Med."
+  year: 2020
+  doi: "10.2147/oajsm.s231405"
+  pmid: "32158285"
+  url: "https://pubmed.ncbi.nlm.nih.gov/32158285/"
+  design: revue systématique
+  finding_fr: "27 études : le ratio aigu/chronique (charges externes ou internes) semble lié au risque de blessure, avec une tendance au risque minimal entre 0,80 et 1,30. Les auteurs relèvent aussi des problèmes de méthode à résoudre avant usage fiable."
+  limits_fr: "Qualité des études moyenne (48 à 64 %), forte variabilité des calculs et des seuils, surtout des sports collectifs. Association, pas causalité ; transposition à la course amateur non démontrée."
+  applies_to: [G4]
+  confidence: faible
+  verified_on: "2026-10-18"
+
+- id: RUN-009
+  topic: running
+  citation: "Bosquet L, Montpetit J, Arvisais D, Mujika I (2007). Effects of tapering on performance: a meta-analysis. Med Sci Sports Exerc."
+  year: 2007
+  doi: "10.1249/mss.0b013e31806010e0"
+  pmid: "17762369"
+  url: "https://pubmed.ncbi.nlm.nih.gov/17762369/"
+  design: méta-analyse
+  finding_fr: "27 études d'athlètes de compétition : le meilleur affûtage dure 2 semaines, avec un volume réduit de façon exponentielle de 41 à 60 %, sans modifier ni l'intensité ni la fréquence des séances."
+  limits_fr: "Tous sports confondus (pas seulement la course) ; mesure avant/après affûtage, études hétérogènes. La fourchette étayée est de -41 à -60 %, plus large que le -30 à -50 % de la règle C6."
+  applies_to: [C6, G7]
+  confidence: élevée
+  verified_on: "2026-10-18"
+
+- id: RUN-010
+  topic: running
+  citation: "Wang Z, Wang YT, Gao W, Zhong Y (2023). Effects of tapering on performance in endurance athletes: a systematic review and meta-analysis. PLoS One."
+  year: 2023
+  doi: "10.1371/journal.pone.0282838"
+  pmid: "37163550"
+  url: "https://pubmed.ncbi.nlm.nih.gov/37163550/"
+  design: méta-analyse
+  finding_fr: "14 études d'endurance : l'affûtage améliore le chrono et le temps jusqu'à épuisement, pas le VO2max. Un affûtage de 21 jours maximum, volume baissé de 41 à 60 % et intensité et fréquence maintenues, est efficace ; une charge préalable renforcée aide un peu plus."
+  limits_fr: "Peu d'études par sous-groupe, athlètes entraînés de sports variés. Le bénéfice du « surcroît de charge avant affûtage » vient de sous-groupes ; pas de comparaison directe pour le trail ou l'ultra."
+  applies_to: [C6, G7]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-011
+  topic: running
+  citation: "Blagrove RC, Howatson G, Hayes PR (2018). Effects of strength training on the physiological determinants of middle- and long-distance running performance: a systematic review. Sports Med."
+  year: 2018
+  doi: "10.1007/s40279-017-0835-7"
+  pmid: "29249083"
+  url: "https://pubmed.ncbi.nlm.nih.gov/29249083/"
+  design: revue systématique
+  finding_fr: "24 études : le renforcement améliore l'économie de course (2 à 8 % selon les études) et souvent les chronos de 1,5 à 10 km, sans effet négatif sur la composition corporelle. Deux à trois séances par semaine variées sont probablement bénéfiques."
+  limits_fr: "Qualité méthodologique modeste (PEDro 4 à 6 sur 10) et résultats non constants entre les études. Revue qualitative sans effet poolé."
+  applies_to: [I4]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-012
+  topic: trail
+  citation: "Vernillo G, Giandolini M, Edwards WB, Morin JB, Samozino P, Horvais N, Millet GY (2017). Biomechanics and physiology of uphill and downhill running. Sports Med."
+  year: 2017
+  doi: "10.1007/s40279-016-0605-y"
+  pmid: "27501719"
+  url: "https://pubmed.ncbi.nlm.nih.gov/27501719/"
+  design: revue narrative
+  finding_fr: "La montée demande plus de travail musculaire (surtout à la hanche) et un coût énergétique croissant avec la pente ; la descente repose sur des contractions excentriques et son coût diminue jusqu'à environ -20 % de pente. Implications pour blessures et performance."
+  limits_fr: "Revue de la biomécanique et de la physiologie, pas d'essai d'entraînement : ne dit rien sur la progression à adopter (5 à 10 min de descente, +5 min par semaine relève du terrain)."
+  applies_to: [C4, C5]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: RUN-013
+  topic: trail
+  citation: "Tham SK, Shager K, Murugiah M, Nguyen M, Wibawa JC, Ahmad MA (2026). Effects of uphill running on muscle strength, jumping performance, running time, and aerobic capacity outcomes in athletes and recreational adults: a systematic review and meta-analysis. Medicine (Baltimore)."
+  year: 2026
+  doi: "10.1097/md.0000000000049977"
+  pmid: "42536523"
+  url: "https://pubmed.ncbi.nlm.nih.gov/42536523/"
+  design: méta-analyse
+  finding_fr: "13 essais randomisés (308 sujets, 7 poolés) : la course en côte améliore qualitativement l'économie de course et les seuils, mais la méta-analyse ne montre pas d'effet significatif sur la force du genou, les sauts ou la capacité aérobie."
+  limits_fr: "Certitude faible : peu d'essais, petits échantillons, protocoles courts (2 à 8 semaines, sprints de 30 s à environ 10 % de pente). Ne justifie ni ne réfute une quantité de dénivelé pour le trail."
+  applies_to: [C4]
+  confidence: faible
+  verified_on: "2026-10-18"
+
+- id: CYC-001
+  topic: cycling
+  citation: "Neal CM, Hunter AM, Brennan L, O'Sullivan A, Hamilton DL, De Vito G, Galloway SD (2013). Six weeks of a polarized training-intensity distribution leads to greater physiological and performance adaptations than a threshold model in trained cyclists. J Appl Physiol."
+  year: 2013
+  doi: "10.1152/japplphysiol.00652.2012"
+  pmid: "23264537"
+  url: "https://pubmed.ncbi.nlm.nih.gov/23264537/"
+  design: essai contrôlé randomisé
+  finding_fr: "12 cyclistes entraînés en crossover de 6 semaines : le modèle polarisé (80/0/20) augmente plus la puissance maximale (+8 % contre +3 %), le seuil lactique (+9 % contre +2 %) et la capacité à haute intensité que le modèle au seuil."
+  limits_fr: "Seulement 12 hommes, 6 semaines, volumes d'entraînement différents entre les deux modèles (6,4 contre 7,5 h par semaine). Pas de différence mesurée sur les marqueurs musculaires de biopsie."
+  applies_to: []
+  confidence: faible
+  verified_on: "2026-10-18"
+
+- id: CYC-002
+  topic: cycling
+  citation: "Borszcz FK, Tramontin AF, Bossi AH, Carminatti LJ, Costa VP (2018). Functional threshold power in cyclists: validity of the concept and physiological responses. Int J Sports Med."
+  year: 2018
+  doi: "10.1055/s-0044-101546"
+  pmid: "29801189"
+  url: "https://pubmed.ncbi.nlm.nih.gov/29801189/"
+  design: étude observationnelle
+  finding_fr: "Chez 23 cyclistes entraînés, la FTP estimée (95 % de 20 min) ou mesurée sur 60 min est proche du seuil anaérobie individuel en moyenne (biais de 1 à 5 W), mais avec de larges limites d'accord (jusqu'à environ ±60 W). Les deux FTP ne sont pas interchangeables."
+  limits_fr: "Échantillon de 23 hommes entraînés, un seul protocole de laboratoire ; l'écart individuel de plusieurs dizaines de watts interdit de traiter la FTP comme une valeur physiologique exacte. Zones à recalculer par test."
+  applies_to: []
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: CYC-003
+  topic: cycling
+  citation: "Mølmen KS, Øfsteng SJ, Rønnestad BR (2019). Block periodization of endurance training - a systematic review and meta-analysis. Open Access J Sports Med."
+  year: 2019
+  doi: "10.2147/oajsm.s180408"
+  pmid: "31802956"
+  url: "https://pubmed.ncbi.nlm.nih.gov/31802956/"
+  design: méta-analyse
+  finding_fr: "20 études, 6 poolées : l'entraînement par blocs donne de petits avantages sur le VO2max (écart standardisé 0,40) et la puissance maximale (0,28) par rapport à une organisation traditionnelle, chez des athlètes entraînés à bien entraînés."
+  limits_fr: "Qualité méthodologique faible (PEDro moyen 3,7 sur 10), peu d'études poolées (6), critères de performance hétérogènes. Les auteurs appellent à la prudence ; pas de preuve de supériorité chez l'amateur."
+  applies_to: [G7]
+  confidence: faible
+  verified_on: "2026-10-18"
+
+- id: HYB-001
+  topic: hybrid
+  citation: "Wilson JM, Marin PJ, Rhea MR, Wilson SM, Loenneke JP, Anderson JC (2012). Concurrent training: a meta-analysis examining interference of aerobic and resistance exercises. J Strength Cond Res."
+  year: 2012
+  doi: "10.1519/jsc.0b013e31823a3e2d"
+  pmid: "22002517"
+  url: "https://pubmed.ncbi.nlm.nih.gov/22002517/"
+  design: méta-analyse
+  finding_fr: "21 études : l'entraînement combiné reste meilleur que l'endurance seule pour force et masse, mais l'interférence dépend de la modalité, de la fréquence et de la durée de l'endurance. La course (pas le vélo) en parallèle réduit hypertrophie et force."
+  limits_fr: "Analyse de 2012 sur des études anciennes, corrélations sur la fréquence et la durée (non causales). Nuancée par la méta-analyse de Schumann 2022, qui trouve une interférence faible sur la force maximale."
+  applies_to: [I1]
+  confidence: moyenne
+  verified_on: "2026-10-18"
+
+- id: HYB-002
+  topic: hybrid
+  citation: "Schumann M, Feuerbacher JF, Sünkeler M, Freitag N, Rønnestad BR, Doma K, Lundberg TR (2022). Compatibility of concurrent aerobic and strength training for skeletal muscle size and function: an updated systematic review and meta-analysis. Sports Med."
+  year: 2022
+  doi: "10.1007/s40279-021-01587-7"
+  pmid: "34757594"
+  url: "https://pubmed.ncbi.nlm.nih.gov/34757594/"
+  design: méta-analyse
+  finding_fr: "43 études : l'ajout d'aérobie ne compromet ni l'hypertrophie ni la force maximale. La force explosive est un peu atténuée (écart -0,28), davantage quand les deux séances ont lieu le même jour que séparées d'au moins 3 h."
+  limits_fr: "Compare à de la musculation seule, pas à de l'endurance seule ; la perte d'explosivité est modeste et ne vaut que pour la force explosive, à confirmer."
+  applies_to: [I1]
+  confidence: élevée
+  verified_on: "2026-10-18"
+
+- id: HYB-003
+  topic: hybrid
+  citation: "Brandt T, Ebel C, Lebahn C, Schmidt A (2025). Acute physiological responses and performance determinants in Hyrox - a new running-focused high intensity functional fitness trend. Front Physiol."
+  year: 2025
+  doi: "10.3389/fphys.2025.1519240"
+  pmid: "40230601"
+  url: "https://pubmed.ncbi.nlm.nih.gov/40230601/"
+  design: étude observationnelle
+  finding_fr: "11 pratiquants récréatifs, Hyrox simulé (86,5 min) : la course pèse plus que les ateliers (51 contre 33 min), l'effort est très intense (FC élevée). Un meilleur temps va avec un VO2max plus élevé, plus d'endurance à l'entraînement et moins de masse grasse."
+  limits_fr: "Seulement 11 sujets, une simulation, corrélations sans causalité. Première étude scientifique sur le Hyrox ; ne donne pas de prescription d'entraînement ni de consigne de charge."
+  applies_to: [I6]
+  confidence: faible
+  verified_on: "2026-10-18"
+
+- id: RUN-014
+  topic: recovery
+  citation: "Saw AE, Main LC, Gastin PB (2016). Monitoring the athlete training response: subjective self-reported measures trump commonly used objective measures: a systematic review. Br J Sports Med."
+  year: 2016
+  doi: "10.1136/bjsports-2015-094758"
+  pmid: "26423706"
+  url: "https://pubmed.ncbi.nlm.nih.gov/26423706/"
+  design: revue systématique
+  finding_fr: "56 études : les mesures subjectives (humeur, stress, bien-être) reflètent la charge aiguë et chronique avec plus de sensibilité et de constance que les mesures objectives, et les deux ne sont généralement pas corrélées."
+  limits_fr: "Recherche arrêtée en mai 2014, populations très variées, essentiellement des athlètes ; ne dit pas quel seuil de questionnaire doit déclencher un allègement du plan."
+  applies_to: [R1, R5]
+  confidence: moyenne
+  verified_on: "2026-10-18"

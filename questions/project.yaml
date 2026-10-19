@@ -1,0 +1,49 @@
+# Dernière étape : le projet de la personne, avec ses mots. Alimente le plan et le coach.
+- id: pj.vision
+  domain: project
+  order: 1
+  text: "Avec vos mots : que voulez-vous accomplir, et à quoi ressemblerait la réussite dans un an ?"
+  type: text
+  help: "Écrivez comme vous parlez. Plus c'est concret, mieux le plan s'adaptera."
+  fact_key: project.vision
+
+- id: pj.horizon
+  domain: project
+  order: 3
+  text: "Sur quel horizon voulez-vous être accompagné ?"
+  type: single
+  options: [3 mois, 6 mois, 1 an, plus d'un an]
+  fact_key: project.horizon
+
+- id: pj.why
+  domain: project
+  order: 4
+  text: "Pourquoi maintenant ? Qu'est-ce qui vous motive en ce moment ?"
+  type: text
+  fact_key: project.motivation
+
+- id: pj.upcoming
+  domain: project
+  order: 5
+  text: "Des changements prévus dans les prochains mois qui influenceront votre entraînement ? (déménagement, voyage, travail, famille…)"
+  type: entries
+  fact_key: project.upcoming_changes
+  fields:
+    - { id: what, label: Changement, type: text }
+    - { id: when, label: Quand, type: date, optional: true }
+    - { id: impact, label: "Impact sur l'entraînement", type: single, options: [moins de temps, plus de temps, moins de matériel, déplacements, fatigue, autre] }
+
+- id: pj.style
+  domain: project
+  order: 6
+  text: "Comment aimez-vous être coaché ?"
+  type: multi
+  options: [directif et cadré, souple et adaptable, avec des explications, avec des chiffres, avec des encouragements, sobre et rapide]
+  fact_key: project.coaching_style
+
+- id: pj.freeform
+  domain: project
+  order: 7
+  text: "Autre chose que le coach devrait savoir ?"
+  type: text
+  fact_key: project.other

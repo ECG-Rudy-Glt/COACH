@@ -1,0 +1,65 @@
+- id: ms.priority
+  domain: multisport
+  order: 1
+  text: "Si vous deviez choisir, quel sport est votre priorité ces prochains mois ?"
+  type: single
+  options: [running, strength, trail, cycling, crossfit, hyrox, aucune priorité]
+  allow_other: true
+  option_labels: { running: "Course à pied", strength: "Musculation", trail: "Trail", cycling: "Vélo", crossfit: "CrossFit", hyrox: "Hyrox", "aucune priorité": "Aucune priorité"}
+  fact_key: multisport.priority
+  show_if: { all: [ { fact: sports.practiced, len_gte: 2 } ] }
+  required: true
+
+- id: ms.split
+  domain: multisport
+  order: 2
+  text: "Comment souhaitez-vous répartir votre temps d'entraînement ?"
+  type: single
+  options: [majoritairement endurance, équilibré, majoritairement force]
+  fact_key: multisport.time_split
+  show_if: { all: [ { fact: sports.practiced, len_gte: 2 } ] }
+
+- id: ms.sameday
+  domain: multisport
+  order: 3
+  text: "Acceptez-vous deux séances le même jour ?"
+  type: single
+  options: [non, oui avec au moins 6 h d'écart, oui enchaînées]
+  fact_key: multisport.same_day
+  show_if: { all: [ { fact: sports.practiced, len_gte: 2 } ] }
+
+- id: ms.leg_fatigue
+  domain: multisport
+  order: 4
+  text: "Avez-vous les jambes lourdes en course après une séance de jambes ?"
+  type: single
+  options: [jamais, parfois, souvent]
+  fact_key: multisport.leg_fatigue_after_strength
+  show_if: { all: [ { fact: sports.practiced, contains: strength }, { fact: sports.practiced, contains: running } ] }
+
+- id: ms.run_days
+  domain: multisport
+  order: 5
+  text: "Quels jours préférez-vous pour courir ?"
+  type: multi
+  options: [lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche]
+  fact_key: multisport.preferred_run_days
+  show_if: { all: [ { fact: sports.practiced, len_gte: 2 }, { fact: sports.practiced, contains: running } ] }
+
+- id: ms.strength_days
+  domain: multisport
+  order: 6
+  text: "Quels jours préférez-vous pour la musculation ?"
+  type: multi
+  options: [lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche]
+  fact_key: multisport.preferred_strength_days
+  show_if: { all: [ { fact: sports.practiced, len_gte: 2 }, { fact: sports.practiced, contains: strength } ] }
+
+- id: ms.rest_days
+  domain: multisport
+  order: 7
+  text: "Quels jours êtes-vous indisponible (repos obligatoire) ?"
+  type: multi
+  options: [lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche]
+  fact_key: multisport.blocked_days
+  show_if: { all: [ { fact: sports.practiced, len_gte: 2 } ] }
