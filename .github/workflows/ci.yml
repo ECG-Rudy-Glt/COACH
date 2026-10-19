@@ -29,7 +29,7 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://coach:ci-only-password@localhost:5432/coach_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -43,7 +43,7 @@ jobs:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install pip-audit && pip-audit -r requirements.txt
@@ -52,7 +52,7 @@ jobs:
     name: Docker build and compose validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Create placeholder secrets
         run: scripts/init-secrets.sh
       - run: docker compose config -q
@@ -72,7 +72,7 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
         env:
