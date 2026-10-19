@@ -61,6 +61,8 @@ docker compose up -d --build     # db → app → one-shot exercise import
 open http://127.0.0.1:8000       # the first account you create is the owner; registration then closes
 ```
 
+Prefer a ready-made image over building? Set `COACH_IMAGE=ghcr.io/ecg-rudy-glt/coach:0.1.0` in `.env` and run `docker compose pull && docker compose up -d` (images are published for every `vX.Y.Z` tag, `linux/amd64` and `linux/arm64`).
+
 Add an AI coach (optional): put your key in `secrets/llm_api_key`, set `LLM_PROVIDER` in `.env`, then `docker compose up -d`. No key → the app runs fully, minus the coach, chat and meal-photo estimate.
 
 Next steps:
