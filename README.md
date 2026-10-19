@@ -61,7 +61,24 @@ docker compose up -d --build     # db → app → one-shot exercise import
 open http://127.0.0.1:8000       # the first account you create is the owner; registration then closes
 ```
 
+Prefer a ready-made image over building? Set `COACH_IMAGE=ghcr.io/ecg-rudy-glt/coach:0.1.0` in `.env` and run `docker compose pull && docker compose up -d` (images are published for every `vX.Y.Z` tag, `linux/amd64` and `linux/arm64`).
+
 Add an AI coach (optional): put your key in `secrets/llm_api_key`, set `LLM_PROVIDER` in `.env`, then `docker compose up -d`. No key → the app runs fully, minus the coach, chat and meal-photo estimate.
+
+### Choose your AI (optional)
+
+Cloud models need **no extra container** — set the provider in `.env` and put your API key in `secrets/llm_api_key`:
+
+| You want | `.env` | Key from |
+|---|---|---|
+| Claude (Anthropic) | `LLM_PROVIDER=anthropic` | console.anthropic.com |
+| ChatGPT models (OpenAI) | `LLM_PROVIDER=openai` | platform.openai.com |
+| Gemini / Mistral / OpenRouter | `LLM_PROVIDER=gemini` · `mistral` · `openrouter` | each provider's console |
+| Any OpenAI-compatible server | `LLM_PROVIDER=custom` + `LLM_BASE_URL=…` | your server |
+| 100 % local (no data leaves the machine) | `LLM_PROVIDER=ollama` and `docker compose --profile ollama up -d` | none |
+| No AI | `LLM_PROVIDER=none` (or leave the key empty) | none |
+
+`LLM_MODEL` picks the model; `GET /llm` and [docs/configuration.md](docs/configuration.md) list suggestions. A ChatGPT *subscription* is not an API key — you need an API account with billing for the app to call the model.
 
 Next steps:
 

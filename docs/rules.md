@@ -1,8 +1,9 @@
 # Règles du moteur de plan
 
-> Version 0 du 07/10/2026, **à relire et valider avant tout code**. Les références sont données de mémoire :
-> les vérifier avant publication open source. Quand la preuve est faible, c'est écrit : le choix est alors
-> une pratique de terrain prudente, pas un résultat établi.
+> Version 0 du 07/10/2026. Les références ont été vérifiées sur les **résumés** (pas les textes complets) :
+> voir [references.md](references.md) et [references-2.md](references-2.md), et la base structurée `data/evidence/`.
+> Quand la preuve est faible, c'est écrit : le choix est alors une pratique de terrain prudente, pas un résultat établi.
+> Une relecture humaine complète reste à faire (voir les tickets du dépôt).
 
 ## Principes
 
