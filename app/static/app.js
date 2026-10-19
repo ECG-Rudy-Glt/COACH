@@ -149,7 +149,7 @@ function fail(err) {
     h("button", { class: "btn primary", onclick: start }, "Réessayer")));
 }
 
-// ---------- thème (clair, sombre, éco : comme le portfolio) ----------
+// ---------- thème (clair, sombre, éco) ----------
 const THEMES = [["light", "☀", "Clair"], ["dark", "☾", "Sombre"], ["eco", "◐", "Éco (noir et blanc)"]];
 const THEME_COLORS = { light: "#ece6d9", dark: "#14100c", eco: "#f7f5f1" };
 
