@@ -5,7 +5,14 @@
 #   edge   regular bridge with outbound access   : the app (LLM, Garmin, wger import) and the optional HTTPS proxy.
 #   llm    regular bridge                        : the optional local model server (profile `ollama`), reachable only by the app.
 # Secrets are Docker file secrets mounted under /run/secrets (nothing sensitive in the environment or in `docker inspect`).
-# Profiles (opt-in):  https (Caddy, automatic TLS) · backup (daily pg_dump) · ollama (local LLM) · tools (one-off helpers)
+# Profiles (opt-in):  https (Caddy, automatic TLS) · backup (daily pg_dump) · ollama (local LLM)
+#
+# AI providers — cloud models (Claude, ChatGPT/OpenAI, Gemini, Mistral, OpenRouter) need NO container: the app calls their API.
+# Pick one in .env and put your key in ./secrets/llm_api_key :
+#     LLM_PROVIDER=anthropic   # Claude   (LLM_MODEL e.g. claude-sonnet-5-5)
+#     LLM_PROVIDER=openai      # ChatGPT / OpenAI models (LLM_MODEL e.g. gpt-4o)
+#     LLM_PROVIDER=gemini | mistral | openrouter | custom (any OpenAI-compatible URL via LLM_BASE_URL)
+# Only a *local* model needs a container: the `ollama` service at the bottom. Full list: data/llm_providers.yaml, docs/configuration.md.
 name: coach
 
 x-app-env: &app-env
