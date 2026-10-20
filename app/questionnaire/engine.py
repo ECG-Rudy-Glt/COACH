@@ -28,11 +28,13 @@ def pending(bank: list[Question], facts: list[Fact]) -> list[Question]:
 
 
 def next_questions(
-    bank: list[Question], facts: list[Fact], n: int = 1, domain: str | None = None
+    bank: list[Question], facts: list[Fact], n: int = 1, domain: str | None = None, essential: bool = False
 ) -> list[Question]:
     todo = pending(bank, facts)
     if domain:
         todo = [q for q in todo if q.domain == domain]
+    if essential:
+        todo = [q for q in todo if q.essential]
     return todo[:n]
 
 
@@ -46,8 +48,11 @@ def progress(bank: list[Question], facts: list[Fact]) -> dict[str, Any]:
     for q in todo:
         domains.setdefault(q.domain, {"answered": 0, "remaining": 0})["remaining"] += 1
     ordered = dict(sorted(domains.items(), key=lambda kv: DOMAIN_PRIORITY.get(kv[0], 99)))
+    ess_done = sum(1 for q in bank if q.essential and q.fact_key in cur)
+    ess_left = sum(1 for q in todo if q.essential)
     return {
         "answered": sum(d["answered"] for d in ordered.values()),
         "remaining_visible": len(todo),
         "domains": ordered,
+        "essential": {"answered": ess_done, "remaining": ess_left},
     }

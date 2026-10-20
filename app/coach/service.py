@@ -103,6 +103,7 @@ def build_context(repo: Repo, user_id: int, today: date, evidence_digest: dict[s
     if "body.birth_year" in facts:
         profile["age"] = today.year - int(facts["body.birth_year"])
     perf = {k.removeprefix("bench."): v for k, v in facts.items() if k.startswith("bench.")}
+    precisions = [v for k, v in sorted(facts.items()) if k.startswith("coach.clarification.") and isinstance(v, dict)]  # réponses aux précisions demandées à l'accueil
     goals = [{"title": g["title"], "kind": g["kind"], "date": g["target_date"].isoformat() if g.get("target_date") else None,
               "priority": g["priority"], "details": g.get("details") or {}} for g in repo.list_goals(user_id, "active")]
     past = repo.list_sessions(user_id, today - timedelta(days=21), today)
@@ -116,7 +117,7 @@ def build_context(repo: Repo, user_id: int, today: date, evidence_digest: dict[s
     memory = [{"date": m["created_at"].date().isoformat(), "resume": m["body"][:500], "questions": (m["data"] or {}).get("questions", [])}
               for m in repo.list_memory(user_id, "weekly_review", 3)]
     return {
-        "aujourdhui": today.isoformat(), "jour": DAYS[today.weekday()], "profil": profile, "performances": perf, "objectifs": goals,
+        "aujourdhui": today.isoformat(), "jour": DAYS[today.weekday()], "profil": profile, "performances": perf, "precisions_declarees": precisions, "objectifs": goals,
         "seances_passees": [{"id": s["id"], "jour": s["day"].isoformat(), "type": s["kind"], "prevu_min": s["duration_min"],
                              "statut": s["status"], "fait": {k: (s["logged"] or {}).get(k) for k in DONE_KEYS}}
                             for s in past],

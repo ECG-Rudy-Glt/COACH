@@ -19,7 +19,7 @@
 
 ## Features
 
-- Adaptive questionnaire (~100 questions across 13 domains) that only asks what the next decision needs
+- Interactive onboarding: a short essential path, then the AI coach decides which missing questions are worth asking ([docs/onboarding.md](docs/onboarding.md)); the full adaptive questionnaire (~100 questions, 13 domains) stays optional
 - Weekly plan generation with training cycles (3 build weeks + 1 deload), phases toward a target event, injury/pain handling
 - Strength sessions with a 1 700+ exercise library (wger + free-exercise-db, per-media author and license shown)
 - Nutrition: calorie/protein targets, weight-trend feedback, meal logging with optional photo → LLM estimate
@@ -104,6 +104,7 @@ Next steps:
 | Understand the security model and harden my install | [docs/security.md](docs/security.md) |
 | Connect Garmin, import Coros/FIT files, add a new source or service | [docs/integrations.md](docs/integrations.md) |
 | Know what to put in (and keep out of) LLM prompts | [docs/prompts.md](docs/prompts.md) |
+| See how the first run, the essential questions and the AI intake work | [docs/onboarding.md](docs/onboarding.md) |
 | Fork and extend it with an AI coding assistant | [AGENTS.md](AGENTS.md) and [skills/](skills/) |
 | Contribute | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
