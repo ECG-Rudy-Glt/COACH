@@ -134,9 +134,9 @@ async function moveSession(s, day) {
 // Appui long puis glisser : la séance suit le doigt (ou la souris) au-dessus d'une barre de jours ; lâcher sur un jour la déplace.
 // Touch Events pour le tactile (iPhone Safari, Android Chrome) : preventDefault une fois l'appui long reconnu empêche le défilement ;
 // événements souris pour l'ordinateur. L'alternative sans geste est le bouton « Changer de jour » de la séance.
-function attachLongPress(el, days, onDrop) {
+function attachLongPress(el, days, onDrop, board = null) {
   const HOLD = 420, SLOP = 10;
-  let timer = null, active = false, sx = 0, sy = 0, ghost = null, tray = null, over = null, dx = 0, dy = 0;
+  let timer = null, active = false, sx = 0, sy = 0, ghost = null, tray = null, over = null, dx = 0, dy = 0, scroller = null, lastX = 0;
   const point = (e) => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
   const hit = (x, y) => document.elementFromPoint(x, y)?.closest("[data-day]");
   const cancel = () => { clearTimeout(timer); timer = null; };
@@ -148,12 +148,24 @@ function attachLongPress(el, days, onDrop) {
     ghost.classList.add("ghost");
     Object.assign(ghost.style, { width: r.width + "px", left: "0", top: "0", transform: `translate(${r.left}px, ${r.top}px) scale(1.03)` });
     el.classList.add("lifted");
-    tray = h("div", { class: "daytray", role: "group", "aria-label": "Déposer sur un jour" },
-      days.map((d) => h("div", { class: "daychip" + (d.ok ? "" : " off"), "data-day": d.iso, "data-ok": d.ok ? "1" : "0" }, h("span", null, DAY_ABBR[(new Date(d.iso + "T12:00:00").getDay() + 6) % 7]), h("strong", null, String(Number(d.iso.slice(8)))))));
-    document.body.append(ghost, tray);
+    if (board) {  // tableau : les colonnes sont déjà à l'écran, on les marque et on fait défiler sur les bords
+      for (const col of board.querySelectorAll("[data-day]")) { const ok = days.find((d) => d.iso === col.dataset.day)?.ok; col.dataset.ok = ok ? "1" : "0"; col.classList.toggle("off", !ok); }
+      board.classList.add("dragging");
+      document.body.append(ghost);
+      lastX = x;
+      scroller = setInterval(() => {
+        const b = board.getBoundingClientRect(), edge = 56;
+        if (lastX < b.left + edge) board.scrollLeft -= 14; else if (lastX > b.right - edge) board.scrollLeft += 14;
+      }, 16);
+    } else {
+      tray = h("div", { class: "daytray", role: "group", "aria-label": "Déposer sur un jour" },
+        days.map((d) => h("div", { class: "daychip" + (d.ok ? "" : " off"), "data-day": d.iso, "data-ok": d.ok ? "1" : "0" }, h("span", null, DAY_ABBR[(new Date(d.iso + "T12:00:00").getDay() + 6) % 7]), h("strong", null, String(Number(d.iso.slice(8)))))));
+      document.body.append(ghost, tray);
+    }
     if (navigator.vibrate) navigator.vibrate(18);
   };
   const track = (x, y) => {
+    lastX = x;
     ghost.style.transform = `translate(${x - dx}px, ${y - dy}px) scale(1.03)`;
     const c = hit(x, y);
     if (c !== over) { over?.classList.remove("over"); over = c && c.dataset.ok === "1" ? c : null; over?.classList.add("over"); }
@@ -163,7 +175,8 @@ function attachLongPress(el, days, onDrop) {
     if (!active) return;
     active = false;
     const target = drop && over ? over.dataset.day : null;
-    ghost.remove(); tray.remove(); el.classList.remove("lifted");
+    ghost.remove(); tray?.remove(); el.classList.remove("lifted");
+    if (board) { clearInterval(scroller); board.classList.remove("dragging"); for (const col of board.querySelectorAll("[data-day]")) col.classList.remove("over", "off"); }
     swallow = true; setTimeout(() => { swallow = false; }, 400);  // le relâchement ne doit pas ouvrir la séance
     if (target) onDrop(target);
   };
@@ -1141,6 +1154,27 @@ async function planScreen(restore = false) {
   for (const s of viewSessions) { if (!byDay.has(s.day)) byDay.set(s.day, []); byDay.get(s.day).push(s); }
   const weekOf = (iso) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
   const weekDays = (s) => Array.from({ length: 7 }, (_, i) => shiftDay(mondayOf(s.day), i)).map((iso) => ({ iso, ok: s.status === "done" ? iso <= data.today : iso >= data.today }));
+  // tableau façon kanban : une colonne par jour, appui long sur une carte puis glisser vers un autre jour
+  const planMode = store.get("sc-plan-mode") === "board" ? "board" : "list";
+  const modeSwitch = h("div", { class: "seg2", role: "group", "aria-label": "Affichage de la semaine" }, [["list", "Liste"], ["board", "Tableau"]].map(([m, t]) =>
+    h("button", { class: "seg2-btn", pressed: planMode === m, onclick: () => { store.set("sc-plan-mode", m); planScreen(true); } }, t)));
+  const buildBoard = () => {
+    const wrap = h("div", { class: "board", role: "group", "aria-label": "Semaine par jour" });
+    for (const iso of Array.from({ length: 7 }, (_, i) => shiftDay(viewWeek, i))) {
+      const list = byDay.get(iso) || [];
+      wrap.append(h("div", { class: "bcol" + (iso === data.today ? " today" : ""), "data-day": iso, "data-ok": "1", "aria-label": longDay(iso) },
+        h("div", { class: "bhead" }, h("span", null, DAYS_FR[(new Date(iso + "T12:00:00").getDay() + 6) % 7].slice(0, 3)), h("strong", null, String(Number(iso.slice(8))))),
+        ...list.map((s) => {
+          const card = h("button", { class: `bcard ${s.status} ${isRun(s.kind) ? "k-run" : "k-str"}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
+            h("span", { class: "bt" }, s.title), h("span", { class: "bm" }, `${s.duration_min} min${s.details.moved_from ? " · déplacée" : ""}`),
+            s.status === "done" ? h("span", { class: "bdone" }, icon("check")) : null);
+          if (s.status !== "skipped") attachLongPress(card, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); }, wrap);
+          return card;
+        }),
+        list.length ? null : h("div", { class: "bempty" }, "Repos")));
+    }
+    return wrap;
+  };
   const nodes = [];
   let curWeek = "";
   for (const [day, list] of byDay) {
@@ -1173,7 +1207,7 @@ async function planScreen(restore = false) {
   const nextCard = finished && !upcomingWeek.length
     ? h("div", { class: "card stack" }, h("h3", null, "Semaine terminée"),
       h("p", { class: "muted" }, "Le plan avance une semaine à la fois : le coach lit d'abord vos retours, puis ajuste la semaine suivante."), nextBtn) : null;
-  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...nodes, actsCard,
+  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), actsCard,
     h("p", { class: "muted" }, "La semaine en cours n'est jamais modifiée sans votre accord."), upcomingWeek.length ? regen : null, tabbar("plan"));
   if (restore && scrollMemo.plan != null) window.scrollTo(0, scrollMemo.plan);
 }
