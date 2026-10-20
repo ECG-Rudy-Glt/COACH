@@ -289,3 +289,14 @@ body.kb .composer { bottom: 8px; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet-back, .daytray { animation: none; } }
+/* ajout d'une photo de repas */
+.photo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-btn { min-height: 96px; padding: 16px 8px; justify-content: flex-start; text-align: center; line-height: 1.2; font-size: .9375rem; border-radius: 18px; border: .5px solid var(--line); background: var(--surface); color: var(--accent); font: inherit; font-weight: 600; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; -webkit-tap-highlight-color: transparent; }
+.photo-btn svg { width: 30px; height: 30px; stroke-width: 1.7; }
+.photo-btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.photo-btn:active { transform: scale(.97); }
+.photo-preview { position: relative; }
+.photo-x { position: absolute; top: 8px; right: 8px; border-radius: 50%; background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+
+[hidden] { display: none !important; }
