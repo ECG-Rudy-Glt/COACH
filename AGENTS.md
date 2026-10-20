@@ -18,6 +18,7 @@ You are working on **COACH**, a self-hosted sports coach. Read [README.md](READM
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/ruff check . --fix && .venv/bin/pytest -q       # must both pass before you finish
+.venv/bin/pytest -q --cov                              # coverage; CI fails below the threshold in .coveragerc
 docker compose config -q                                    # validates compose changes
 docker compose up -d --build                                # full stack (see README)
 TEST_DATABASE_URL=postgresql://… .venv/bin/pytest tests/test_postgres.py   # DB-backed tests

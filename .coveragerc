@@ -1,0 +1,8 @@
+[run]
+source = app
+
+[report]
+# Seuil de départ : couverture locale actuelle (85 %, sans les tests PostgreSQL) moins une marge. À relever, jamais à baisser sans raison.
+fail_under = 83
+show_missing = true
+skip_empty = true
