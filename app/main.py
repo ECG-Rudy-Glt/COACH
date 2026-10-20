@@ -1,5 +1,7 @@
 import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -44,7 +46,16 @@ def build_state() -> tuple[list[Question], Repo]:
 
 
 _docs = os.environ.get("ENABLE_DOCS", "") == "1"  # Swagger/OpenAPI : désactivés par défaut (surface inutile en production)
-app = FastAPI(title="COACH", version=VERSION, docs_url="/docs" if _docs else None, redoc_url=None, openapi_url="/openapi.json" if _docs else None)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    garmin_scheduler.start(app.state.repo, app.state.garmin)  # actif seulement si AUTO_SYNC=1
+    coach_notify.start(app.state.repo, app.state.llm, app.state.notifier)  # actif seulement si AUTO_NOTIFY=1
+    yield
+
+
+app = FastAPI(title="COACH", version=VERSION, docs_url="/docs" if _docs else None, redoc_url=None, openapi_url="/openapi.json" if _docs else None, lifespan=lifespan)
 if os.environ.get("ALLOWED_HOSTS", "").strip():  # ex. « coach.example.org,localhost » : refuse tout autre en-tête Host
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -166,12 +177,6 @@ app.include_router(build_garmin_router(get_repo, require_user))
 app.state.llm = make_llm()
 app.state.notifier = coach_notify.Notifier()
 app.include_router(build_coach_router(get_repo, require_user))
-
-
-@app.on_event("startup")
-def _start_background() -> None:
-    garmin_scheduler.start(app.state.repo, app.state.garmin)  # actif seulement si AUTO_SYNC=1
-    coach_notify.start(app.state.repo, app.state.llm, app.state.notifier)  # actif seulement si AUTO_NOTIFY=1
 
 
 @app.get("/bank")
