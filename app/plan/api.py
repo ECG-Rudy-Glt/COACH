@@ -5,6 +5,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
 from app.plan.engine import advice, build_profile, outlook, plan_weeks
 from app.plan.pain import pain_zones
@@ -107,9 +108,10 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         rows = repo.list_sessions(user_id, start, start + timedelta(days=7 * max(1, min(weeks, 8))))
         rows = annotate_history(rows, repo.list_sessions(user_id, today - timedelta(days=180), None))
         facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
-        prof = build_profile(facts, repo.list_goals(user_id, None), today)
+        goals = repo.list_goals(user_id, None)
+        prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
-                "cycle": describe(rows, today)}
+                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today)}
 
     @router.patch("/sessions/{session_id}")
     def update(session_id: int, body: Done, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

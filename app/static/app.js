@@ -905,6 +905,23 @@ function outlookCard(o) {
     h("p", { class: "muted" }, `Dans ${o.weeks_to_event} semaines · volume projeté ${o.projected_peak_km} km par semaine (repère : ${o.needed_peak_km} km).`));
 }
 
+function trajectoryCard(t) {
+  if (!t) return null;
+  const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const fullFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const level = t.level ? `Niveau actuel estimé : ${t.level.time} (${t.level.source}).` : "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.";
+  const gap = t.level ? ` Écart à combler : ${t.gap_pct} % (${t.per_month_pct} % par mois), jugé ${t.verdict}.` : "";
+  const phases = h("ol", { class: "traj" }, t.phases.filter((p) => p.macro !== "race").map((p, i) =>
+    h("li", { class: i === 0 ? "now" : "" }, h("strong", null, p.label), ` · ${dayFr(p.start)} → ${dayFr(p.end)} · ${p.weeks} sem.`)));
+  const tests = t.milestones.length ? h("p", { class: "muted" }, "Tests de contrôle : " + t.milestones.map((m) => `${fullFr(m.date)} (${m.label} en ${m.target_time})`).join(", ") + ".") : null;
+  return h("div", { class: "card stack" },
+    h("span", { class: "eyebrow" }, "Trajectoire"),
+    h("h3", null, `${t.target.title} · ${fullFr(t.target.date)}`),
+    h("p", { class: "muted" }, `${level}${gap} Volume visé : environ ${t.weekly_km_target} km par semaine.`),
+    phases, tests,
+    ...t.warnings.map((w) => h("p", null, w)));
+}
+
 function cycleCard(c) {
   if (!c) return null;
   const cur = c.current;
@@ -1009,7 +1026,7 @@ async function planScreen(restore = false) {
   const nextCard = finished && !upcomingWeek.length
     ? h("div", { class: "card stack" }, h("h3", null, "Semaine terminée"),
       h("p", { class: "muted" }, "Le plan avance une semaine à la fois : le coach lit d'abord vos retours, puis ajuste la semaine suivante."), nextBtn) : null;
-  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...nodes, actsCard,
+  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...nodes, actsCard,
     h("p", { class: "muted" }, "La semaine en cours n'est jamais modifiée sans votre accord."), upcomingWeek.length ? regen : null, tabbar("plan"));
   if (restore && scrollMemo.plan != null) window.scrollTo(0, scrollMemo.plan);
 }

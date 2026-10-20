@@ -12,6 +12,7 @@ from fastapi import HTTPException
 
 from app.coach.history import past_digest
 from app.coach.llm import LLMError, default_model, price_eur
+from app.plan import trajectory
 from app.plan.cycles import describe
 from app.plan.engine import DAYS
 from app.plan.strength import lift_trends
@@ -41,6 +42,8 @@ Le plan suit des CYCLES (champ "cycle") : blocs de 3 semaines de montée + 1 all
 pic de forme, affûtage). Situe toujours l'utilisateur dans son cycle (bloc, semaine, prochaine semaine allégée, pic) dans ton bilan et explique
 ce qui vient ensuite. La surcharge progressive est faite par le moteur (séries, répétitions, charges d'un bloc à l'autre) ; "tendance_force"
 montre si les charges montent vraiment. Ne supprime jamais une semaine allégée ni l'affûtage ; pendant le pic, ne propose rien qui ajoute de la charge.
+Le champ "trajectoire" (s'il est présent) décrit l'objectif de performance lointain : niveau actuel, écart, phases (base, seuil, spécifique, affûtage), volume visé et tests de contrôle.
+Rappelle-le quand c'est utile, sans jamais promettre le résultat ; ne change ni les temps ni les phases.
 Si "fatigue_declaree" montre une fatigue ou des douleurs répétées, propose d'alléger (reduce) plutôt que de poursuivre la montée.
 Tu peux aussi citer des identifiants de publications (champ source_ids) tirés UNIQUEMENT de la liste « sources » fournie ; n'invente aucune référence ; sans source adaptée, laisse source_ids vide.
 N'écris jamais d'identifiant technique (numéro de séance, « ID 53 ») dans les textes destinés à l'utilisateur : désigne les séances par leur titre et leur jour.
@@ -121,6 +124,7 @@ def build_context(repo: Repo, user_id: int, today: date, evidence_digest: dict[s
                              "titre": s["title"], "duree_min": s["duration_min"], "statut": s["status"],
                              "adaptation_declaree": (s["logged"] or {}).get("adaptation")} for s in future],
         "cycle": describe(window, today),
+        "trajectoire": trajectory.describe(trajectory.pick_target(repo.list_goals(user_id, None), today), facts, repo.list_goals(user_id, None), today),
         "tendance_force": lift_trends(window),
         "fatigue_declaree": {"rpe_moyen_14j": round(sum(rpes) / len(rpes), 1) if rpes else None, "signaux_21j": flags},
         "historique_garmin": garmin_history(repo, user_id, today),

@@ -17,7 +17,12 @@ MACRO = {
     "peak": ("Pic de forme", "Les dernières semaines fortes avant l'affûtage : volume maximal, séances proches de l'objectif, aucun ajout de charge inutile."),
     "taper": ("Affûtage", "Le volume baisse, l'intensité est conservée : la fatigue part, la forme reste."),
     "race": ("Semaine de l'objectif", "Peu de volume, quelques rappels d'allure, repos et sommeil."),
+    "threshold": ("Seuil", "Le volume se stabilise ; des séances à allure seuil installent l'endurance de vitesse."),
+    "specific": ("Spécifique", "Séances à l'allure de l'objectif, volume maintenu : la forme se précise avant l'affûtage."),
 }
+
+SPECIFIC_WEEKS = 8  # C11 : bloc spécifique avant l'affûtage d'un objectif de performance
+THRESHOLD_WEEKS = 12  # C11 : bloc seuil avant le bloc spécifique
 
 
 def macro_phase(weeks_to_event: int | None) -> str:
@@ -33,6 +38,19 @@ def macro_phase(weeks_to_event: int | None) -> str:
     return "build" if weeks_to_event <= 12 else "base"
 
 
+def target_phase(weeks_to_target: int | None) -> str:
+    """Phase vers un objectif de performance lointain (C11) : base, seuil, spécifique, affûtage."""
+    if weeks_to_target is None:
+        return "base"
+    if weeks_to_target <= 0:
+        return "race"
+    if weeks_to_target == 1:
+        return "taper"
+    if weeks_to_target <= 1 + SPECIFIC_WEEKS:
+        return "specific"
+    return "threshold" if weeks_to_target <= 1 + SPECIFIC_WEEKS + THRESHOLD_WEEKS else "base"
+
+
 @dataclass(frozen=True)
 class Cycle:
     anchor: str  # lundi du premier bloc (ISO) : fixe la position pour toutes les générations suivantes
@@ -42,6 +60,8 @@ class Cycle:
     deload: bool
     macro: str
     weeks_to_event: int | None
+    weeks_to_target: int | None = None  # objectif de performance (trajectoire) ; None sans objectif de ce type
+    target: str | None = None  # date ISO de cet objectif : permet de projeter les phases futures
 
     @property
     def label(self) -> str:
@@ -52,12 +72,16 @@ class Cycle:
         return {**asdict(self), "label": self.label, "macro_label": MACRO[self.macro][0], "macro_text": MACRO[self.macro][1]}
 
 
-def cycle_for(monday: date, anchor: date, block_len: int, weeks_to_event: int | None) -> Cycle:
+def cycle_for(monday: date, anchor: date, block_len: int, weeks_to_event: int | None,
+              weeks_to_target: int | None = None, target: date | None = None) -> Cycle:
+    """Un événement à moins de 12 semaines prime (C9) ; sinon la trajectoire vers l'objectif de performance donne la phase (C11)."""
     idx = max(0, (monday - anchor).days // 7)
     wib = idx % block_len
-    macro = macro_phase(weeks_to_event)
+    event_near = weeks_to_event is not None and weeks_to_event <= 12
+    macro = target_phase(weeks_to_target) if (weeks_to_target is not None and not event_near) else macro_phase(weeks_to_event)
     deload = wib == block_len - 1 and macro not in ("taper", "race")  # l'affûtage remplace la semaine allégée
-    return Cycle(anchor.isoformat(), idx // block_len + 1, wib + 1, block_len, deload, macro, weeks_to_event)
+    return Cycle(anchor.isoformat(), idx // block_len + 1, wib + 1, block_len, deload, macro, weeks_to_event,
+                 weeks_to_target, target.isoformat() if target else None)
 
 
 def _monday(d: date) -> date:
@@ -98,12 +122,14 @@ def describe(sessions: list[dict[str, Any]], today: date) -> dict[str, Any] | No
     ref_monday = max((m for m in by_week if m <= this), default=min(by_week))
     ref = by_week[ref_monday]
     anchor, length = date.fromisoformat(ref["anchor"]), ref["block_len"]
-    wte = ref.get("weeks_to_event")
+    wte, wtt = ref.get("weeks_to_event"), ref.get("weeks_to_target")
+    tgt = date.fromisoformat(ref["target"]) if ref.get("target") else None
 
     def at(i: int) -> dict[str, Any]:
         monday = this + timedelta(weeks=i)
         w = None if wte is None else max(0, wte - (monday - ref_monday).days // 7)
-        return cycle_for(monday, anchor, length, w).as_dict()
+        wt = None if wtt is None else max(0, wtt - (monday - ref_monday).days // 7)
+        return cycle_for(monday, anchor, length, w, wt, tgt).as_dict()
 
     weeks = [at(i) for i in range(8)]
     upcoming = [{"semaine": (this + timedelta(weeks=i)).isoformat(), "bloc": c["block_no"], "position": f'{c["week_in_block"]}/{c["block_len"]}',

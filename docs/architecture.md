@@ -46,7 +46,7 @@ flowchart TB
 | `app/auth.py` | Accounts, scrypt hashing, sessions, login throttling, registration modes |
 | `app/questionnaire/` | Question bank (`questions/*.yaml`), conditional engine, answers → timestamped *facts* |
 | `app/goals.py`, `app/benchmarks.py` | Goals and performance benchmarks (derived facts) |
-| `app/plan/` | **Plan engine**: profile building, cycles/phases, weekly sessions, strength templates, pain handling |
+| `app/plan/` | **Plan engine**: profile building, cycles/phases, weekly sessions, strength templates, pain handling, long-horizon trajectory (`trajectory.py`) |
 | `app/nutrition/` | **Nutrition engine** (BMR, targets, weight trend, advice) + LLM meal analysis (`analyze.py`) |
 | `app/exercises/` | Exercise library API, importer (wger + free-exercise-db + `data/custom_exercises.yaml`), media proxy |
 | `app/evidence.py` | Loads `data/evidence/*.yaml`, validates rule links, builds the citable digest |
