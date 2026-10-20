@@ -1,0 +1,29 @@
+{
+ "id": "chatcmpl-sample",
+ "object": "chat.completion",
+ "model": "gpt-4o",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "tool_calls": [
+     {
+      "id": "call_sample",
+      "type": "function",
+      "function": {
+       "name": "search_history",
+       "arguments": "{\"days\": 14}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 900,
+  "completion_tokens": 18
+ }
+}

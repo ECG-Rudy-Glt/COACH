@@ -1,0 +1,17 @@
+{
+ "id": "msg_sample",
+ "type": "message",
+ "role": "assistant",
+ "model": "claude-sonnet-5-5",
+ "content": [
+  {
+   "type": "text",
+   "text": "{\"summary\": \"Semaine régulière.\", \"adjustments\": []}"
+  }
+ ],
+ "stop_reason": "end_turn",
+ "usage": {
+  "input_tokens": 812,
+  "output_tokens": 41
+ }
+}

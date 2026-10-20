@@ -121,3 +121,138 @@ def test_rejects_non_http_scheme(monkeypatch):
     monkeypatch.setenv("LLM_BASE_URL", "file:///etc")
     with pytest.raises(LLMError):
         OpenAICompatLLM("custom").complete("s", "u", 10, "m")
+
+
+# ---- mode JSON et repli sans outils (#34) ----
+from pathlib import Path  # noqa: E402
+
+FIXTURES = Path(__file__).parent / "fixtures" / "llm"
+
+
+def sample(name):
+    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+
+def use(monkeypatch, provider, **env):
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    for k in ("LLM_JSON_MODE", "LLM_TOOLS", "LLM_MODEL", "LLM_BASE_URL"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+
+
+def capture(monkeypatch, replies):
+    sent = []
+
+    def fake(url, body, headers):
+        sent.append(json.loads(json.dumps(body)))  # copie : l'adaptateur retire parfois une option avant de réessayer
+        r = replies[min(len(sent) - 1, len(replies) - 1)]
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    monkeypatch.setattr(mod, "_http_json", fake)
+    return sent
+
+
+def test_catalog_declares_valid_json_modes():
+    for name, p in mod.catalog().items():
+        assert p.get("json_mode", "none") in ("json_object", "none"), name
+    assert mod.json_mode_kind("openai") == mod.json_mode_kind("mistral") == mod.json_mode_kind("ollama") == "json_object"
+    assert mod.json_mode_kind("anthropic") == mod.json_mode_kind("custom") == "none"
+
+
+@pytest.mark.parametrize("provider,fixture", [("openai", "openai_chat_json.json"), ("mistral", "mistral_chat_json.json"), ("ollama", "ollama_chat_json.json")])
+def test_json_mode_is_requested_only_when_asked(monkeypatch, provider, fixture):
+    use(monkeypatch, provider)
+    sent = capture(monkeypatch, [sample(fixture)])
+    res = OpenAICompatLLM(provider).complete("s", "u", 100, "m", json_mode=True)
+    assert sent[0]["response_format"] == {"type": "json_object"}
+    assert res.input_tokens > 0 and "Semaine régulière" in res.text
+    OpenAICompatLLM(provider).complete("s", "u", 100, "m")
+    assert "response_format" not in sent[1]  # le chat libre n'en veut pas
+
+
+def test_json_mode_overrides_and_anthropic_ignores_it(monkeypatch):
+    use(monkeypatch, "custom", LLM_BASE_URL="http://x/v1")
+    sent = capture(monkeypatch, [sample("openai_chat_json.json")])
+    OpenAICompatLLM("custom").complete("s", "u", 10, "m", json_mode=True)
+    assert "response_format" not in sent[0]  # serveur inconnu : pas d'option par défaut
+    monkeypatch.setenv("LLM_JSON_MODE", "on")
+    OpenAICompatLLM("custom").complete("s", "u", 10, "m", json_mode=True)
+    assert sent[1]["response_format"] == {"type": "json_object"}
+    monkeypatch.setenv("LLM_JSON_MODE", "off")
+    OpenAICompatLLM("custom").complete("s", "u", 10, "m", json_mode=True)
+    assert "response_format" not in sent[2]
+    use(monkeypatch, "anthropic")
+    sent = capture(monkeypatch, [sample("anthropic_messages_json.json")])
+    res = AnthropicLLM().complete("s", "u", 10, "claude-sonnet-5-5", json_mode=True)
+    assert "response_format" not in sent[0] and res.output_tokens == 41
+
+
+def test_json_mode_refused_by_the_server_falls_back_once(monkeypatch):
+    use(monkeypatch, "ollama")
+    sent = capture(monkeypatch, [LLMError("Le service IA a répondu 400.", 400), sample("ollama_chat_json.json"), sample("ollama_chat_json.json")])
+    llm = OpenAICompatLLM("ollama")
+    assert "Semaine" in llm.complete("s", "u", 10, "m", json_mode=True).text
+    assert "response_format" in sent[0] and "response_format" not in sent[1]
+    llm.complete("s", "u", 10, "m", json_mode=True)
+    assert len(sent) == 3 and "response_format" not in sent[2]  # refus mémorisé : plus d'aller-retour inutile
+    use(monkeypatch, "ollama")
+    capture(monkeypatch, [LLMError("Le service IA a répondu 401.", 401)])
+    with pytest.raises(LLMError):  # une autre erreur n'est pas masquée
+        OpenAICompatLLM("ollama").complete("s", "u", 10, "m", json_mode=True)
+
+
+TOOL = [{"name": "search_history", "description": "d", "input_schema": {"type": "object", "properties": {}}}]
+
+
+def test_model_without_tools_answers_without_history_search(monkeypatch):
+    use(monkeypatch, "ollama")
+    sent = capture(monkeypatch, [sample("ollama_chat_json.json")])
+    seen = []
+    res = OpenAICompatLLM("ollama").converse("s", "q", 100, "llama3.2-vision:11b", None, TOOL, lambda n, a: seen.append(n))
+    assert "tools" not in sent[0] and seen == [] and res.text  # le catalogue dit tools: false
+    assert mod.supports_tools("qwen2.5:7b", "ollama") and not mod.supports_tools("llama3.2-vision:11b", "ollama")
+    monkeypatch.setenv("LLM_TOOLS", "off")
+    assert not mod.supports_tools("qwen2.5:7b", "ollama")
+    monkeypatch.setenv("LLM_TOOLS", "on")
+    assert mod.supports_tools("llama3.2-vision:11b", "ollama")
+
+
+def test_tools_refused_by_the_server_degrade_gracefully(monkeypatch):
+    use(monkeypatch, "ollama")
+    sent = capture(monkeypatch, [LLMError("Le service IA a répondu 400.", 400), sample("ollama_chat_json.json"), sample("ollama_chat_json.json")])
+    llm = OpenAICompatLLM("ollama")
+    assert llm.converse("s", "q", 100, "qwen2.5:7b", None, TOOL, lambda n, a: {}).text
+    assert "tools" in sent[0] and "tools" not in sent[1]
+    llm.converse("s", "q", 100, "qwen2.5:7b", None, TOOL, lambda n, a: {})
+    assert len(sent) == 3 and "tools" not in sent[2]
+
+
+def test_tool_call_sample_still_runs_the_tool(monkeypatch):
+    use(monkeypatch, "openai")
+    sent = capture(monkeypatch, [sample("openai_tool_call.json"), sample("openai_chat_json.json")])
+    seen = []
+    res = OpenAICompatLLM("openai").converse("s", "q", 100, "gpt-4o", None, TOOL, lambda n, a: seen.append((n, a)) or {"ok": 1})
+    assert seen == [("search_history", {"days": 14})] and "tools" in sent[0] and "Semaine" in res.text
+
+
+def test_anthropic_tools_can_be_turned_off(monkeypatch):
+    use(monkeypatch, "anthropic", LLM_TOOLS="off")
+    sent = capture(monkeypatch, [sample("anthropic_messages_json.json")])
+    assert AnthropicLLM().converse("s", "q", 100, "claude-sonnet-5-5", None, TOOL, lambda n, a: {}).text
+    assert "tools" not in sent[0]
+
+
+def test_background_calls_ask_for_json():
+    """Bilan, notifications et estimation de repas demandent le mode JSON ; le chat libre non."""
+    import inspect
+
+    from app.coach import chat, notify, service
+    from app.nutrition import analyze
+
+    for module in (service, notify, analyze):
+        assert "json_mode=True" in inspect.getsource(module), module.__name__
+    assert "json_mode" not in inspect.getsource(chat)

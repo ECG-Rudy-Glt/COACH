@@ -20,7 +20,7 @@ class FakeLLM:
         self.prompts: list[str] = []
         self.fail = False
 
-    def complete(self, system, user, max_tokens, model=None, history=None):
+    def complete(self, system, user, max_tokens, model=None, history=None, image=None, json_mode=False):
         self.prompts.append(user)
         self.history = history
         self.system = system

@@ -255,7 +255,7 @@ def review(repo: Repo, llm: Any, user_id: int, today: date | None = None) -> dic
     ctx = build_context(repo, user_id, today)
     model = default_model()
     try:
-        res = llm.complete(SYSTEM, json.dumps(ctx, ensure_ascii=False, default=str), 1400, model)
+        res = llm.complete(SYSTEM, json.dumps(ctx, ensure_ascii=False, default=str), 1400, model, json_mode=True)
     except LLMError as e:
         repo.log_llm_call(user_id, "weekly_review", model, (0, 0), 0.0, False, str(e)[:200])
         raise HTTPException(502, str(e)) from e

@@ -5,6 +5,7 @@ custom pour tout serveur compatible OpenAI, none pour désactiver l'IA : le plan
 le chat et l'estimation des repas sont alors inactifs). `LLM_MODEL` fixe le modèle, `LLM_MODEL_FAST` celui des tâches courtes.
 """
 import json
+import logging
 import os
 import urllib.error
 import urllib.request
@@ -17,11 +18,14 @@ import yaml
 
 from app.config import env
 
+log = logging.getLogger(__name__)
 CATALOG_FILE = Path(os.environ.get("LLM_CATALOG", Path(__file__).resolve().parent.parent.parent / "data" / "llm_providers.yaml"))
 
 
 class LLMError(Exception):
-    pass
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status  # code HTTP du service IA quand il en a répondu un : sert à décider d'un repli (option refusée)
 
 
 @dataclass
@@ -48,6 +52,35 @@ def provider_info(name: str | None = None) -> dict[str, Any]:
         return catalog()[name]
     except KeyError:
         raise ValueError(f"LLM_PROVIDER inconnu : {name!r} ({', '.join(catalog())}).") from None
+
+
+FALSY = {"0", "off", "false", "no", "none", "non"}
+TRUTHY = {"1", "on", "true", "yes", "json_object", "oui"}
+REJECTED = (400, 422)  # le service refuse une option (mode JSON, outils) : on réessaie sans elle
+
+
+def json_mode_kind(provider: str | None = None) -> str:
+    """Mode JSON du fournisseur : `json_object` (response_format) ou `none`. `LLM_JSON_MODE=on|off` force le choix (serveur compatible, modèle local)."""
+    forced = env("LLM_JSON_MODE").strip().lower()
+    if forced in FALSY:
+        return "none"
+    if forced in TRUTHY:
+        return "json_object"
+    return "json_object" if provider_info(provider).get("json_mode") == "json_object" else "none"
+
+
+def supports_tools(model: str | None, provider: str | None = None) -> bool:
+    """Le modèle sait-il appeler des outils ? `LLM_TOOLS=on|off` force le choix ; sinon le catalogue (modèle, puis fournisseur ; oui par défaut)."""
+    forced = env("LLM_TOOLS").strip().lower()
+    if forced in FALSY:
+        return False
+    if forced in TRUTHY:
+        return True
+    info = provider_info(provider)
+    entry = next((m for m in info.get("models", []) if m.get("id") == model), None)
+    if entry is not None and "tools" in entry:
+        return bool(entry["tools"])
+    return bool(info.get("tools", True))
 
 
 def default_model(fallback: str | None = None) -> str:
@@ -85,7 +118,7 @@ def _http_json(url: str, body: dict[str, Any], headers: dict[str, str]) -> dict[
         with urllib.request.urlopen(req, timeout=90) as r:  # noqa: S310 : schéma http(s) vérifié, adresse fixée par l'administrateur
             return json.load(r)  # type: ignore[no-any-return]
     except urllib.error.HTTPError as e:
-        raise LLMError(f"Le service IA a répondu {e.code}.") from e
+        raise LLMError(f"Le service IA a répondu {e.code}.", e.code) from e
     except (urllib.error.URLError, TimeoutError, ValueError) as e:
         raise LLMError("Le service IA est injoignable.") from e
 
@@ -103,7 +136,7 @@ class NoLLM:
         return False
 
     def complete(self, system: str, user: str, max_tokens: int, model: str | None = None, history: list[dict[str, str]] | None = None,
-                 image: tuple[str, str] | None = None) -> LLMResult:
+                 image: tuple[str, str] | None = None, json_mode: bool = False) -> LLMResult:
         raise LLMError("Aucun fournisseur d'IA n'est configuré sur ce serveur.")
 
 
@@ -125,6 +158,8 @@ class AnthropicLLM:
                  tools: list[dict[str, Any]], run_tool: Any, max_rounds: int = 3) -> LLMResult:
         """Échange avec outils de lecture : le modèle demande une recherche, le serveur l'exécute (bornée), puis le modèle conclut."""
         model = model or default_model()
+        if not supports_tools(model, "anthropic"):  # outils désactivés : réponse simple, sans recherche dans l'historique
+            return self.complete(system, user, max_tokens, model, history)
         messages: list[dict[str, Any]] = [*(history or []), {"role": "user", "content": user}]
         tin = tout = 0
         for rnd in range(max_rounds + 1):
@@ -141,7 +176,7 @@ class AnthropicLLM:
         return LLMResult("", tin, tout, model)  # inatteignable
 
     def complete(self, system: str, user: str, max_tokens: int, model: str | None = None, history: list[dict[str, str]] | None = None,
-                 image: tuple[str, str] | None = None) -> LLMResult:
+                 image: tuple[str, str] | None = None, json_mode: bool = False) -> LLMResult:
         model = model or default_model()
         content: Any = user if not image else [
             {"type": "image", "source": {"type": "base64", "media_type": image[0], "data": image[1]}}, {"type": "text", "text": user}]
@@ -157,6 +192,8 @@ class OpenAICompatLLM:
 
     def __init__(self, provider: str = "openai") -> None:
         self.provider = provider
+        self._no_json = False  # le service a refusé le mode JSON
+        self._no_tools = False  # le service a refusé les outils
 
     def _info(self) -> dict[str, Any]:
         return provider_info(self.provider)
@@ -186,23 +223,44 @@ class OpenAICompatLLM:
             raise LLMError("Réponse du service IA illisible.") from e
 
     def complete(self, system: str, user: str, max_tokens: int, model: str | None = None, history: list[dict[str, str]] | None = None,
-                 image: tuple[str, str] | None = None) -> LLMResult:
+                 image: tuple[str, str] | None = None, json_mode: bool = False) -> LLMResult:
         model = model or default_model()
         content: Any = user if not image else [
             {"type": "image_url", "image_url": {"url": f"data:{image[0]};base64,{image[1]}"}}, {"type": "text", "text": user}]
-        d = self._post({"model": model, "max_tokens": max_tokens,
-                        "messages": [{"role": "system", "content": system}, *(history or []), {"role": "user", "content": content}]})
+        body: dict[str, Any] = {"model": model, "max_tokens": max_tokens,
+                                "messages": [{"role": "system", "content": system}, *(history or []), {"role": "user", "content": content}]}
+        use_json = json_mode and not self._no_json and json_mode_kind(self.provider) == "json_object"
+        if use_json:
+            body["response_format"] = {"type": "json_object"}
+        try:
+            d = self._post(body)
+        except LLMError as e:
+            if not (use_json and e.status in REJECTED):
+                raise
+            log.info("Le service IA (%s) refuse le mode JSON : on continue sans (consigne du prompt et nouvel essai).", self.provider)
+            self._no_json = True  # ne plus le demander tant que le serveur tourne
+            del body["response_format"]
+            d = self._post(body)
         u = d.get("usage", {})
         return LLMResult(str(self._message(d).get("content") or ""), int(u.get("prompt_tokens", 0)), int(u.get("completion_tokens", 0)), model)
 
     def converse(self, system: str, user: str, max_tokens: int, model: str | None, history: list[dict[str, str]] | None,
                  tools: list[dict[str, Any]], run_tool: Any, max_rounds: int = 3) -> LLMResult:
         model = model or default_model()
+        if self._no_tools or not supports_tools(model, self.provider):  # modèle sans outils : réponse simple, la recherche dans l'historique est désactivée
+            return self.complete(system, user, max_tokens, model, history)
         fn = [{"type": "function", "function": {"name": t["name"], "description": t["description"], "parameters": t["input_schema"]}} for t in tools]
         messages: list[dict[str, Any]] = [{"role": "system", "content": system}, *(history or []), {"role": "user", "content": user}]
         tin = tout = 0
         for rnd in range(max_rounds + 1):
-            d = self._post({"model": model, "max_tokens": max_tokens, "messages": messages, **({"tools": fn} if rnd < max_rounds else {})})
+            try:
+                d = self._post({"model": model, "max_tokens": max_tokens, "messages": messages, **({"tools": fn} if rnd < max_rounds else {})})
+            except LLMError as e:
+                if rnd or e.status not in REJECTED:
+                    raise
+                log.info("Le service IA (%s) refuse les outils : réponse simple, sans recherche dans l'historique.", self.provider)
+                self._no_tools = True
+                return self.complete(system, user, max_tokens, model, history)
             u = d.get("usage", {})
             tin, tout = tin + int(u.get("prompt_tokens", 0)), tout + int(u.get("completion_tokens", 0))
             msg = self._message(d)

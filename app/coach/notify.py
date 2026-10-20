@@ -154,7 +154,7 @@ def _ask(repo: Repo, llm: Any, user_id: int, kind: str, system: str, payload: di
     model = default_model()
     for attempt in range(2):
         try:
-            res = llm.complete(system, json.dumps(payload, ensure_ascii=False, default=str), max_tokens, model)
+            res = llm.complete(system, json.dumps(payload, ensure_ascii=False, default=str), max_tokens, model, json_mode=True)
             out = service.parse_json(res.text)
         except (LLMError, ValueError, json.JSONDecodeError) as e:
             repo.log_llm_call(user_id, kind, model, (0, 0), 0.0, False, str(e)[:200])

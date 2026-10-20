@@ -53,7 +53,7 @@ def validate(raw: dict[str, Any]) -> dict[str, Any]:
 def analyze(llm: Any, description: str, image: tuple[str, str] | None, model: str) -> tuple[dict[str, Any], dict[str, Any]]:
     """Retourne (analyse validée, usage). Lève LLMError si le service échoue, ValueError si la réponse est illisible."""
     prompt = json.dumps({"description": description or "(aucune description : voir la photo)"}, ensure_ascii=False)
-    res = llm.complete(SYSTEM, prompt, 900, model, image=image) if image else llm.complete(SYSTEM, prompt, 900, model)
+    res = llm.complete(SYSTEM, prompt, 900, model, image=image, json_mode=True) if image else llm.complete(SYSTEM, prompt, 900, model, json_mode=True)
     try:
         out = validate(parse_json(res.text))
     except (ValueError, json.JSONDecodeError) as e:

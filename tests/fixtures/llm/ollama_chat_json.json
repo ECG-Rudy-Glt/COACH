@@ -1,0 +1,22 @@
+{
+ "id": "chatcmpl-sample",
+ "object": "chat.completion",
+ "created": 1760000000,
+ "model": "qwen2.5:7b",
+ "system_fingerprint": "fp_ollama",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "```json\n{\"summary\": \"Semaine régulière.\", \"adjustments\": []}\n```"
+   },
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 790,
+  "completion_tokens": 44,
+  "total_tokens": 834
+ }
+}

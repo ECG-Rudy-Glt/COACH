@@ -1,0 +1,20 @@
+{
+ "id": "chatcmpl-sample",
+ "object": "chat.completion",
+ "model": "gpt-4o",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"summary\": \"Semaine régulière.\", \"adjustments\": []}"
+   },
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 812,
+  "completion_tokens": 41,
+  "total_tokens": 853
+ }
+}

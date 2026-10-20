@@ -57,12 +57,14 @@ The catalog is [`data/llm_providers.yaml`](../data/llm_providers.yaml). Pick a p
 | `LLM_MODEL` | provider default | model for coach, chat, weekly review. Any id your provider accepts — the catalog only *suggests* |
 | `LLM_MODEL_FAST` | provider `fast` model | cheaper model for short tasks (meal estimate) |
 | `LLM_BASE_URL` | catalog | override the endpoint (proxy, gateway, self-hosted) |
+| `LLM_JSON_MODE` | catalog (`json_mode`) | `on` asks for `response_format: json_object` on the weekly review, notifications and meal estimates; `off` never does. Anthropic has no such mode and ignores it |
+| `LLM_TOOLS` | catalog (`tools` per model) | `off` disables tool calling (history search in chat); `on` forces it for a model the catalog marks without tools |
 | `LLM_MONTHLY_BUDGET_EUR` | `5` | **hard cap**: calls are refused once the month's estimated cost reaches it |
 | `LLM_PRICE_IN_EUR_PER_MTOK`, `LLM_PRICE_OUT_EUR_PER_MTOK` | `3` / `15` (`0` for ollama) | prices used for the cap — set them to your model's real price |
 
 `GET /llm` (authenticated) returns the active provider, model, suggested models and whether the server is configured — never a key. Model ids change often: check your provider's documentation and set `LLM_MODEL` explicitly for production.
 
-Features that need a vision-capable model: meal-photo estimate. Features that need tool calling: history search in chat (falls back to plain completion when the provider has no `converse`). Small local models may produce invalid JSON: background jobs retry once, interactive calls report the error without changing your plan.
+Features that need a vision-capable model: meal-photo estimate. Features that need tool calling: history search in chat. A model without tools (catalog `tools: false`, `LLM_TOOLS=off`, or a server that answers 400/422 to the `tools` field) simply answers without the history search: the chat keeps working, the server remembers the refusal and logs it once. The same goes for JSON mode: if a server refuses `response_format` the call is repeated without it. Small local models may still produce invalid JSON: background jobs retry once, interactive calls report the error without changing your plan.
 
 ### Wearables
 | Variable | Default | Meaning |
