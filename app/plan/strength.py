@@ -257,6 +257,8 @@ def annotate_history(sessions: list[dict[str, Any]], past: list[dict[str, Any]])
 def resolve(repo: Repo, slots: list[dict[str, Any]], facts: dict[str, Any]) -> list[dict[str, Any]]:
     have = allowed_equipment(facts)
     avoid = [w for inj in (facts.get("history.injuries") or []) for w in AVOID.get(inj, [])]
+    # exercices précis à écarter (ex. « pull-up » quand seules les tractions gênent le coude), sans écarter toute la zone : fait `history.avoid_exercises`
+    avoid += [w.strip().lower() for w in (facts.get("history.avoid_exercises") or []) if isinstance(w, str) and w.strip()]
     used: set[int] = set()
     out = []
     for slot in slots:
