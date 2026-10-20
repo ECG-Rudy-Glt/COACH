@@ -515,3 +515,17 @@ def test_pain_written_in_free_text_is_detected_and_steers_exercise_choice():
     slot = [x for x in session_plan("upper_a", False) if x["pattern"] == "triceps"]
     assert resolve(repo, slot, {})[0]["exercise"]["name"] == "Triceps Pushdown"
     assert resolve(repo, slot, {"history.injuries": ["coude"]}) == []  # coude douloureux : l'isolation du triceps disparaît de la séance
+
+
+def test_named_exercises_can_be_avoided_without_dropping_the_whole_zone():
+    from app.exercises.models import Exercise
+    from app.plan.strength import resolve, session_plan
+    from app.repo import MemoryRepo
+
+    repo = MemoryRepo()
+    names = ["Pull-ups", "Wide-Grip Lat Pulldown", "Dumbbell Bicep Curl"]
+    repo.replace_exercises([Exercise(source="t", source_id=str(i), name=n, name_en=n, kind="strength", license="L") for i, n in enumerate(names)])
+    slots = [x for x in session_plan("upper_b", False) if x["pattern"] in ("v_pull", "biceps")]
+    assert {s["pattern"]: s["exercise"]["name"] for s in resolve(repo, slots, {})} == {"v_pull": "Pull-ups", "biceps": "Dumbbell Bicep Curl"}
+    res = {s["pattern"]: s["exercise"]["name"] for s in resolve(repo, slots, {"history.avoid_exercises": ["Pull-up", " "]})}
+    assert res == {"v_pull": "Wide-Grip Lat Pulldown", "biceps": "Dumbbell Bicep Curl"}  # les tractions seules sont écartées, pas les curls
