@@ -7,6 +7,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Long-horizon trajectory for dated *performance* goals (e.g. 10 km under 40 min in two years): current level from race records (C10), base → threshold → specific → taper phases with timed checkpoints every 3 months (C11), and a weekly-volume target instead of an unbounded build (C12). Exposed as `trajectory` on `GET /users/{id}/plan`, shown in the plan screen and given to the coach.
 - Threshold and goal-pace quality sessions during those phases; an undated or conflicting ultra is reported instead of silently ignored.
 ### Changed
+- LLM providers: per-provider JSON mode (`json_mode` in `data/llm_providers.yaml`, `LLM_JSON_MODE` override) for the weekly review, notifications and meal estimates, and a graceful fallback without tool calling (`LLM_TOOLS`, catalog `tools` flag, or a server that refuses the option). Adapter tests use sample provider responses (`tests/fixtures/llm`).
 - Release process documented in `docs/releasing.md`; a CI check requires a `CHANGELOG.md` entry when code, migrations, questions or rule data change.
 - CI reports test coverage (job summary) and fails below a minimum threshold (`.coveragerc`, currently 83 %).
 - Background jobs start from a FastAPI lifespan handler instead of the deprecated `on_event` hook (no behaviour change).

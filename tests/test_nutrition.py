@@ -71,7 +71,7 @@ class FakeLLM:
         self.calls = []
         self.fail = False
 
-    def complete(self, system, user, max_tokens, model=None, history=None, image=None):
+    def complete(self, system, user, max_tokens, model=None, history=None, image=None, json_mode=False):
         self.calls.append((user, bool(image)))
         if self.fail:
             raise LLMError("Le service IA est injoignable.")

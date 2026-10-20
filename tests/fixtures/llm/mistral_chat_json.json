@@ -1,0 +1,21 @@
+{
+ "id": "sample",
+ "object": "chat.completion",
+ "model": "mistral-large-latest",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "tool_calls": null,
+    "content": "{\"summary\": \"Semaine régulière.\", \"adjustments\": []}"
+   },
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 790,
+  "total_tokens": 833,
+  "completion_tokens": 43
+ }
+}

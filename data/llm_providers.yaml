@@ -6,6 +6,10 @@
 #   key_env   : variable (ou NOM_FILE) portant la clé ; LLM_API_KEY sert de repli pour tous
 #   model     : modèle par défaut (coach, chat, bilans) ; fast : modèle économique (estimation des repas), remplaçable par LLM_MODEL_FAST
 #   vision    : le modèle sait lire une photo de repas ; tools : il sait appeler des outils (recherche dans l'historique de la montre)
+#   json_mode : json_object = le bilan, les notifications et l'estimation des repas demandent `response_format: json_object` ; none (défaut) = on
+#               s'appuie sur la consigne du prompt et le second essai. Si le service refuse l'option (HTTP 400/422), on réessaie sans elle.
+#               `LLM_JSON_MODE=on|off` force le choix. Un modèle sans appel d'outils (tools: false, ou `LLM_TOOLS=off`, ou refus du service)
+#               répond sans recherche dans l'historique : le chat reste disponible.
 providers:
   anthropic:
     label: Anthropic (Claude)
@@ -24,6 +28,7 @@ providers:
   openai:
     label: OpenAI
     kind: openai
+    json_mode: json_object
     base_url: https://api.openai.com/v1
     key_env: OPENAI_API_KEY
     key_required: true
@@ -37,6 +42,7 @@ providers:
   gemini:
     label: Google Gemini (API compatible OpenAI)
     kind: openai
+    json_mode: json_object
     base_url: https://generativelanguage.googleapis.com/v1beta/openai
     key_env: GEMINI_API_KEY
     key_required: true
@@ -49,6 +55,7 @@ providers:
   mistral:
     label: Mistral AI
     kind: openai
+    json_mode: json_object
     base_url: https://api.mistral.ai/v1
     key_env: MISTRAL_API_KEY
     key_required: true
@@ -61,6 +68,7 @@ providers:
   openrouter:
     label: OpenRouter (centaines de modèles)
     kind: openai
+    json_mode: json_object
     base_url: https://openrouter.ai/api/v1
     key_env: OPENROUTER_API_KEY
     key_required: true
@@ -71,6 +79,7 @@ providers:
   ollama:
     label: Ollama (modèle local, aucune donnée ne quitte le serveur)
     kind: openai
+    json_mode: json_object
     base_url: http://ollama:11434/v1
     key_env: OLLAMA_API_KEY
     key_required: false
