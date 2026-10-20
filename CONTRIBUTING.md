@@ -19,7 +19,7 @@ Thanks for helping! Because COACH handles health data and gives training advice,
 ## What makes a good change
 
 - Tests for the new behaviour **and** a failure case.
-- Docs and `CHANGELOG.md` updated.
+- Docs and `CHANGELOG.md` updated (CI checks the changelog; maintainers release as described in [docs/releasing.md](docs/releasing.md)).
 - Follows [AGENTS.md](AGENTS.md) (rules of the project) — they apply to humans too.
 - Rules and publications follow the recipes in [`skills/`](skills/): an ID, an evidence level, a verified source, a test.
 - No secrets, personal data, real health data, IPs or private domains in code, tests, screenshots or logs.
