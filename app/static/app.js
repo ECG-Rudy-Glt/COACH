@@ -11,6 +11,7 @@ const ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
   up: '<path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
   next: '<path d="M9 5l7 7-7 7"/>',
@@ -98,6 +99,93 @@ function fold(id, eyebrow, title, summary, body, open = false) {
     h("div", { class: "stack fold-body" }, body));
   d.addEventListener("toggle", () => store.set(key, d.open ? "1" : "0"));
   return d;
+}
+
+// Feuille qui monte du bas (iPhone comme Android) : fermée par un toucher à côté, la touche Échap ou le bouton.
+function sheet(title, ...nodes) {
+  const prev = document.activeElement;
+  const close = () => { back.remove(); document.removeEventListener("keydown", onKey); if (prev && prev.focus) prev.focus(); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  const panel = h("div", { class: "sheet", role: "dialog", "aria-modal": "true", "aria-label": title },
+    h("div", { class: "row between" }, h("h3", null, title), h("button", { class: "iconbtn", "aria-label": "Fermer", onclick: close }, icon("close"))), ...nodes);
+  const back = h("div", { class: "sheet-back", onclick: (e) => { if (e.target === back) close(); } }, panel);
+  document.body.append(back);
+  document.addEventListener("keydown", onKey);
+  panel.querySelector("button, input, select")?.focus();
+  return close;
+}
+
+const DAY_ABBR = ["L", "M", "M", "J", "V", "S", "D"];
+const longDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+async function moveSession(s, day) {
+  try {
+    const r = await api(`/users/${userId}/plan/sessions/${s.id}/move`, { method: "PATCH", body: { day } });
+    toast(r.warnings.length ? r.warnings[0] : "Séance déplacée");
+    return true;
+  } catch (e) { toast(e.message); return false; }
+}
+
+// Appui long puis glisser : la séance suit le doigt (ou la souris) au-dessus d'une barre de jours ; lâcher sur un jour la déplace.
+// Touch Events pour le tactile (iPhone Safari, Android Chrome) : preventDefault une fois l'appui long reconnu empêche le défilement ;
+// événements souris pour l'ordinateur. L'alternative sans geste est le bouton « Changer de jour » de la séance.
+function attachLongPress(el, days, onDrop) {
+  const HOLD = 420, SLOP = 10;
+  let timer = null, active = false, sx = 0, sy = 0, ghost = null, tray = null, over = null, dx = 0, dy = 0;
+  const point = (e) => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+  const hit = (x, y) => document.elementFromPoint(x, y)?.closest("[data-day]");
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  const begin = (x, y) => {
+    active = true; over = null;
+    const r = el.getBoundingClientRect();
+    dx = x - r.left; dy = y - r.top;
+    ghost = el.cloneNode(true);
+    ghost.classList.add("ghost");
+    Object.assign(ghost.style, { width: r.width + "px", left: "0", top: "0", transform: `translate(${r.left}px, ${r.top}px) scale(1.03)` });
+    el.classList.add("lifted");
+    tray = h("div", { class: "daytray", role: "group", "aria-label": "Déposer sur un jour" },
+      days.map((d) => h("div", { class: "daychip" + (d.ok ? "" : " off"), "data-day": d.iso, "data-ok": d.ok ? "1" : "0" }, h("span", null, DAY_ABBR[(new Date(d.iso + "T12:00:00").getDay() + 6) % 7]), h("strong", null, String(Number(d.iso.slice(8)))))));
+    document.body.append(ghost, tray);
+    if (navigator.vibrate) navigator.vibrate(18);
+  };
+  const track = (x, y) => {
+    ghost.style.transform = `translate(${x - dx}px, ${y - dy}px) scale(1.03)`;
+    const c = hit(x, y);
+    if (c !== over) { over?.classList.remove("over"); over = c && c.dataset.ok === "1" ? c : null; over?.classList.add("over"); }
+  };
+  const finish = (drop) => {
+    cancel();
+    if (!active) return;
+    active = false;
+    const target = drop && over ? over.dataset.day : null;
+    ghost.remove(); tray.remove(); el.classList.remove("lifted");
+    swallow = true; setTimeout(() => { swallow = false; }, 400);  // le relâchement ne doit pas ouvrir la séance
+    if (target) onDrop(target);
+  };
+  let swallow = false;
+  el.addEventListener("click", (e) => { if (swallow) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  el.addEventListener("contextmenu", (e) => { if (timer || active) e.preventDefault(); });  // menu contextuel d'Android à l'appui long
+  // tactile
+  el.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return cancel();
+    const t = point(e); sx = t.clientX; sy = t.clientY;
+    cancel(); timer = setTimeout(() => begin(sx, sy), HOLD);
+  }, { passive: true });
+  el.addEventListener("touchmove", (e) => {
+    const t = point(e);
+    if (!active) { if (Math.hypot(t.clientX - sx, t.clientY - sy) > SLOP) cancel(); return; }
+    e.preventDefault(); track(t.clientX, t.clientY);
+  }, { passive: false });
+  el.addEventListener("touchend", () => finish(true));
+  el.addEventListener("touchcancel", () => finish(false));
+  // souris
+  el.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    sx = e.clientX; sy = e.clientY; cancel(); timer = setTimeout(() => begin(sx, sy), 300);
+    const move = (m) => { if (!active) { if (Math.hypot(m.clientX - sx, m.clientY - sy) > SLOP) cancel(); } else track(m.clientX, m.clientY); };
+    const up = () => { document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); finish(true); };
+    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
+  });
 }
 
 function toast(msg) {
@@ -971,11 +1059,15 @@ function planCard() {
     h("button", { class: "btn sm", onclick: () => planScreen() }, "Voir"));
 }
 
-const planView = { week: null };
+const planView = { week: null, matchedAt: 0 };
 const mondayOf = (iso) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoDay(d); };
 
 async function planScreen(restore = false) {
   let data, coach;
+  if (!planView.matchedAt || Date.now() - planView.matchedAt > 60000) {  // activités Garmin déjà reçues : on les rapproche des séances avant d'afficher
+    planView.matchedAt = Date.now();
+    try { await api(`/users/${userId}/plan/match`, { method: "POST" }); } catch { /* le plan s'affiche quand même */ }
+  }
   try { [data, coach] = await Promise.all([api(`/users/${userId}/plan?weeks=2`), api(`/users/${userId}/coach`)]); } catch (e) { return fail(e); }
   const gen = async (btn) => {
     btn.disabled = true;
@@ -1015,14 +1107,34 @@ async function planScreen(restore = false) {
     h("button", { class: "iconbtn", "aria-label": "Semaine suivante", disabled: viewWeek >= lastW, onclick: () => goWeek(shiftDay(viewWeek, 7)) }, icon("next")));
   const present = viewWeek >= thisMonday0;
   const SPORT_LBL = { run: "Course", bike: "Vélo", strength: "Musculation", swim: "Natation", walk: "Marche", other: "Autre" };
+  const reload = () => { planScreen(true); };
+  const linkSheet = (a) => {
+    const unlinked = viewSessions.filter((x) => !(x.logged || {}).garmin_id && x.status !== "skipped");
+    const options = a.suggestions.length ? a.suggestions : unlinked.map((x) => ({ id: x.id, title: x.title, day: x.day, status: x.status, duration_min: x.duration_min }));
+    let close = () => {};
+    const pick = async (o) => {
+      const later = o.day !== a.day;
+      try {
+        await api(`/users/${userId}/plan/sessions/${o.id}/link`, { method: "POST", body: { garmin_id: a.garmin_id, move: later } });
+        close(); toast(later ? `Séance reliée et placée au ${longDay(a.day)}` : "Activité reliée à la séance"); reload();
+      } catch (e) { toast(e.message); }
+    };
+    close = sheet("Rapprocher d'une séance",
+      h("p", { class: "muted" }, `${a.name || SPORT_LBL[a.sport] || "Activité"} · ${longDay(a.day)} · ${a.duration_s ? Math.round(a.duration_s / 60) + " min" : ""}`),
+      options.length ? h("div", { class: "stack" }, options.map((o) => h("button", { class: "opt", onclick: () => pick(o) },
+        h("strong", null, o.title), h("span", { class: "muted" }, `${longDay(o.day)} · ${o.duration_min} min${o.day !== a.day ? " · sera placée au jour de l'activité" : ""}`))))
+        : h("p", { class: "muted" }, "Aucune séance de la semaine à rapprocher. Générez ou ajoutez une séance, ou laissez cette activité hors plan."));
+  };
   const actsCard = (weekData.activities || []).length ? h("div", { class: "card" }, h("h3", null, "Activités Garmin hors plan"), h("div", { style: "margin-top:6px" }, weekData.activities.map((a) =>
-    h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, a.name || SPORT_LBL[a.sport] || "Activité"),
-      h("span", { class: "sub" }, `${new Date(a.day + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · ${SPORT_LBL[a.sport] || "Autre"}`)),
-      h("span", { class: "v" }, [a.duration_s ? `${Math.round(a.duration_s / 60)} min` : null, a.distance_m ? `${(a.distance_m / 1000).toFixed(1)} km` : null].filter(Boolean).join(" · ")))))) : null;
+    h("div", null, h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, a.name || SPORT_LBL[a.sport] || "Activité"),
+      h("span", { class: "sub" }, `${longDay(a.day)} · ${SPORT_LBL[a.sport] || "Autre"}`)),
+      h("span", { class: "v" }, [a.duration_s ? `${Math.round(a.duration_s / 60)} min` : null, a.distance_m ? `${(a.distance_m / 1000).toFixed(1)} km` : null].filter(Boolean).join(" · "))),
+      h("button", { class: "link", style: "padding:2px 4px 10px", onclick: () => linkSheet(a) }, a.suggestions.length ? "Rapprocher d'une séance" : "Choisir une séance…"))))) : null;
   const emptyWeek = (viewSessions.length || actsCard) ? null : h("div", { class: "card" }, h("p", { class: "muted" }, "Aucune séance prévue cette semaine."));
   const byDay = new Map();
   for (const s of viewSessions) { if (!byDay.has(s.day)) byDay.set(s.day, []); byDay.get(s.day).push(s); }
   const weekOf = (iso) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+  const weekDays = (s) => Array.from({ length: 7 }, (_, i) => shiftDay(mondayOf(s.day), i)).map((iso) => ({ iso, ok: s.status === "done" ? iso <= data.today : iso >= data.today }));
   const nodes = [];
   let curWeek = "";
   for (const [day, list] of byDay) {
@@ -1035,11 +1147,13 @@ async function planScreen(restore = false) {
     }
     nodes.push(h("div", { class: "dayhead" + (day === data.today ? " today" : "") }, fmtDay(day, data.today)));
     nodes.push(h("div", { class: "card", style: "padding:0;overflow:hidden" }, list.map((s) => {
-      const sub = [`${s.duration_min} min`, s.details.zone, s.details.format].filter(Boolean).join(" · ");
-      return h("button", { class: `sess ${s.status}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
+      const sub = [`${s.duration_min} min`, s.details.zone, s.details.format, s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
+      const row = h("button", { class: `sess ${s.status}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
         h("span", { class: "dot" }, s.status === "done" ? icon("check") : isRun(s.kind) ? "C" : "M"),
         h("span", { class: "grow" }, h("strong", null, s.title), h("span", { class: "sub" }, sub)),
         icon("next"));
+      if (s.status !== "skipped") attachLongPress(row, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); });
+      return row;
     })));
   }
   const thisMonday = weekOf(data.today);
@@ -1136,6 +1250,23 @@ function sessionScreen(s, today) {
     try { await api(`/users/${userId}/plan/sessions/${s.id}`, { method: "PATCH", body }); dirty = false; store.del(draftKey); flushActive = null; toast(status === "done" ? "Séance enregistrée" : status === "skipped" ? "Séance passée" : "Séance rouverte"); planScreen(true); }
     catch (e) { err.textContent = e.message; }
   };
+  const moveDialog = () => {
+    const ahead = s.status !== "done";
+    const days = Array.from({ length: 14 }, (_, i) => shiftDay(today, ahead ? i : -i));
+    if (!ahead) days.reverse();
+    const dateInput = h("input", { type: "date", min: shiftDay(today, ahead ? 0 : -56), max: shiftDay(today, ahead ? 120 : 0), value: s.day, "aria-label": "Autre date" });
+    let close = () => {};
+    const go = async (d) => { if (d && d !== s.day && await moveSession(s, d)) { close(); await persist(false); planScreen(true); } else if (d === s.day) close(); };
+    dateInput.addEventListener("change", () => go(dateInput.value));
+    close = sheet(ahead ? "Reprogrammer la séance" : "Séance faite un autre jour",
+      h("p", { class: "muted" }, ahead ? "Choisissez le jour où vous la ferez." : "Choisissez le jour où vous l'avez réellement faite."),
+      h("div", { class: "daygrid" }, days.map((d) => h("button", { class: "daychip" + (d === s.day ? " cur" : ""), onclick: () => go(d), "aria-label": longDay(d) },
+        h("span", null, DAY_ABBR[(new Date(d + "T12:00:00").getDay() + 6) % 7]), h("strong", null, String(Number(d.slice(8))))))),
+      h("div", { class: "field" }, h("label", null, "Autre date"), dateInput));
+  };
+  const unlink = async () => {
+    try { await api(`/users/${userId}/plan/sessions/${s.id}/link`, { method: "DELETE" }); toast("Activité dissociée"); planScreen(true); } catch (e) { toast(e.message); }
+  };
   show(
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: async () => { await persist(false); if (!dirty) planScreen(true); } }, icon("back"), "Plan"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, fmtDay(s.day, today)),
@@ -1143,10 +1274,14 @@ function sessionScreen(s, today) {
     h("div", { class: "chips" }, s.details.cycle ? h("span", { class: "chip" }, `${s.details.cycle.macro_label} · ${s.details.cycle.label}`) : null, h("span", { class: "chip" }, `${s.duration_min} min`), s.details.zone ? h("span", { class: "chip" }, s.details.zone) : null,
       s.details.format ? h("span", { class: "chip" }, s.details.format) : null, s.details.vert_m ? h("span", { class: "chip" }, `≈ ${s.details.vert_m} m D+`) : null),
     s.notes.length ? h("div", { class: "card" }, s.notes.map((n) => h("p", { class: "muted" }, n))) : null,
+    s.status === "skipped" ? null : h("div", { class: "card row" }, h("div", { class: "grow stack", style: "gap:2px" }, h("strong", null, "Jour de la séance"),
+      h("span", { class: "muted" }, longDay(s.day) + (s.details.moved_from ? ` · prévue le ${longDay(s.details.moved_from)}` : ""))),
+      h("button", { class: "btn sm", onclick: moveDialog }, "Changer de jour")),
     logged.garmin_id ? h("div", { class: "card stack" }, h("h3", null, "Mesuré par la montre"),
       h("div", { class: "chips" }, [logged.minutes ? `${logged.minutes} min` : null, logged.distance_km ? `${logged.distance_km} km` : null, logged.avg_hr ? `FC moy ${logged.avg_hr}` : null,
         logged.max_hr ? `FC max ${logged.max_hr}` : null, logged.calories ? `${logged.calories} kcal` : null, logged.training_load ? `charge ${logged.training_load}` : null]
-        .filter(Boolean).map((t) => h("span", { class: "chip" }, t)))) : null,
+        .filter(Boolean).map((t) => h("span", { class: "chip" }, t))),
+      h("button", { class: "link", style: "align-self:flex-start;padding:2px 0", onclick: unlink }, "Dissocier de cette activité")) : null,
     ...slots,
     ...(s.details.blocks || []).map((b) => h("div", { class: "card stack" },
       h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, `${b.minutes} min`)),
