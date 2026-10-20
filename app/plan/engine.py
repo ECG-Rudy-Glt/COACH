@@ -290,7 +290,29 @@ def plan_weeks(p: Profile, today: date, weeks: int = 4, start: date | None = Non
         for s in week:
             s.details["cycle"] = cyc.as_dict()
         sessions += week
-    return [s for s in sessions if s.date >= max(today, start or today)]
+    return [s for s in _around_event(p, sessions) if s.date >= max(today, start or today)]
+
+
+def _around_event(p: Profile, sessions: list[Session]) -> list[Session]:
+    """Le jour de l'événement est la séance : rien d'autre ce jour-là, ni de course les 2 jours suivants (récupération). La veille : 30 min de course au plus, pas de jambes (C6)."""
+    if not p.event:
+        return sessions
+    ev = p.event["date"]
+    out = []
+    for s in sessions:
+        delta = (ev - s.date).days
+        if delta == 0 or (-2 <= delta < 0 and s.kind.startswith("run_")):
+            continue
+        if delta == 1:
+            if s.kind == "strength_lower":
+                continue
+            if s.kind.startswith("run_"):
+                s.duration_min = min(s.duration_min, 30)
+                if s.kind == "run_quality":
+                    s.kind, s.title = "run_easy", "Footing facile"
+                s.details = {k: v for k, v in s.details.items() if k not in ("format", "vert_m")}
+        out.append(s)
+    return out
 
 
 def _cd(a: int, b: int) -> int:

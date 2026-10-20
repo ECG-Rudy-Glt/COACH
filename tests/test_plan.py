@@ -559,3 +559,19 @@ def test_free_text_pain_covers_running_zones():
     s = [{"day": TODAY - timedelta(days=2), "logged": {"note": "Tiraillement au mollet droit, et fascia plantaire sensible"}},
          {"day": TODAY - timedelta(days=1), "logged": {"adaptation": "douleur ischio gauche en fin de séance"}}]
     assert pain_zones(s, TODAY) == {"mollet", "pied", "ischio-jambiers"}
+
+
+def test_event_day_and_the_day_before_are_protected():
+    """C6 : le jour de l'événement est la séance ; la veille reste courte, sans jambes ni intensité ; pas de course juste après."""
+    for offset in range(7):  # l'événement tombe chaque jour de la semaine
+        ev_day = date(2026, 12, 7) + timedelta(days=offset)
+        ev = {**EVENT, "target_date": ev_day, "title": "Trail 16 km", "details": {"distance_km": 16, "elevation_m": 300}}
+        facts = {**RUDY, "constraints.training_days": 6, "multisport.blocked_days": []}
+        p = build_profile(facts, [ev], date(2026, 11, 30))
+        for s in plan_weeks(p, date(2026, 11, 30), weeks=3, start=date(2026, 11, 30), anchor=date(2026, 10, 19)):
+            gap = (ev_day - s.date).days
+            assert gap != 0, f"séance le jour de l'événement ({s.kind})"
+            assert not (-2 <= gap < 0 and s.kind.startswith("run_")), "course dans les 2 jours qui suivent l'événement"
+            if gap == 1:
+                assert s.kind not in ("strength_lower", "run_quality"), "veille : ni jambes ni intensité"
+                assert not s.kind.startswith("run_") or s.duration_min <= 30, "veille : 30 min de course au plus"
