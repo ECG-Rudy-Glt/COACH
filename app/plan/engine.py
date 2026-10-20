@@ -8,6 +8,7 @@ from typing import Any
 
 from app.plan import crossfit as CF
 from app.plan import strength as S
+from app.plan import trajectory as T
 from app.plan.cycles import Cycle, cycle_for
 
 DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -48,6 +49,10 @@ class Profile:
     event: dict[str, Any] | None = None  # {"date": date, "title": str, "distance_km": float, "elevation_m": float}
     deload_cycle: int = 4  # 3+1 par défaut (2+1 : 3)
     facts: dict[str, Any] = field(default_factory=dict)
+    today: date = field(default_factory=date.today)
+    target: dict[str, Any] | None = None  # objectif de performance daté (trajectoire, C11) : {"date", "title", "distance_km", "time_min"}
+    level_min: float | None = None  # temps équivalent actuel sur la distance de l'objectif (C10)
+    target_volume_min: float | None = None  # plafond de volume hebdomadaire de course (minutes) tant que l'objectif est lointain (C12)
 
 
 def _days(v: Any) -> set[int]:
@@ -60,7 +65,7 @@ def _num(v: Any, default: float = 0.0) -> float:
 
 def build_profile(facts: dict[str, Any], goals: list[dict[str, Any]], today: date) -> Profile:
     sports = set(facts.get("sports.practiced") or [])
-    p = Profile(facts=facts)
+    p = Profile(facts=facts, today=today)
     p.runs = bool(sports & {"running", "trail"})
     p.trail = "trail" in sports
     p.strength = "strength" in sports
@@ -107,6 +112,11 @@ def build_profile(facts: dict[str, Any], goals: list[dict[str, Any]], today: dat
             m = re.search(r"(\d+(?:[.,]\d+)?)\s*km", e["title"], re.I)
             dist = float(m.group(1).replace(",", ".")) if m else 0.0
         p.event = {"date": e["target_date"], "title": e["title"], "distance_km": dist, "elevation_m": _num(d.get("elevation_m"))}
+    p.target = T.pick_target(goals, today)
+    if p.target:
+        level = T.current_level(facts, p.target["distance_km"])
+        p.level_min = level[0] if level else None
+        p.target_volume_min = T.volume_target_km(p.target["time_min"], p.target["distance_km"]) * p.easy_pace
     return p
 
 
@@ -137,12 +147,13 @@ def zone_text(p: Profile, level: str) -> str:
     return ", ".join(parts)
 
 
-def weekly_volumes(p: Profile, weeks: int, weeks_to_event: int | None, offset: int = 0) -> list[tuple[float, bool, bool]]:
+def weekly_volumes(p: Profile, weeks: int, weeks_to_event: int | None, offset: int = 0, ceiling: float | None = None) -> list[tuple[float, bool, bool]]:
     """Volume de course en minutes par semaine : (minutes, décharge, affûtage). G1, G2, G3, C6.
 
     Le point de départ s'appuie sur l'historique : après un arrêt, on repart à 50 % (≤ 4 semaines d'arrêt) ou 30 % du volume habituel,
     puis on remonte en 4 à 6 semaines jusqu'à ce volume (G3), et ensuite de 8 % par semaine au plus (G1).
     `offset` : rang de la première semaine dans le bloc en cours (le cycle 3+1 continue d'une génération à l'autre, G7).
+    `ceiling` : plafond de volume visé par la trajectoire (C12) ; sans lui, le volume monterait sans limite tant qu'aucun événement n'est proche.
     """
     pace = p.easy_pace
     measured = p.weekly_km * pace
@@ -157,7 +168,7 @@ def weekly_volumes(p: Profile, weeks: int, weeks_to_event: int | None, offset: i
     if p.after_break and measured >= 0.6 * usual:
         start *= 0.5  # arrêt déclaré sans historique mesuré
     cap = p.weekday_max * (p.days_per_week - 1) + p.weekend_max
-    cap_run = min(cap, 600)
+    cap_run = min(cap, 600, ceiling) if ceiling else min(cap, 600)
     out: list[tuple[float, bool, bool]] = []
     last_build = start
     for i in range(weeks):
@@ -241,7 +252,7 @@ def advice(p: Profile) -> list[str]:
                    "avec les jambes en entretien. Vous pouvez passer à 3 dans vos réponses (Musculation, fréquence).")
     if p.runs and p.weeks_since_run is not None and p.weeks_since_run >= 4:
         out.append("Reprise de la course après plusieurs semaines sans courir : le plan remonte progressivement vers votre volume habituel.")
-    if p.runs and not p.event:
+    if p.runs and not p.event and not p.target:
         out.append("Aucun objectif de course daté : ajoutez-le dans l'onglet Objectifs (nom, date, distance, dénivelé). "
                    "Le plan et la projection de faisabilité s'appuient dessus.")
     if p.event and p.event["distance_km"] == 0:
@@ -254,14 +265,19 @@ def plan_weeks(p: Profile, today: date, weeks: int = 4, start: date | None = Non
         return []
     monday0 = _monday(start or today)  # la progression du bloc démarre à la première semaine générée
     weeks_to_event = max(0, (p.event["date"] - monday0).days // 7) if p.event else None
+    weeks_to_target = max(0, (p.target["date"] - monday0).days // 7) if p.target else None
+    event_near = weeks_to_event is not None and weeks_to_event <= 12  # C9 prime sur la trajectoire (C11) dans les 12 semaines d'un événement
+    taper_wte = weeks_to_event if (event_near or weeks_to_target is None) else weeks_to_target
+    ceiling = p.target_volume_min if (p.target and not event_near) else None
     anchor = anchor or monday0  # `anchor` : lundi du premier bloc, repris d'une génération à l'autre (G7)
     offset = max(0, (monday0 - anchor).days // 7)
-    vols = weekly_volumes(p, weeks, weeks_to_event, offset) if p.runs else []
+    vols = weekly_volumes(p, weeks, taper_wte, offset, ceiling) if p.runs else []
     sessions: list[Session] = []
     for w in range(weeks):
         monday = monday0 + timedelta(days=7 * w)
         wk_to_event = None if weeks_to_event is None else weeks_to_event - w
-        cyc = cycle_for(monday, anchor, p.deload_cycle, wk_to_event)
+        wk_to_target = None if weeks_to_target is None else weeks_to_target - w
+        cyc = cycle_for(monday, anchor, p.deload_cycle, wk_to_event, wk_to_target, p.target["date"] if p.target else None)
         run_priority = wk_to_event is not None and wk_to_event <= 8 and p.event["distance_km"] > 0  # décision 3
         deload = vols[w][1] if vols else cyc.deload
         taper = vols[w][2] if vols else (wk_to_event is not None and 0 <= wk_to_event <= 1)
@@ -426,6 +442,10 @@ def _make(p: Profile, kind: str, variant: str, day: date, w: int, long_min: int,
             d["vert_m"] = round(p.weekly_vert * 1.1 ** (w + 1) * 0.5 / 10) * 10
         return Session(day, kind, "Sortie longue" + (" (trail)" if p.trail else ""), long_min, d, rules_long, sess_notes)
     if kind == "run_quality":
+        tq = T.quality_session(cyc.macro, q_min, p.target, p.level_min, day - timedelta(days=day.weekday()), p.today)
+        if tq:  # C11 : séances de la trajectoire (seuil, puis allure de l'objectif)
+            title = "Séance de qualité (seuil)" if cyc.macro == "threshold" else "Séance de qualité (allure de l'objectif)"
+            return Session(day, kind, title, q_min, {"zone": zone_text(p, "quality"), "format": tq["format"]}, ["C1", "C11", "G5"], list(notes))
         reps = 4 + min(cyc.block_no + cyc.week_in_block - 1, 4)  # M8 : une répétition de plus d'un bloc à l'autre
         d = {"zone": zone_text(p, "quality"), "format": f"{reps} × 3 min soutenu, 2 min trot" if not p.trail
              else f"{reps} × 2 min de côte, descente en trottinant"}

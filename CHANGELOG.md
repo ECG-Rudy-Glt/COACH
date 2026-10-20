@@ -3,6 +3,11 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Added
+- Long-horizon trajectory for dated *performance* goals (e.g. 10 km under 40 min in two years): current level from race records (C10), base → threshold → specific → taper phases with timed checkpoints every 3 months (C11), and a weekly-volume target instead of an unbounded build (C12). Exposed as `trajectory` on `GET /users/{id}/plan`, shown in the plan screen and given to the coach.
+- Threshold and goal-pace quality sessions during those phases; an undated or conflicting ultra is reported instead of silently ignored.
+### Fixed
+- With no event within reach, the weekly volume no longer keeps growing until the schedule cap.
 
 ## [0.1.0] — 2026-10-19 — first public release
 ### Added
