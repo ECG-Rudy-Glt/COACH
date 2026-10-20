@@ -29,7 +29,7 @@ No database is needed for the normal test suite: `MemoryRepo` mirrors `PostgresR
 ## Layout cheat-sheet
 
 ```
-app/main.py            assembly, middleware, routers          app/repo.py       Repo protocol + MemoryRepo + PostgresRepo
+app/main.py            assembly, middleware, routers          app/repo/         Repo protocol + MemoryRepo + PostgresRepo, split by domain
 app/auth.py            accounts, sessions, throttling         app/config.py     env()/NAME_FILE, DB URL
 app/plan/              plan engine (deterministic)            app/nutrition/    nutrition engine + meal analysis
 app/questionnaire/     question bank engine                   app/exercises/    library API + importer
@@ -42,7 +42,7 @@ db/migrations/         forward-only SQL                       docs/             
 ## Conventions
 
 - Python 3.12, type hints, `ruff` (line length 200), no new heavy dependencies without discussion (see `THIRD_PARTY.md`).
-- Any new persistence = migration + `Repo` protocol method + **both** `MemoryRepo` and `PostgresRepo` implementations + test.
+- Any new persistence = migration + `Repo` protocol method + **both** implementations (the domain's `…Memory` and `…Postgres` classes in `app/repo/<domain>.py`) + test.
 - Parse separately from I/O (`parse_*` pure functions) so tests need no network.
 - User-visible strings are French today; keep them in the UI/engine text, not scattered in logic, and don't mix languages inside one sentence. (An English UI is an open task: `skills/add-language`.)
 - Frontend: plain JS in `app/static/app.js`, no framework or bundler; strict CSP means **no inline `<script>` and no `eval`**. Bump the cache name in `sw.js` when shell files change.

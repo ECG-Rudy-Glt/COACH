@@ -8,6 +8,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Threshold and goal-pace quality sessions during those phases; an undated or conflicting ultra is reported instead of silently ignored.
 ### Changed
 - LLM providers: per-provider JSON mode (`json_mode` in `data/llm_providers.yaml`, `LLM_JSON_MODE` override) for the weekly review, notifications and meal estimates, and a graceful fallback without tool calling (`LLM_TOOLS`, catalog `tools` flag, or a server that refuses the option). Adapter tests use sample provider responses (`tests/fixtures/llm`).
+- `app/repo.py` (880 lines) split into the `app/repo/` package, one module per domain behind the same `Repo` protocol; `from app.repo import MemoryRepo, PostgresRepo, Repo` keeps working. No SQL or behaviour change (method sources are identical, PostgreSQL tests pass).
 - Release process documented in `docs/releasing.md`; a CI check requires a `CHANGELOG.md` entry when code, migrations, questions or rule data change.
 - CI reports test coverage (job summary) and fails below a minimum threshold (`.coveragerc`, currently 83 %).
 - Background jobs start from a FastAPI lifespan handler instead of the deprecated `on_event` hook (no behaviour change).
