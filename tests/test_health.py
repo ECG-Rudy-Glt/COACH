@@ -16,3 +16,15 @@ def test_version_uses_env(monkeypatch):
     r = client.get("/version")
     assert r.status_code == 200
     assert r.json()["llm_provider"] == "openrouter"
+
+
+def test_background_jobs_start_with_the_lifespan(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import app.main as main
+
+    started = []
+    monkeypatch.setattr(main.garmin_scheduler, "start", lambda *a: started.append("garmin"))
+    monkeypatch.setattr(main.coach_notify, "start", lambda *a: started.append("notify"))
+    with TestClient(main.app):
+        assert started == ["garmin", "notify"]
