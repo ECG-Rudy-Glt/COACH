@@ -82,3 +82,20 @@ def test_garmin_storage_roundtrip():
     assert repo.get_garmin(uid)["last_error"] == "expiré"
     repo.delete_garmin(uid, True)
     assert repo.get_garmin(uid) is None and repo.list_activities(uid, date(2026, 9, 1), 10) == []
+
+
+def test_move_session_keeps_the_original_day():
+    from datetime import date
+
+    repo = PostgresRepo(DSN)
+    repo.migrate(Path(__file__).parent.parent / "db" / "migrations")
+    uid = repo.create_user("move")
+    repo.add_sessions(uid, [{"day": date(2026, 10, 12), "kind": "run_easy", "title": "Footing", "duration_min": 30, "details": {"zone": "z2"}, "rules": ["C1"], "notes": []}])
+    sid = repo.list_sessions(uid, date(2026, 10, 1), None)[0]["id"]
+    same = repo.move_session(uid, sid, date(2026, 10, 12))
+    assert same["day"] == date(2026, 10, 12) and "moved_from" not in same["details"]
+    moved = repo.move_session(uid, sid, date(2026, 10, 14))
+    assert moved["day"] == date(2026, 10, 14) and moved["details"] == {"zone": "z2", "moved_from": "2026-10-12"}
+    again = repo.move_session(uid, sid, date(2026, 10, 16))
+    assert again["details"]["moved_from"] == "2026-10-12"  # le premier jour prévu est conservé
+    assert repo.move_session(uid + 999, sid, date(2026, 10, 16)) is None

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.auth import _check_rate, _fail
 from app.garmin import crypto
 from app.garmin.client import GarminAuthError, GarminGateway, GarminRateLimited, GarminUnavailable
+from app.garmin.match import auto_link
 from app.questionnaire.models import Fact
 from app.repo import Repo
 
@@ -34,33 +35,6 @@ def _configured() -> bool:
         return True
     except crypto.NotConfigured:
         return False
-
-
-def _auto_complete(repo: Repo, user_id: int, activities: list[dict[str, Any]]) -> int:
-    """Marque comme faites les séances planifiées qui correspondent à une activité Garmin : le jour même ou la veille de l'activité.
-
-    Une activité ne valide qu'une seule séance (jamais deux), et jamais une séance qui n'a pas encore eu lieu.
-    """
-    done = 0
-    days = [a["day"] for a in activities]
-    if not days:
-        return 0
-    window = repo.list_sessions(user_id, min(days) - timedelta(days=2), max(days) + timedelta(days=1))
-    used = {(s["logged"] or {}).get("garmin_id") for s in window if s["status"] == "done"}
-    for a in sorted(activities, key=lambda x: (x["day"], x["garmin_id"])):
-        prefix = {"run": "run_", "strength": "strength_"}.get(a["sport"])
-        if not prefix or (a["duration_s"] or 0) < 15 * 60 or a["garmin_id"] in used:  # les trajets très courts ne sont pas des séances
-            continue
-        cands = [s for s in window if s["status"] == "planned" and s["kind"].startswith(prefix) and 0 <= (a["day"] - s["day"]).days <= 1]
-        cands.sort(key=lambda s: ((a["day"] - s["day"]).days, s["id"]))  # le jour même d'abord, puis la veille
-        if cands:
-            logged = {"source": "garmin", "garmin_id": a["garmin_id"], "minutes": round((a["duration_s"] or 0) / 60),
-                      "distance_km": round((a["distance_m"] or 0) / 1000, 1), "avg_hr": a["avg_hr"]}
-            repo.update_session(user_id, cands[0]["id"], "done", logged)
-            cands[0]["status"] = "done"
-            used.add(a["garmin_id"])
-            done += 1
-    return done
 
 
 def _derive_facts(repo: Repo, user_id: int, today: date) -> None:
@@ -130,8 +104,7 @@ def sync_user(repo: Repo, gateway: Any, user_id: int, today: date | None = None)
     repo.prune_activities(user_id, today - timedelta(days=HISTORY_DAYS + 10))
     _sync_metrics(repo, gateway, user_id, acct, today)
     _derive_facts(repo, user_id, today)
-    recent = [a for a in rows if a["day"] >= today - timedelta(days=SYNC_DAYS)]  # pas d'auto-validation sur l'historique ancien
-    return {"fetched": len(rows), "added": added, "backfill": backfill, "sessions_completed": _auto_complete(repo, user_id, recent)}
+    return {"fetched": len(rows), "added": added, "backfill": backfill, "sessions_completed": auto_link(repo, user_id, today, SYNC_DAYS)}  # pas d'auto-validation sur l'historique ancien
 
 
 def build_router(get_repo: Any, require_user: Any) -> APIRouter:

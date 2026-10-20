@@ -265,3 +265,27 @@ body.kb .composer { bottom: 8px; }
 @keyframes msg-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .msg.new, .msg.typing i { animation: none; } }
+
+/* feuille du bas, déplacement par appui long, grille de jours */
+.sheet-back { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .38); display: flex; align-items: flex-end; justify-content: center; animation: fade .18s ease-out; }
+.sheet { width: 100%; max-width: 640px; max-height: 82dvh; overflow-y: auto; background: var(--bg); border-radius: 22px 22px 0 0; padding: 16px var(--gutter) calc(20px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 12px; animation: rise .24s cubic-bezier(.2, .8, .2, 1); }
+.sheet .opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%; }
+.daygrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.daychip { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; border-radius: 14px; background: var(--surface); border: .5px solid var(--line);
+  color: var(--ink); font: inherit; cursor: pointer; }
+.daychip span { font-size: .6875rem; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.daychip strong { font-size: 1.0625rem; font-family: var(--display); }
+.daychip.cur { background: var(--accent-soft); border-color: var(--accent); }
+.daychip.over { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
+.daychip.over span, .daychip.over strong { color: var(--accent-ink); }
+.daychip.off { opacity: .35; }
+.daytray { position: fixed; left: 0; right: 0; bottom: calc(var(--tabs) + env(safe-area-inset-bottom) + 10px); z-index: 45; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  max-width: 640px; margin: 0 auto; padding: 10px; border-radius: 22px; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(18px); backdrop-filter: saturate(180%) blur(18px);
+  border: .5px solid var(--line); animation: rise .18s ease-out; touch-action: none; }
+.ghost { position: fixed; z-index: 40; pointer-events: none; background: var(--surface); border-radius: var(--radius); box-shadow: 0 14px 36px rgba(0, 0, 0, .28); opacity: .96; }
+.lifted { opacity: .3; }
+.sess { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet-back, .daytray { animation: none; } }
