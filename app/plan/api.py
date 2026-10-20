@@ -5,9 +5,10 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
-from app.plan.engine import advice, build_profile, outlook, plan_weeks
+from app.plan.engine import KEY, advice, build_profile, outlook, plan_weeks
 from app.plan.pain import pain_zones
 from app.plan.strength import annotate_history, resolve
 from app.questionnaire.models import current_facts
@@ -19,6 +20,8 @@ class Generate(BaseModel):
     restart_cycle: bool = False  # démarrer un nouveau cycle (sinon le cycle en cours continue)
 
 
+MOVE_PAST_DAYS = 56  # on ne rattache pas une séance à plus de 8 semaines en arrière
+MOVE_FUTURE_DAYS = 120
 ALLOWED_LOG = {"rpe", "minutes", "note", "adaptation", "changes", "exercises", "source", "garmin_id", "distance_km", "avg_hr", "max_hr", "calories", "training_load", "garmin_name"}  # noqa: E501
 CHANGES = {"plus léger", "plus court", "plus long", "exercice remplacé", "séries en moins", "séries en plus", "douleur", "trop facile", "trop dur", "matériel manquant"}
 
@@ -38,17 +41,48 @@ def clean_log(raw: dict[str, Any] | None) -> dict[str, Any] | None:
     return out
 
 
+class Link(BaseModel):
+    garmin_id: str = Field(min_length=1, max_length=40)
+    move: bool = True  # activité faite un autre jour : la séance suit l'activité
+
+
+class Move(BaseModel):
+    day: date
+
+
 class Done(BaseModel):
     status: Literal["planned", "done", "skipped"]
     logged: dict[str, Any] | None = None
 
 
 def week_activities(repo: Repo, user_id: int, start: date, sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Activités Garmin de la semaine qui ne correspondent à aucune séance planifiée (historique réel)."""
+    """Activités Garmin de la semaine qui ne correspondent à aucune séance planifiée, avec les séances auxquelles on peut les rapprocher."""
     used = {(r["logged"] or {}).get("garmin_id") for r in sessions}
     acts = [a for a in repo.list_activities(user_id, start, 500) if a["day"] < start + timedelta(days=7) and a["garmin_id"] not in used]
-    return [{"day": a["day"].isoformat(), "sport": a["sport"], "name": a["name"], "duration_s": a["duration_s"], "distance_m": a["distance_m"]}
+    around = repo.list_sessions(user_id, start - timedelta(days=3), start + timedelta(days=10))
+    return [{"garmin_id": a["garmin_id"], "day": a["day"].isoformat(), "sport": a["sport"], "name": a["name"], "duration_s": a["duration_s"],
+             "distance_m": a["distance_m"], "avg_hr": a["avg_hr"], "suggestions": suggestions(a, around)}
             for a in sorted(acts, key=lambda a: a["started_at"])]
+
+
+def find_session(repo: Repo, user_id: int, session_id: int, today: date) -> dict[str, Any]:
+    row = next((r for r in repo.list_sessions(user_id, today - timedelta(days=MOVE_PAST_DAYS * 2), None) if r["id"] == session_id), None)
+    if not row:
+        raise HTTPException(404, "Séance inconnue.")
+    return row
+
+
+def move_warnings(moved: dict[str, Any], around: list[dict[str, Any]]) -> list[str]:
+    """Avertissements non bloquants après un déplacement : deux séances clés à moins de 48 h (G5), jambes collées à une sortie clé (I1, I2)."""
+    out = []
+    keys = [r for r in around if r["id"] != moved["id"] and r["status"] != "skipped" and r["kind"] in KEY and abs((r["day"] - moved["day"]).days) < 2]
+    if moved["kind"] in KEY and keys:
+        out.append("Deux séances exigeantes à moins de 48 h : la récupération sera plus courte (G5).")
+    if moved["kind"] == "strength_lower" and any(r["kind"] in ("run_long", "run_quality") for r in keys):
+        out.append("Séance de jambes la veille, le jour ou le lendemain d'une séance de course clé : à éviter (I1, I2).")
+    if moved["kind"] in ("run_long", "run_quality") and any(r["kind"] == "strength_lower" for r in keys) and not out:
+        out.append("Séance de course clé juste à côté d'une séance de jambes : à éviter (I1, I2).")
+    return out
 
 
 def bounds_of(repo: Repo, user_id: int, today: date) -> dict[str, str]:
@@ -112,6 +146,50 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
                 "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today)}
+
+    @router.post("/match")
+    def match(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, int]:
+        """Rapproche les activités Garmin déjà synchronisées des séances (utile quand la séance a été saisie à la main après la synchronisation)."""
+        return {"linked": auto_link(repo, user_id, date.today())}
+
+    @router.post("/sessions/{session_id}/link")
+    def link(session_id: int, body: Link, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        today = date.today()
+        row = find_session(repo, user_id, session_id, today)
+        act = next((a for a in repo.list_activities(user_id, today - timedelta(days=MOVE_PAST_DAYS * 2), 5000) if a["garmin_id"] == body.garmin_id), None)
+        if not act:
+            raise HTTPException(404, "Activité inconnue.")
+        window = repo.list_sessions(user_id, act["day"] - timedelta(days=MOVE_PAST_DAYS * 2), None)
+        if any((r["logged"] or {}).get("garmin_id") == body.garmin_id and r["id"] != session_id for r in window):
+            raise HTTPException(409, "Cette activité est déjà reliée à une autre séance.")
+        base = {**row, "logged": unlink_fields(row["logged"])} if (row["logged"] or {}).get("garmin_id") else row  # remplace une ancienne liaison
+        updated = repo.update_session(user_id, session_id, "done", link_fields(base, act))
+        if body.move and act["day"] != row["day"]:
+            updated = repo.move_session(user_id, session_id, act["day"]) or updated
+        return serialize(updated)
+
+    @router.delete("/sessions/{session_id}/link")
+    def unlink(session_id: int, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        row = find_session(repo, user_id, session_id, date.today())
+        if not (row["logged"] or {}).get("garmin_id"):
+            raise HTTPException(404, "Aucune activité reliée à cette séance.")
+        return serialize(repo.update_session(user_id, session_id, row["status"], unlink_fields(row["logged"])) or row)
+
+    @router.patch("/sessions/{session_id}/move")
+    def move(session_id: int, body: Move, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        today = date.today()
+        row = find_session(repo, user_id, session_id, today)
+        if not today - timedelta(days=MOVE_PAST_DAYS) <= body.day <= today + timedelta(days=MOVE_FUTURE_DAYS):
+            raise HTTPException(422, "Date hors de la période possible.")
+        if row["status"] == "planned" and body.day < today:
+            raise HTTPException(422, "Une séance à venir se reprogramme à aujourd'hui ou plus tard (pour une séance déjà faite, reliez l'activité).")
+        if row["status"] == "done" and body.day > today:
+            raise HTTPException(422, "Une séance déjà faite ne peut pas être placée dans le futur.")
+        moved = repo.move_session(user_id, session_id, body.day)
+        if not moved:
+            raise HTTPException(404, "Séance inconnue.")
+        around = repo.list_sessions(user_id, body.day - timedelta(days=2), body.day + timedelta(days=3))
+        return {"session": serialize(moved), "warnings": move_warnings(moved, around)}
 
     @router.patch("/sessions/{session_id}")
     def update(session_id: int, body: Done, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

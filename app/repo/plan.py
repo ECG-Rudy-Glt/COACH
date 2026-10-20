@@ -32,6 +32,15 @@ class PlanMemory:
             r["logged"] = logged
         return r
 
+    def move_session(self, user_id: int, session_id: int, day: date) -> dict[str, Any] | None:
+        r = self._sess().get(session_id)
+        if not r or r["user_id"] != user_id:
+            return None
+        if r["day"] != day:
+            r["details"] = {**r.get("details", {}), "moved_from": (r.get("details") or {}).get("moved_from") or r["day"].isoformat()}  # jour d'origine conservé
+            r["day"] = day
+        return r
+
 
 class PlanPostgres:
     def add_sessions(self, user_id: int, rows: list[dict[str, Any]]) -> None:
@@ -55,3 +64,9 @@ class PlanPostgres:
             return c.execute("UPDATE planned_sessions SET status = %s, logged = COALESCE(%s::jsonb, logged), updated_at = now() "
                              "WHERE id = %s AND user_id = %s RETURNING *",
                              (status, json.dumps(logged) if logged is not None else None, session_id, user_id)).fetchone()
+
+    def move_session(self, user_id: int, session_id: int, day: date) -> dict[str, Any] | None:
+        with self._conn() as c:
+            return c.execute("UPDATE planned_sessions SET details = CASE WHEN day = %s THEN details ELSE "
+                             "jsonb_set(details, '{moved_from}', COALESCE(details->'moved_from', to_jsonb(day::text))) END, day = %s, updated_at = now() "
+                             "WHERE id = %s AND user_id = %s RETURNING *", (day, day, session_id, user_id)).fetchone()
