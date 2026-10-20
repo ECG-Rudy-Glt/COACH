@@ -1,4 +1,5 @@
 - id: he.disclaimer
+  essential: true
   domain: health
   order: 1
   text: "Cette application ne remplace ni un médecin ni un diététicien. Avez-vous compris ?"
@@ -9,6 +10,7 @@
   blocking: true
 
 - id: he.red_flags
+  essential: true
   domain: health
   order: 2
   text: "Ressentez-vous l'un de ces signes à l'effort ?"

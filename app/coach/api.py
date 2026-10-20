@@ -1,12 +1,13 @@
 """API du coach : bilan, propositions à appliquer ou ignorer, budget."""
 import os
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.coach import chat as chat_service
-from app.coach import notify, service
+from app.coach import intake, notify, service
 from app.coach.llm import is_configured
 from app.config import env
 from app.repo import Repo
@@ -37,6 +38,15 @@ class Say(BaseModel):
     message: str = Field(max_length=1500)
 
 
+class Intake(BaseModel):
+    force: bool = False  # refaire l'analyse même si elle existe (au plus 3 fois par jour)
+
+
+class Clarification(BaseModel):
+    index: int = Field(ge=0, le=5)
+    answer: str = Field(min_length=1, max_length=600)
+
+
 def _out(m: dict[str, Any] | None) -> dict[str, Any] | None:
     if not m:
         return None
@@ -55,6 +65,22 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     @router.post("/review")
     def review(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         return _out(service.review(repo, request.app.state.llm, user_id))  # type: ignore[return-value]
+
+    @router.post("/intake")
+    def intake_analyze(request: Request, body: Intake | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Après les questions essentielles : le coach dit s'il manque des informations (questions de la banque ou précisions libres), sinon « prêt »."""
+        force = bool(body and body.force)
+        if force and repo.llm_calls_since(user_id, intake.KIND, datetime.now(UTC) - timedelta(days=1)) >= 3:
+            raise HTTPException(429, "Analyse déjà refaite plusieurs fois aujourd'hui.")
+        return intake.analyze(repo, request.app.state.llm, request.app.state.bank, user_id, force=force)
+
+    @router.post("/intake/clarification", status_code=201)
+    def intake_clarification(body: Clarification, request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        try:
+            intake.answer_clarification(repo, user_id, body.index, body.answer)
+        except IndexError as e:
+            raise HTTPException(404, "Précision inconnue.") from e
+        return intake.render(request.app.state.bank, repo.list_facts(user_id), repo.list_memory(user_id, intake.KIND, 1)[0])
 
     @router.get("/chat")
     def chat_thread(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

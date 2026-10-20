@@ -24,6 +24,9 @@ const ICONS = {
   food: '<path d="M7 3v8M5 3v5a2 2 0 004 0V3M7 11v10M17 3c-2 2-3 4.5-3 7 0 1.5 1 2.5 3 3v8"/>',
   chat: '<path d="M5 6h14a1 1 0 011 1v8a1 1 0 01-1 1h-7l-4 3v-3H5a1 1 0 01-1-1V7a1 1 0 011-1z"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1-4 4-5.5 7-5.5s6 1.5 7 5.5"/>',
+  watch: '<rect x="7" y="6" width="10" height="12" rx="3"/><path d="M9 6l.7-3h4.6L15 6M9 18l.7 3h4.6L15 18M12 10v2.5l1.5 1"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+  spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
 };
 
 const store = {
@@ -313,7 +316,7 @@ function authScreen(mode = "login") {
     try {
       const r = await api(reg ? "/auth/register" : "/auth/login", { method: "POST", body });
       userId = String(r.id); userName = r.name;
-      home();
+      route();
     } catch (e) { err.textContent = e.message; }
   };
   app.onkeydown = (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") go(); };
@@ -417,7 +420,7 @@ async function nextQuestion(domain) {
   questionView(r.questions[0], { progress: r, domain, onDone: () => nextQuestion(domain), onBack: home });
 }
 
-function questionView(q, { progress, prefill, onDone, onBack, editing }) {
+function questionView(q, { progress, prefill, onDone, onBack, editing, note, eyebrow }) {
   const bq = byId.get(q.id) || q;
   const st = {
     value: prefill?.value ?? null, other: prefill?.other ?? "", hours: "", minutes: "",
@@ -565,10 +568,11 @@ function questionView(q, { progress, prefill, onDone, onBack, editing }) {
   const canSkip = !bq.blocking && !editing;
   show(
     h("div", { class: "top" },
-      h("button", { class: "iconbtn", "aria-label": "Retour", onclick: onBack }, icon("back")),
+      onBack ? h("button", { class: "iconbtn", "aria-label": "Retour", onclick: onBack }, icon("back")) : null,
       progress ? segments(progress.answered, progress.remaining_visible) : h("span", { class: "grow" })),
-    h("span", { class: "eyebrow" }, DOMAINS[bq.domain] || bq.domain),
+    h("span", { class: "eyebrow" }, eyebrow || DOMAINS[bq.domain] || bq.domain),
     h("h2", { class: "q" }, bq.text),
+    note && h("p", { class: "coachnote" }, icon("spark"), h("span", null, note)),
     bq.type === "multi" && h("p", { class: "muted" }, "Plusieurs réponses possibles."),
     bq.help && h("p", { class: "muted" }, bq.help),
     body,
@@ -647,11 +651,11 @@ async function profile() {
     if (!groups.has(q.domain)) groups.set(q.domain, []);
     groups.get(q.domain).push(q);
   }
-  const sections = Object.keys(DOMAINS).filter((d) => groups.has(d)).map((d) =>
-    h("div", { class: "card" }, h("span", { class: "eyebrow" }, DOMAINS[d]),
-      h("div", { style: "margin-top:6px" }, groups.get(d).sort((a, b) => a.order - b.order).map((q) =>
-        h("button", { class: "item", onclick: () => edit(q, facts) },
-          h("span", { class: "l" }, q.text), h("span", { class: "v" }, fmtValue(q, facts)))))));
+  const sections = Object.keys(DOMAINS).filter((d) => groups.has(d)).map((d) => {
+    const qs = groups.get(d).sort((x, y) => x.order - y.order);
+    return fold(`profile-${d}`, `${qs.length} réponse${qs.length > 1 ? "s" : ""}`, DOMAINS[d], null,
+      qs.map((q) => h("button", { class: "item", onclick: () => edit(q, facts) }, h("span", { class: "l" }, q.text), h("span", { class: "v" }, fmtValue(q, facts)))));
+  });
   show(
     h("div", { class: "top" }, h("span", { class: "grow" }), h("span", { class: "muted" }, `${prof.answered} réponses`)),
     h("h1", null, "Profil"),
@@ -1593,6 +1597,99 @@ async function evidenceScreen(focusId) {
 }
 
 // ---------- démarrage ----------
+// ---------- accueil : intro, questions essentielles, analyse du coach ----------
+// Nouvel utilisateur : bienvenue, une douzaine de questions essentielles, puis une page de chargement pendant que le coach IA relit le profil.
+// Sans question manquante on arrive sur l'application ; sinon sur « Quelques précisions ». L'indicateur est local : un utilisateur existant n'est jamais renvoyé ici.
+const onboardKey = () => `sc-onboarding-${userId}`;
+
+async function route() {
+  let prof;
+  try { prof = await api(`/users/${userId}/profile`); } catch (e) { return fail(e); }
+  if (prof.answered === 0 && !prof.intake_done) return welcomeScreen();
+  if (store.get(onboardKey()) === "1") return prof.essential.remaining > 0 ? onboardingNext() : intakeScreen();
+  home();
+}
+
+function welcomeScreen() {
+  store.set(onboardKey(), "1");
+  const rows = [["plan", "Un plan à votre mesure", "Course, trail, musculation… selon vos objectifs, votre matériel et votre emploi du temps."],
+    ["watch", "Il suit ce que vous faites vraiment", "Relié à votre montre, il compare le prévu et le réel, puis ajuste la semaine suivante."],
+    ["lock", "Vos données restent chez vous", "Elles sont hébergées sur votre serveur. Rien n'est vendu ni partagé."]];
+  show(h("div", { class: "welcome" },
+    h("div", { class: "welcome-logo" }, h("img", { src: "/icons/icon-192.png", alt: "", width: 84, height: 84 })),
+    h("h1", null, userName ? `Bienvenue, ${userName}` : "Bienvenue"),
+    h("p", { class: "lead" }, "Votre coach sportif construit un plan pour vous, puis l'adapte chaque semaine."),
+    h("ul", { class: "benefits" }, rows.map(([ic, t, d]) => h("li", null, h("span", { class: "bicon" }, icon(ic)), h("div", { class: "stack", style: "gap:2px" }, h("strong", null, t), h("span", { class: "muted" }, d)))))),
+    actionBar(h("button", { class: "btn primary", onclick: onboardingNext }, "Commencer"), h("p", { class: "muted", style: "text-align:center;font-size:.875rem" }, "Environ 3 minutes · vous pouvez passer ce que vous ne savez pas")));
+}
+
+async function onboardingNext() {
+  let r;
+  try { r = await api(`/users/${userId}/questions/next?n=1&tier=essential`); } catch (e) { return fail(e); }
+  if (!r.questions.length) return intakeScreen();
+  const total = r.essential.answered + r.essential.remaining;
+  questionView(r.questions[0], { progress: { answered: r.essential.answered, remaining_visible: r.essential.remaining }, eyebrow: `Question ${r.essential.answered + 1} sur ${total}`,
+    onDone: onboardingNext, onBack: r.essential.answered ? undefined : welcomeScreen });
+}
+
+async function intakeScreen() {
+  const steps = [["Profil enregistré", "done"], ["Analyse par votre coach IA", "wait"], ["Préparation de votre plan", "idle"]];
+  const list = h("ul", { class: "steps" }, steps.map(([t, st], i) => h("li", { class: st, "data-i": i }, h("span", { class: "tick" }, icon("check")), h("span", null, t))));
+  const mark = (i, st) => { const li = list.children[i]; li.className = st; };
+  show(h("div", { class: "loading" },
+    h("div", { class: "orb", "aria-hidden": "true" }, icon("spark")),
+    h("h1", null, "Vos informations sont transmises à votre coach IA"),
+    h("p", { class: "lead" }, "Il relit votre profil pour construire un plan sur mesure."), list));
+  const pause = (ms) => new Promise((ok) => setTimeout(ok, reducedMotion() ? Math.min(ms, 400) : ms));
+  let res = null, failed = false;
+  const [r] = await Promise.all([api(`/users/${userId}/coach/intake`, { method: "POST" }).catch(() => { failed = true; return null; }), pause(2400)]);
+  res = r;
+  mark(1, "done");
+  if (res && res.status === "questions") return intakeQuestions(res);
+  finishOnboarding(list, failed);
+}
+
+async function finishOnboarding(list, failed) {
+  const li = list ? list.children[2] : null;
+  if (li) li.className = "wait";
+  try {
+    const plan = await api(`/users/${userId}/plan`);
+    if (!plan.sessions.length) await api(`/users/${userId}/plan/generate`, { method: "POST", body: { weeks: 1 } });
+  } catch { /* le plan se génère aussi depuis l'écran Plan */ }
+  if (li) { li.className = "done"; await new Promise((ok) => setTimeout(ok, reducedMotion() ? 0 : 600)); }
+  store.del(onboardKey());
+  home();
+}
+
+function intakeQuestions(res) {
+  const queue = [...res.questions.map((q) => ({ q })), ...res.clarifications.map((c) => ({ c }))];
+  const total = queue.length;
+  const step = () => {
+    const item = queue.shift();
+    if (!item) return finishOnboarding(null, false);
+    const n = total - queue.length;
+    if (item.q) return questionView(item.q, { progress: { answered: n - 1, remaining_visible: total - n + 1 }, eyebrow: "Votre coach demande", note: item.q.reason || res.message, onDone: step, onBack: undefined });
+    clarification(item.c, n, total, step);
+  };
+  step();
+}
+
+function clarification(c, n, total, onDone) {
+  const txt = h("textarea", { "aria-label": c.question, maxlength: 600, placeholder: "Votre réponse…" });
+  const err = h("p", { class: "error", role: "alert" });
+  const go = h("button", { class: "btn primary", disabled: true }, "Valider");
+  txt.addEventListener("input", () => { go.disabled = !txt.value.trim(); });
+  go.addEventListener("click", async () => {
+    go.disabled = true;
+    try { await api(`/users/${userId}/coach/intake/clarification`, { method: "POST", body: { index: c.index, answer: txt.value.trim() } }); onDone(); }
+    catch (e) { err.textContent = e.message; go.disabled = false; }
+  });
+  show(h("div", { class: "top" }, h("span", { class: "grow" }), segments(n - 1, total - n + 1)),
+    h("span", { class: "eyebrow" }, "Votre coach demande"), h("h2", { class: "q" }, c.question),
+    c.reason && h("p", { class: "coachnote" }, icon("spark"), h("span", null, c.reason)), txt, err,
+    actionBar(go, h("div", { class: "links" }, h("button", { class: "link", onclick: onDone }, "Préférer ne pas répondre"))));
+}
+
 async function start() {
   try {
     bank = await api("/bank");
@@ -1601,7 +1698,7 @@ async function start() {
   try {
     const me = await api("/auth/me");
     userId = String(me.id); userName = me.name;
-    home();
+    route();
   } catch (e) { if (e.status === 401) authScreen(); else if (!e.handled) fail(e); }
 }
 

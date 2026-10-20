@@ -189,6 +189,7 @@ def get_questions(bank: list[Question] = Depends(get_bank)) -> list[dict]:
 def questions_next(
     n: int = 1,
     domain: str | None = None,
+    tier: str | None = None,
     user_id: int = Depends(require_user),
     repo: Repo = Depends(get_repo),
     bank: list[Question] = Depends(get_bank),
@@ -197,7 +198,7 @@ def questions_next(
     facts = repo.list_facts(user_id)
     return {
         "questions": [q.model_dump(exclude={"show_if", "fact_key"}) for q in
-                      next_questions(bank, facts, n, domain)],
+                      next_questions(bank, facts, n, domain, essential=tier == "essential")],
         **progress(bank, facts),
     }
 
@@ -282,7 +283,7 @@ def profile(
     facts = repo.list_facts(user_id)
     cur = {k: v for k, v in current_facts(facts).items()
            if v is not None and not k.startswith("bench.")}
-    return {"facts": cur, **progress(bank, facts)}
+    return {"facts": cur, **progress(bank, facts), "intake_done": bool(repo.list_memory(user_id, "intake", 1))}
 
 
 # Doit rester en dernier : la PWA est servie à la racine, derrière les routes de l'API.

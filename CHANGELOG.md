@@ -4,6 +4,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 ### Added
+- Interactive onboarding: welcome screen, 13 essential questions, a loading page while the coach AI reads the profile, then either the app or *Your coach asks* (missing questions chosen by the model among the bank, validated and bounded by the server, with a rule-based fallback and free-text clarifications). First plan generated at the end. See `docs/onboarding.md`.
+- Profile page: the answered questions are grouped in collapsible sections.
 - Garmin matching: activities are linked to sessions logged by hand as well as planned ones (same day, same sport, closest duration), every time the plan opens and after each sync; the old matcher was only used by tests. Off-plan activities can be linked manually to a session (the session then moves to the day it was really done), and unlinked again.
 - Reschedule a session: *Change day* on the session screen (bottom sheet, any date in range) or long-press then drag the session onto a day (touch on iPhone and Android, mouse on desktop). Non-blocking warnings for two hard sessions within 48 h or legs next to a key run (G5, I1, I2); the original day is kept (`moved_from`).
 - Long-horizon trajectory for dated *performance* goals (e.g. 10 km under 40 min in two years): current level from race records (C10), base → threshold → specific → taper phases with timed checkpoints every 3 months (C11), and a weekly-volume target instead of an unbounded build (C12). Exposed as `trajectory` on `GET /users/{id}/plan`, shown in the plan screen and given to the coach.

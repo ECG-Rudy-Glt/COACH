@@ -1,4 +1,5 @@
 - id: con.days
+  essential: true
   domain: constraints
   order: 1
   text: "Combien de jours par semaine pouvez-vous vous entraîner ?"
@@ -8,6 +9,7 @@
   required: true
 
 - id: con.session_length
+  essential: true
   domain: constraints
   order: 2
   text: "Quelle est la durée maximale d'une séance en semaine ?"

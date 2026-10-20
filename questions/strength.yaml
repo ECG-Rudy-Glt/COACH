@@ -9,6 +9,7 @@
   required: true
 
 - id: str.level
+  essential: true
   domain: strength
   order: 2
   text: "Comment évaluez-vous votre niveau en musculation ?"

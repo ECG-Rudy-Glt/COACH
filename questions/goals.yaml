@@ -1,4 +1,5 @@
 - id: goal.sports
+  essential: true
   domain: goals
   order: 1
   text: "Quels sports pratiquez-vous ou voulez-vous pratiquer ?"
@@ -10,6 +11,7 @@
   required: true
 
 - id: goal.primary
+  essential: true
   domain: goals
   order: 2
   text: "Quels sont vos objectifs pour les prochains mois ?"
@@ -62,6 +64,7 @@
   show_if: { any: [ { fact: goal.primary, eq: "préparation d'une course" }, { fact: sports.practiced, contains: trail } ] }
 
 - id: body.height
+  essential: true
   domain: goals
   order: 10
   text: "Quelle est votre taille ?"
@@ -71,6 +74,7 @@
   required: true
 
 - id: body.weight
+  essential: true
   domain: goals
   order: 11
   text: "Quel est votre poids actuel ?"
@@ -80,6 +84,7 @@
   required: true
 
 - id: body.birth_year
+  essential: true
   domain: goals
   order: 12
   text: "Quelle est votre année de naissance ?"
@@ -88,6 +93,7 @@
   required: true
 
 - id: body.sex
+  essential: true
   domain: goals
   order: 13
   text: "Quel sexe utiliser pour les calculs de dépense énergétique ?"

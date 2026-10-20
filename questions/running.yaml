@@ -1,4 +1,5 @@
 - id: run.recent_volume
+  essential: true
   domain: running
   order: 1
   text: "Combien de kilomètres courez-vous par semaine en moyenne depuis 8 semaines ?"
