@@ -4,6 +4,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 ### Added
+- Plan screen: *Table* view of the week, one column per day like a kanban board; long-press a card then drag it to another day (touch on iPhone and Android, mouse on desktop; the board scrolls by itself near the edges). The choice of view is remembered.
 - Interactive onboarding: welcome screen, 13 essential questions, a loading page while the coach AI reads the profile, then either the app or *Your coach asks* (missing questions chosen by the model among the bank, validated and bounded by the server, with a rule-based fallback and free-text clarifications). First plan generated at the end. See `docs/onboarding.md`.
 - Profile page: the answered questions are grouped in collapsible sections.
 - Garmin matching: activities are linked to sessions logged by hand as well as planned ones (same day, same sport, closest duration), every time the plan opens and after each sync; the old matcher was only used by tests. Off-plan activities can be linked manually to a session (the session then moves to the day it was really done), and unlinked again.
