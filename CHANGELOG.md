@@ -9,6 +9,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Changed
 - LLM providers: per-provider JSON mode (`json_mode` in `data/llm_providers.yaml`, `LLM_JSON_MODE` override) for the weekly review, notifications and meal estimates, and a graceful fallback without tool calling (`LLM_TOOLS`, catalog `tools` flag, or a server that refuses the option). Adapter tests use sample provider responses (`tests/fixtures/llm`).
 - `app/repo.py` (880 lines) split into the `app/repo/` package, one module per domain behind the same `Repo` protocol; `from app.repo import MemoryRepo, PostgresRepo, Repo` keeps working. No SQL or behaviour change (method sources are identical, PostgreSQL tests pass).
+- Plan screen: the cycle, objective, trajectory and coach-review cards at the top are collapsible (title and one-line summary stay visible, the state is remembered per card; the coach review opens by itself when a proposal or a question is waiting).
+- Coach chat: typing indicator, animated bubbles, composer pinned above the tab bar with an auto-growing field and a round send button (Enter sends on desktop), suggestion chips, and an inline *Retry* instead of a lost message.
 - Release process documented in `docs/releasing.md`; a CI check requires a `CHANGELOG.md` entry when code, migrations, questions or rule data change.
 - CI reports test coverage (job summary) and fails below a minimum threshold (`.coveragerc`, currently 83 %).
 - Background jobs start from a FastAPI lifespan handler instead of the deprecated `on_event` hook (no behaviour change).

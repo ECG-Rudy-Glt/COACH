@@ -9,6 +9,7 @@ const DOMAINS = {
 const OTHER = "autre";
 const ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  up: '<path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
@@ -86,6 +87,17 @@ function show(...nodes) {
   app.className = list.some((n) => n.classList.contains("tabbar")) ? "tabs" : "";
   app.replaceChildren(...list);
   window.scrollTo(0, 0);
+}
+
+// Carte dépliante : titre et résumé toujours visibles, détail à la demande ; l'état (ouvert ou fermé) est mémorisé par carte sur cet appareil.
+function fold(id, eyebrow, title, summary, body, open = false) {
+  const key = `sc-fold-${id}`;
+  const saved = store.get(key);
+  const d = h("details", { class: "card fold", open: saved == null ? open : saved === "1" },
+    h("summary", null, h("span", { class: "grow stack" }, h("span", { class: "eyebrow" }, eyebrow), h("strong", null, title), summary ? h("span", { class: "muted" }, summary) : null)),
+    h("div", { class: "stack fold-body" }, body));
+  d.addEventListener("toggle", () => store.set(key, d.open ? "1" : "0"));
+  return d;
 }
 
 function toast(msg) {
@@ -749,38 +761,57 @@ function bubble(m) {
     h("span", { class: "when" }, new Date(m.created_at).toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" })));
 }
 
+const SUGGESTIONS = ["Fais le point sur ma semaine", "Je suis fatigué : j'allège ?", "Explique-moi ma prochaine séance"];
+const reducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const coarsePointer = () => window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+
 async function coachChat() {
   let d;
   try { d = await api(`/users/${userId}/coach/chat`); } catch (e) { return fail(e); }
   const list = h("div", { class: "chat", "aria-live": "polite" }, d.messages.map(bubble));
   const empty = h("p", { class: "muted" }, "Posez une question, racontez vos sensations ou répondez aux questions du coach : il connaît votre plan, vos séances, votre montre et votre cycle.");
-  const err = h("p", { class: "error", role: "alert" });
-  const input = h("textarea", { rows: 3, maxlength: 1500, placeholder: "Écrivez au coach…", "aria-label": "Message au coach" });
-  const send = h("button", { class: "btn primary" }, "Envoyer");
+  const input = h("textarea", { rows: 1, maxlength: 1500, placeholder: "Écrivez au coach…", "aria-label": "Message au coach", enterkeyhint: "send" });
+  const send = h("button", { class: "send", "aria-label": "Envoyer", disabled: true }, icon("up"));
+  const chips = h("div", { class: "suggest", role: "group", "aria-label": "Suggestions" }, SUGGESTIONS.map((t) => h("button", { class: "chip", onclick: () => go(t) }, t)));
   const draftKey = `sc-chat-${userId}`;
-  input.value = store.get(draftKey) || "";
-  input.addEventListener("input", () => store.set(draftKey, input.value));
-  const toBottom = () => window.scrollTo(0, document.body.scrollHeight);
-  send.addEventListener("click", async () => {
-    const text = input.value.trim();
-    if (!text) return;
-    err.textContent = ""; send.disabled = true; send.textContent = "Le coach réfléchit…";
-    const mine = bubble({ role: "user", body: text, created_at: new Date().toISOString() });
-    list.append(mine); empty.hidden = true; toBottom();
+  const toBottom = () => requestAnimationFrame(() => (composer.scrollIntoView ? composer.scrollIntoView({ block: "end", behavior: reducedMotion() ? "auto" : "smooth" }) : window.scrollTo(0, document.body.scrollHeight)));
+  const grow = () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 140) + "px"; };
+  const refresh = () => { send.disabled = !input.value.trim() || busy; chips.hidden = !!input.value.trim() || busy; };
+  let busy = false;
+  const typing = () => h("div", { class: "msg coach typing", "aria-label": "Le coach écrit" }, h("i"), h("i"), h("i"));
+
+  async function go(text, retryOf) {
+    text = text.trim();
+    if (!text || busy) return;
+    busy = true; input.value = ""; store.del(draftKey); grow(); refresh(); empty.hidden = true;
+    if (retryOf) retryOf.remove(); else list.append(Object.assign(bubble({ role: "user", body: text, created_at: new Date().toISOString() }), { className: "msg mine new" }));
+    const wait = typing();
+    list.append(wait); toBottom();
     try {
       const r = await api(`/users/${userId}/coach/chat`, { method: "POST", body: { message: text } });
-      input.value = ""; store.del(draftKey);
-      list.append(bubble(r.messages[1]));
-    } catch (e) { err.textContent = e.message; }
-    send.disabled = false; send.textContent = "Envoyer"; toBottom();
-  });
-  if (!d.configured) err.textContent = "Le coach IA n'est pas encore configuré sur ce serveur.";
+      wait.remove();
+      list.append(Object.assign(bubble(r.messages[1]), { className: "msg coach new" }));
+    } catch (e) {
+      wait.remove();
+      const retry = h("button", { class: "link" }, "Réessayer");
+      const box = h("div", { class: "msg coach err", role: "alert" }, h("p", null, e.message || "Le coach n'a pas pu répondre."), retry);
+      retry.addEventListener("click", () => go(text, box));
+      list.append(box);
+    }
+    busy = false; refresh(); toBottom();
+  }
+
+  input.value = store.get(draftKey) || "";
+  input.addEventListener("input", () => { store.set(draftKey, input.value); grow(); refresh(); });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !coarsePointer()) { e.preventDefault(); go(input.value); } });  // Entrée envoie sur ordinateur ; sur téléphone elle va à la ligne
+  send.addEventListener("click", () => go(input.value));
+  const composer = h("div", { class: "composer" }, chips, h("div", { class: "field-row" }, input, send),
+    d.configured ? null : h("p", { class: "error", role: "alert" }, "Le coach IA n'est pas encore configuré sur ce serveur."));
   show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Coach"), themeToggle()), h("h1", null, "Discussion"),
-    d.messages.length ? null : empty, list,
-    h("div", { class: "card stack" }, input, err, send,
-      h("button", { class: "link", onclick: notifScreen }, "Notifications et conseils par mail")),
+    d.messages.length ? null : empty, list, composer,
+    h("button", { class: "link", onclick: notifScreen }, "Notifications et conseils par mail"),
     tabbar("chat"));
-  toBottom();
+  grow(); refresh(); window.scrollTo(0, document.body.scrollHeight);
 }
 
 async function notifScreen() {
@@ -866,10 +897,11 @@ function coachCard(c) {
     try { await api(`/users/${userId}/coach/review`, { method: "POST" }); planScreen(true); }
     catch (e) { toast(e.message); btn.disabled = !c.budget.available; btn.textContent = latest ? "Nouveau bilan" : "Faire le bilan de la semaine"; }
   });
-  return h("div", { class: "card stack" },
-    h("h3", null, "Bilan du coach"),
-    latest ? h("p", { class: "muted" }, new Date(latest.created_at).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })) : h("p", { class: "muted" }, "Le coach relit vos séances et vos activités Garmin, puis propose des ajustements que vous validez."),
-    latest && latest.summary ? h("p", null, latest.summary) : null,
+  const pending = !!d && (d.proposals.some((p) => p.status === "proposed") || d.questions.length > 0);  // il y a quelque chose à décider ou à répondre : ouvert par défaut
+  const when = latest ? new Date(latest.created_at).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) : null;
+  const note = pending ? `${d.proposals.filter((p) => p.status === "proposed").length} proposition(s), ${d.questions.length} question(s)` : (latest && latest.summary ? latest.summary.slice(0, 90) + (latest.summary.length > 90 ? "…" : "") : "Le coach relit vos séances et propose des ajustements");
+  return fold("coach", "Bilan du coach", when || "Pas encore de bilan", note, [
+    latest && latest.summary ? h("p", null, latest.summary) : h("p", { class: "muted" }, "Le coach relit vos séances et vos activités Garmin, puis propose des ajustements que vous validez."),
     d && d.adherence ? h("p", { class: "muted" }, d.adherence) : null,
     d && d.proposals.length ? h("div", { class: "stack" }, d.proposals.map((p, i) => h("div", { class: "form" },
       h("strong", null, act(p)), h("span", { class: "muted" }, p.reason),
@@ -881,7 +913,7 @@ function coachCard(c) {
       h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => coachChat() }, "Répondre au coach")) : null,
     btn,
     h("button", { class: "link", onclick: () => coachChat() }, "Parler au coach"),
-    h("p", { class: "muted" }, `Budget IA ce mois : ${c.budget.spent_eur.toFixed(2)} € sur ${c.budget.limit_eur} €.`));
+    h("p", { class: "muted" }, `Budget IA ce mois : ${c.budget.spent_eur.toFixed(2)} € sur ${c.budget.limit_eur} €.`)], pending);
 }
 
 // ---------- plan ----------
@@ -900,9 +932,9 @@ function fmtDay(iso, today) {
 
 function outlookCard(o) {
   if (!o) return null;
-  return h("div", { class: "card stack" }, h("h3", null, o.ok ? `Objectif : ${o.event}` : "Objectif ambitieux"),
+  return fold("outlook", o.ok ? "Objectif" : "Objectif ambitieux", o.event, `Dans ${o.weeks_to_event} semaines · ${o.ok ? "cohérent avec votre préparation" : "à reconsidérer"}`, [
     h("p", { class: o.ok ? "muted" : "" }, o.message),
-    h("p", { class: "muted" }, `Dans ${o.weeks_to_event} semaines · volume projeté ${o.projected_peak_km} km par semaine (repère : ${o.needed_peak_km} km).`));
+    h("p", { class: "muted" }, `Volume projeté ${o.projected_peak_km} km par semaine (repère : ${o.needed_peak_km} km).`)]);
 }
 
 function trajectoryCard(t) {
@@ -914,12 +946,11 @@ function trajectoryCard(t) {
   const phases = h("ol", { class: "traj" }, t.phases.filter((p) => p.macro !== "race").map((p, i) =>
     h("li", { class: i === 0 ? "now" : "" }, h("strong", null, p.label), ` · ${dayFr(p.start)} → ${dayFr(p.end)} · ${p.weeks} sem.`)));
   const tests = t.milestones.length ? h("p", { class: "muted" }, "Tests de contrôle : " + t.milestones.map((m) => `${fullFr(m.date)} (${m.label} en ${m.target_time})`).join(", ") + ".") : null;
-  return h("div", { class: "card stack" },
-    h("span", { class: "eyebrow" }, "Trajectoire"),
-    h("h3", null, `${t.target.title} · ${fullFr(t.target.date)}`),
+  const head = t.level ? `${t.level.time} → ${t.target.time} · écart ${t.gap_pct} % (${t.verdict})` : `Objectif ${t.target.time}`;
+  return fold("trajectory", "Trajectoire", `${t.target.title} · ${fullFr(t.target.date)}`, head, [
     h("p", { class: "muted" }, `${level}${gap} Volume visé : environ ${t.weekly_km_target} km par semaine.`),
     phases, tests,
-    ...t.warnings.map((w) => h("p", null, w)));
+    ...t.warnings.map((w) => h("p", null, w))], t.warnings.length > 0);
 }
 
 function cycleCard(c) {
@@ -928,13 +959,9 @@ function cycleCard(c) {
   const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
   const strip = h("div", { class: "weeks", role: "img", "aria-label": "Prochaines semaines" }, c.upcoming.map((u) =>
     h("span", { class: "wk" + (u.allegee ? " light" : "") + (u.semaine === c.upcoming[0].semaine ? " now" : ""), title: `Semaine du ${dayFr(u.semaine)} : ${u.phase}${u.allegee ? ", allégée" : ""}` })));
-  return h("div", { class: "card stack" },
-    h("span", { class: "eyebrow" }, "Cycle d'entraînement"),
-    h("h3", null, `${cur.macro_label} · ${cur.label}`),
-    h("p", { class: "muted" }, cur.macro_text),
-    strip,
-    h("p", { class: "muted" }, [c.next_deload ? `Prochaine semaine allégée : semaine du ${dayFr(c.next_deload)}.` : null,
-      cur.weeks_to_event != null ? `Objectif dans ${cur.weeks_to_event} semaine${cur.weeks_to_event > 1 ? "s" : ""}.` : null].filter(Boolean).join(" ")));
+  const note = [c.next_deload ? `Prochaine semaine allégée : semaine du ${dayFr(c.next_deload)}.` : null,
+    cur.weeks_to_event != null ? `Objectif dans ${cur.weeks_to_event} semaine${cur.weeks_to_event > 1 ? "s" : ""}.` : null].filter(Boolean).join(" ");
+  return fold("cycle", "Cycle d'entraînement", `${cur.macro_label} · ${cur.label}`, cur.macro_text, [strip, note ? h("p", { class: "muted" }, note) : null]);
 }
 
 function planCard() {
