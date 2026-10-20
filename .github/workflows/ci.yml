@@ -42,6 +42,23 @@ jobs:
         if: always()
         run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY" || true
 
+  changelog:
+    name: Changelog entry
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: CHANGELOG.md is updated when code changes
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          changed=$(git diff --name-only "origin/$BASE"...HEAD)
+          if echo "$changed" | grep -qE '^(app/|db/|questions/|data/)' && ! echo "$changed" | grep -qx 'CHANGELOG.md'; then
+            echo "::error::Code, migrations, questions or rule data changed but CHANGELOG.md has no new entry under [Unreleased] (label the PR skip-changelog if it is not user-visible)."
+            exit 1
+          fi
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
