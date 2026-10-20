@@ -7,6 +7,7 @@ PAIN = re.compile(r"\b(douleur|douleurs|mal au|mal à|gêne|gene|tendinite|infla
 ZONES = {
     "coude": ["coude"], "épaule": ["épaule", "epaule"], "genou": ["genou"], "dos": ["dos", "lombaire", "lombaires"], "cheville": ["cheville"],
     "hanche": ["hanche"], "poignet": ["poignet"], "tendon d'Achille": ["achille", "tendon d'achille"], "tibia": ["tibia", "périostite", "periostite"],
+    "mollet": ["mollet", "mollets"], "pied": ["pied", "fascia", "plantaire", "voûte", "voute"], "ischio-jambiers": ["ischio", "ischios", "ischio-jambiers"],
 }
 
 

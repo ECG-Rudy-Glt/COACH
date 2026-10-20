@@ -529,3 +529,33 @@ def test_named_exercises_can_be_avoided_without_dropping_the_whole_zone():
     assert {s["pattern"]: s["exercise"]["name"] for s in resolve(repo, slots, {})} == {"v_pull": "Pull-ups", "biceps": "Dumbbell Bicep Curl"}
     res = {s["pattern"]: s["exercise"]["name"] for s in resolve(repo, slots, {"history.avoid_exercises": ["Pull-up", " "]})}
     assert res == {"v_pull": "Wide-Grip Lat Pulldown", "biceps": "Dumbbell Bicep Curl"}  # les tractions seules sont écartées, pas les curls
+
+
+def run_weeks(facts, goals, start=date(2026, 10, 12), weeks=6):
+    p = build_profile(facts, goals, start)
+    ss = plan_weeks(p, start, weeks=weeks, start=start, anchor=start)
+    return p, ss, [run_minutes(w) for w in by_week(ss).values()]
+
+
+def test_running_injury_freezes_volume_and_intensity():
+    """S2 : une douleur sur une zone qui porte la course gèle la progression ; une douleur au coude ne touche pas la course."""
+    base = {**RUDY, "running.weekly_km_8w": 20, "running.weekly_km_12m": 40, "running.longest_recent_min": 60}
+    _, healthy, vols_ok = run_weeks(base, [EVENT])
+    assert vols_ok[2] > vols_ok[0], "sans blessure le volume monte"
+    for zone in ("genou", "tendon d'Achille", "mollet"):
+        p, hurt, vols = run_weeks({**base, "history.injuries": [zone]}, [EVENT])
+        assert p.run_injury
+        assert max(vols[:3]) <= vols[0] + 2 and all(v <= vols[0] for v in vols), f"{zone} : volume gelé {vols}"
+        assert not any(s.kind == "run_quality" for s in hurt), "pas d'intensité avec une douleur déclarée"
+        runs = [s for s in hurt if s.kind.startswith("run_")]
+        assert all("S2" in s.rules and any("Douleur déclarée" in n for n in s.notes) for s in runs)
+    p, elbow, vols = run_weeks({**base, "history.injuries": ["coude"]}, [EVENT])
+    assert not p.run_injury and vols == vols_ok and "S2" not in {r for s in elbow if s.kind.startswith("run_") for r in s.rules}
+
+
+def test_free_text_pain_covers_running_zones():
+    from app.plan.pain import pain_zones
+
+    s = [{"day": TODAY - timedelta(days=2), "logged": {"note": "Tiraillement au mollet droit, et fascia plantaire sensible"}},
+         {"day": TODAY - timedelta(days=1), "logged": {"adaptation": "douleur ischio gauche en fin de séance"}}]
+    assert pain_zones(s, TODAY) == {"mollet", "pied", "ischio-jambiers"}

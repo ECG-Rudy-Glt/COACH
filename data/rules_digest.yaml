@@ -1,7 +1,7 @@
 # Résumé des règles de docs/rules.md transmis au coach (identifiants fixes, texte court).
 # Un test vérifie que les identifiants correspondent à docs/rules.md.
 S1: "Signal d'alerte à l'effort non discuté avec un médecin : aucun plan d'intensité, renvoi médical."
-S2: "Blessure active : exercices concernés exclus, progression gelée sur la zone, message si la douleur persiste."
+S2: "Blessure active : exercices concernés exclus, progression gelée sur la zone (zone qui porte la course : volume, sortie longue et intensité de course gelés), message si la douleur persiste."
 S3: "Perte de poids visée > 1 % du poids par semaine : objectif plafonné."
 S4: "Antécédent de trouble alimentaire, grossesse ou post-partum : pas de déficit proposé."
 S5: "Jamais sous le métabolisme de base estimé."
