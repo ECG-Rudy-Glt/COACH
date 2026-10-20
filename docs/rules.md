@@ -25,7 +25,7 @@ concernée **conservatrice** (niveau débutant, volume bas).
 | Id | Règle | Effet |
 |---|---|---|
 | S1 | Signal d'alerte à l'effort (douleur thoracique, malaise, palpitations, essoufflement inhabituel) déclaré et non discuté avec un médecin | Aucun plan d'intensité ; message de renvoi vers un médecin |
-| S2 | Blessure active déclarée | Exercices et gestes concernés exclus ; progression gelée sur la zone ; message si la douleur persiste |
+| S2 | Blessure active déclarée (menu ou douleur décrite dans un retour de séance) | Exercices et gestes concernés exclus ; progression gelée sur la zone ; si la zone porte la course (genou, cheville, hanche, tibia, tendon d'Achille, mollet, pied, ischio-jambiers) : volume, sortie longue et intensité de course gelés ; message si la douleur persiste |
 | S3 | Objectif de perte de poids irréaliste (> 1 % du poids par semaine) ou poids cible hors plage saine | Objectif plafonné, explication affichée |
 | S4 | Antécédent de trouble alimentaire, grossesse ou post-partum déclaré | Pas de déficit calorique proposé ; renvoi vers un professionnel |
 | S5 | Plancher calorique | Jamais sous le métabolisme de base estimé |

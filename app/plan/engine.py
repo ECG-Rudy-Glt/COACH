@@ -17,6 +17,7 @@ GROWTH_STEP = 1.08  # G1 : montée ≤ 10 % par semaine
 RETURN_GROWTH_MAX = 1.15  # G3 : reprise après arrêt, retour au niveau habituel en 4 à 6 semaines
 DELOAD_FACTOR = 0.65  # G2 : semaine allégée (−35 %)
 KEY = {"run_long", "run_quality", "strength_lower"}
+RUN_ZONES = {"genou", "cheville", "hanche", "tibia", "tendon d'Achille", "mollet", "pied", "ischio-jambiers"}  # S2 : zones qui portent la course
 
 
 @dataclass
@@ -46,6 +47,7 @@ class Profile:
     after_break: bool = False
     injuries: set[str] = field(default_factory=set)
     red_flags: bool = False
+    run_injury: bool = False  # blessure active sur une zone qui porte la course : volume et intensité gelés (S2)
     event: dict[str, Any] | None = None  # {"date": date, "title": str, "distance_km": float, "elevation_m": float}
     deload_cycle: int = 4  # 3+1 par défaut (2+1 : 3)
     facts: dict[str, Any] = field(default_factory=dict)
@@ -98,6 +100,7 @@ def build_profile(facts: dict[str, Any], goals: list[dict[str, Any]], today: dat
     p.weekly_vert = _num(facts.get("trail.weekly_vert_m"))
     p.after_break = facts.get("history.recent_break") in ("oui blessure", "oui autre raison")
     p.injuries = set(facts.get("history.injuries") or []) - {"aucune"}
+    p.run_injury = bool(p.injuries & RUN_ZONES)
     flags = set(facts.get("health.red_flags") or []) - {"aucun"}
     p.red_flags = bool(flags) and facts.get("health.red_flags_discussed") != "oui"
     if (p.age and p.age > 45) or p.after_break:
@@ -179,6 +182,8 @@ def weekly_volumes(p: Profile, weeks: int, weeks_to_event: int | None, offset: i
             v = last_build * DELOAD_FACTOR if deload else last_build
         elif deload:
             v = last_build * DELOAD_FACTOR
+        elif p.run_injury:  # S2 : progression gelée tant que la douleur est déclarée
+            v = last_build
         elif taper:
             v = last_build * 0.6
         else:
@@ -373,7 +378,7 @@ def _week(p: Profile, monday: date, w: int, run_min: float, deload: bool, taper:
         else:
             variants.append("crossfit")  # deux séances de musculation ou moins : le conditionnement s'ajoute
     quality_planned = False
-    quality_ok = (p.runs and not deload and not taper and w >= 1 and run_min >= 120
+    quality_ok = (p.runs and not deload and not taper and not p.run_injury and w >= 1 and run_min >= 120
                   and not (p.weeks_since_run is not None and p.weeks_since_run >= 4 and w < 3) and not (p.after_break and w < 3))
     if p.runs:
         place("run_long")
@@ -404,7 +409,7 @@ def _week(p: Profile, monday: date, w: int, run_min: float, deload: bool, taper:
     n_easy_placed = kinds.count("run_easy")
     has_long, has_q = "run_long" in kinds, "run_quality" in kinds
     long_share = 0.30 if run_min >= 110 else 0.34  # très petit volume : trois sorties de durées proches
-    ev_long = event_long_run(p, cyc.weeks_to_event, w) if has_long else None
+    ev_long = event_long_run(p, cyc.weeks_to_event, w) if has_long and not p.run_injury else None  # S2 : la sortie longue ne progresse plus
     if ev_long and deload:
         ev_long = max(round(ev_long * 0.75 / 5) * 5, 30)
     if ev_long:  # C9 : la sortie longue suit l'objectif ; les footings restent courts (2 × 25 min) pour limiter l'impact
@@ -419,6 +424,9 @@ def _week(p: Profile, monday: date, w: int, run_min: float, deload: bool, taper:
     long_min = max(long_min, 25) if has_long else 0
 
     notes = ["Semaine allégée (G2)."] if deload else (["Affûtage avant l'objectif (C6)."] if taper else [])
+    if p.run_injury:
+        notes.append("Douleur déclarée sur une zone qui porte la course : le volume et l'intensité ne montent pas (S2). "
+                     "Si elle persiste ou augmente, consultez un professionnel de santé.")
     out = []
     for d, kind, variant in sorted(placed):
         out.append(_make(p, kind, variant, monday + timedelta(days=d), w, long_min, q_min, easy_min, deload, taper, run_priority, notes, cyc))
@@ -429,8 +437,8 @@ def _make(p: Profile, kind: str, variant: str, day: date, w: int, long_min: int,
           run_priority: bool, notes: list[str], cyc: Cycle) -> Session:
     if kind == "run_long":
         d: dict[str, Any] = {"zone": zone_text(p, "easy")}
-        ev = event_long_run(p, cyc.weeks_to_event, w)
-        rules_long = ["C2", "C1", "G1"] + (["G2"] if deload else [])
+        ev = None if p.run_injury else event_long_run(p, cyc.weeks_to_event, w)
+        rules_long = ["C2", "C1", "G1"] + (["G2"] if deload else []) + (["S2"] if p.run_injury else [])
         sess_notes = list(notes)
         if ev and p.event:
             rules_long = ["C9", "C1"] + (["G2"] if deload else [])
@@ -439,7 +447,7 @@ def _make(p: Profile, kind: str, variant: str, day: date, w: int, long_min: int,
                 d["vert_m"] = round(elev * 0.8 * min(1.0, long_min / max(event_long_peak(p), 1)) / 10) * 10
             sess_notes.append(f"Préparation de {p.event['title']} : sortie longue progressive vers {event_long_peak(p)} min ; alternez marche et course dans les côtes, allure de conversation.")
         elif p.trail and p.weekly_vert > 0:
-            d["vert_m"] = round(p.weekly_vert * 1.1 ** (w + 1) * 0.5 / 10) * 10
+            d["vert_m"] = round(p.weekly_vert * (1 if p.run_injury else 1.1 ** (w + 1)) * 0.5 / 10) * 10
         return Session(day, kind, "Sortie longue" + (" (trail)" if p.trail else ""), long_min, d, rules_long, sess_notes)
     if kind == "run_quality":
         tq = T.quality_session(cyc.macro, q_min, p.target, p.level_min, day - timedelta(days=day.weekday()), p.today)
@@ -451,7 +459,7 @@ def _make(p: Profile, kind: str, variant: str, day: date, w: int, long_min: int,
              else f"{reps} × 2 min de côte, descente en trottinant"}
         return Session(day, kind, "Séance de qualité" + (" (côtes)" if p.trail else ""), q_min, d, ["C1", "G5"] + (["C5"] if p.trail else []), list(notes))
     if kind == "run_easy":
-        return Session(day, kind, "Footing facile", easy_min, {"zone": zone_text(p, "easy")}, ["C1"], list(notes))
+        return Session(day, kind, "Footing facile", easy_min, {"zone": zone_text(p, "easy")}, ["C1"] + (["S2"] if p.run_injury else []), list(notes))
     if kind == "strength_crossfit":
         minutes, det, cf_notes = CF.build(cyc, p.level, p.injuries)
         return Session(day, kind, "Séance CrossFit" + (" (allégée)" if cyc.deload else ""), minutes, det, ["M9", "G5"], list(notes) + cf_notes)
