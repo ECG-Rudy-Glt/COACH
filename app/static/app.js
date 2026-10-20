@@ -12,6 +12,8 @@ const ICONS = {
   up: '<path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  camera: '<path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.5"/>',
+  image: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M4 17l5-4 4 3 3-2 4 3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
   next: '<path d="M9 5l7 7-7 7"/>',
@@ -1512,9 +1514,21 @@ function mealForm(day) {
     style: `border:0;cursor:pointer;opacity:${slot === s ? 1 : 0.5};${slot === s ? "outline:2px solid var(--accent)" : ""}`, onclick: () => { slot = s; drawSlots(); } }, s)));
   drawSlots();
   const desc = h("textarea", { id: "meal-desc", placeholder: "Ex. : 150 g de poulet, riz (1 assiette), brocolis, un peu d'huile d'olive…", "aria-label": "Description du repas" });
-  const preview = h("img", { alt: "Aperçu de la photo", hidden: true, style: "width:100%;max-height:220px;object-fit:cover;border-radius:12px" });
-  const pick = h("input", { type: "file", accept: "image/*", id: "meal-photo", "aria-label": "Ajouter une photo" });
-  pick.addEventListener("change", () => { file = pick.files[0] || null; if (file) { preview.src = URL.createObjectURL(file); preview.hidden = false; } else preview.hidden = true; });
+  const preview = h("img", { alt: "Aperçu de la photo", style: "width:100%;max-height:260px;object-fit:cover;border-radius:14px;display:block" });
+  const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Prendre une photo" });  // ouvre directement l'appareil photo (iPhone, Android)
+  const lib = h("input", { type: "file", accept: "image/*", hidden: true, "aria-label": "Choisir une photo" });
+  const photoBtns = h("div", { class: "photo-actions" },
+    h("button", { type: "button", class: "photo-btn primary", onclick: () => cam.click() }, icon("camera"), h("span", null, "Prendre une photo")),
+    h("button", { type: "button", class: "photo-btn", onclick: () => lib.click() }, icon("image"), h("span", null, "Photothèque")));
+  const previewBox = h("div", { class: "photo-preview", hidden: true }, preview,
+    h("button", { type: "button", class: "iconbtn photo-x", "aria-label": "Retirer la photo", onclick: () => setPhoto(null) }, icon("close")));
+  const setPhoto = (f) => {
+    if (preview.src.startsWith("blob:")) URL.revokeObjectURL(preview.src);
+    file = f || null;
+    if (file) preview.src = URL.createObjectURL(file);
+    previewBox.hidden = !file; photoBtns.hidden = !!file;
+  };
+  for (const input of [cam, lib]) input.addEventListener("change", () => { setPhoto(input.files[0]); input.value = ""; });
   const est = h("input", { type: "checkbox", id: "meal-est", checked: true });
   const go = h("button", { class: "btn primary" }, "Enregistrer");
   go.addEventListener("click", async () => {
@@ -1533,7 +1547,8 @@ function mealForm(day) {
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
     h("h1", null, "Ajouter un repas"),
-    h("div", { class: "card stack" }, slotsBox, desc, h("div", { class: "field" }, h("label", { for: "meal-photo" }, "Photo (facultatif)"), pick), preview,
+    h("div", { class: "card stack" }, slotsBox, desc, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
+      h("p", { class: "muted", style: "font-size:.8125rem" }, "Pour une meilleure estimation : photo de dessus, bien éclairée, assiette entière visible ; précisez dans la description les quantités, l'huile et les sauces (ce qu'on ne voit pas).")),
       h("label", { class: "row", for: "meal-est" }, est, h("span", null, "Estimer calories et macros avec l'IA")),
       h("p", { class: "muted", style: "font-size:.8125rem" }, "La photo est redimensionnée sur votre téléphone, stockée sur votre serveur et envoyée à l'IA uniquement pour l'estimation. Les chiffres sont des ordres de grandeur, souvent sous-estimés : suivez la tendance de la semaine, pas un repas isolé."), err),
     actionBar(go),
