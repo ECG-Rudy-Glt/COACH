@@ -116,13 +116,18 @@ def test_engine_texts_are_translated():
         ({**RUDY, "sports.practiced": ["running"], "running.weekly_km_8w": 5, "history.recent_break": "oui blessure"}, [{**EVENT, "details": {"distance_km": 21}}]),
         ({**RUDY, "sports.practiced": ["strength"], "constraints.training_days": 3, "strength.sessions_per_week": 3,
           "strength.equipment": ["haltères", "élastiques", "poids de corps"]}, []),
+        ({**RUDY, "sports.practiced": ["crossfit"], "constraints.training_days": 6, "history.injuries": ["épaule"], "hybrid.crossfit_years": 5, "hybrid.crossfit_skills": ["muscle-up"]}, []),
+        ({**RUDY, "sports.practiced": ["hyrox"], "constraints.training_days": 6, "hybrid.hyrox_weak_stations": ["wall balls"], "hybrid.access": "aucun lieu fixe"},
+         [{**EVENT, "title": "Hyrox Paris", "target_date": date(2026, 12, 6)}]),
+        ({**RUDY, "sports.practiced": ["hyrox"], "constraints.training_days": 5, "history.injuries": ["genou"]}, []),
+        ({**RUDY, "sports.practiced": ["running", "hyrox"], "constraints.training_days": 5}, [{**EVENT, "title": "Hyrox Lyon", "target_date": date(2026, 12, 6)}]),
         ({**RUDY, "sports.practiced": ["running", "cycling", "strength"]}, [{"status": "active", "kind": "performance", "target_date": date(2028, 9, 30), "priority": "principal",
                                                                              "title": "10 km sub 40", "details": {"distance_km": 10, "target_time": "39:59"}}]),
     ]
     found: set[str] = set()
     for facts, goals in profiles:
         p = build_profile(facts, goals, TODAY)
-        strings([plan_weeks(p, TODAY, weeks=8), outlook(p, TODAY), advice(p)], found)
+        strings([plan_weeks(p, TODAY, weeks=12), outlook(p, TODAY), advice(p)], found)
     untranslated = sorted(s for s in found if FRENCH.search(s) and i18n.tr(s, "en") == s and not SAME.match(s))
     assert untranslated == []
     assert any(i18n.tr(s, "en") != s for s in found)
