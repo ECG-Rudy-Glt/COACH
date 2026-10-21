@@ -29,6 +29,7 @@ from app.questionnaire.bank import load_bank, validate_bank
 from app.questionnaire.engine import next_questions, progress
 from app.questionnaire.models import Fact, Question, current_facts
 from app.repo import MemoryRepo, PostgresRepo, Repo
+from app.stats.api import build_router as build_stats_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 ROOT = Path(__file__).resolve().parent.parent
@@ -190,6 +191,7 @@ def llm_info(_: int = Depends(current_user)) -> dict:
 app.include_router(build_goals_router(get_repo, require_user))
 app.include_router(build_plan_router(get_repo, require_user))
 app.include_router(build_nutrition_router(get_repo, require_user))
+app.include_router(build_stats_router(get_repo, require_user))
 app.state.garmin = default_gateway()
 app.include_router(build_garmin_router(get_repo, require_user))
 app.state.llm = make_llm()

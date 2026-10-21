@@ -16,6 +16,7 @@ NOT_TEXT = {"use strict", "viewBox", "Escape", "PATCH", "GET", "POST", "PUT", "D
             "Notification", "noopener noreferrer", "Aa", "{design}", "{pct}%", "{i},{kg}", "lang"}
 CSS_START = ("sc-", "f-", "profile-", "bcard", "sess ", "msg ", "btn ", "card ", "stack ", "row ", "grow ", "opt ", "count ", "photo-", "iconbtn", "muted ", "translate",
              "width:", "display:", "border:", "padding:", "align-self", "font-weight", "outline", "text-align", "(")
+UI_FILES = ("app.js", "stats.js")  # un nouvel écran écrit dans son propre fichier s'ajoute ici
 FR_WORDS = re.compile(r"\b(le|la|les|des|une|vos|votre|pour|dans|avec|est)\b")
 
 
@@ -94,9 +95,10 @@ def looks_like_text(text: str, wrapped: bool) -> bool:
 
 def ui_keys() -> list[str]:
     seen: dict[str, None] = {}
-    for text, wrapped in literals((ROOT / "app" / "static" / "app.js").read_text(encoding="utf-8")):
-        if looks_like_text(text, wrapped) and len(re.findall(r"[A-Za-zÀ-ÿ]", re.sub(r"\{\w+\}", "", text))) >= 4:  # « {n} min », « P {g} g » : identiques dans toutes les langues
-            seen.setdefault(text)
+    for name in UI_FILES:
+        for text, wrapped in literals((ROOT / "app" / "static" / name).read_text(encoding="utf-8")):
+            if looks_like_text(text, wrapped) and len(re.findall(r"[A-Za-zÀ-ÿ]", re.sub(r"\{\w+\}", "", text))) >= 4:  # « {n} min », « P {g} g » : identiques dans toutes les langues
+                seen.setdefault(text)
     return list(seen)
 
 

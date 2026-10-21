@@ -1,0 +1,27 @@
+/* Écran Statistiques : graphiques SVG sans dépendance. Couleurs : uniquement les variables des trois thèmes (clair, sombre, éco). */
+.st-chart { stroke: none; display: block; width: 100%; height: auto; overflow: visible; }
+.st-chart .st-text { fill: var(--muted); font: 10px var(--body); }
+.st-chart .st-text.strong { fill: var(--ink); font-weight: 700; }
+.st-chart .st-val { fill: var(--ink); font: 600 10px var(--body); }
+.st-chart .st-base { stroke: var(--line); stroke-width: 1; }
+.st-chart .st-bar { fill: var(--accent); }
+.st-chart .st-bar.today { opacity: .55; }
+.st-chart .st-target { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 3; fill: none; }
+.st-chart .st-line { stroke: var(--accent); stroke-width: 2.5; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.st-chart .st-dot { fill: var(--muted); }
+.st-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .8125rem; color: var(--muted); }
+.st-legend i { display: inline-block; width: 14px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.st-legend i.target { border-top: 2px dashed var(--ink); }
+.st-legend i.dot { width: 6px; height: 6px; border: 0; border-radius: 50%; background: var(--muted); }
+.st-table > summary { cursor: pointer; color: var(--accent); font-size: .875rem; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.st-table table { width: 100%; border-collapse: collapse; font-size: .875rem; margin-top: 6px; }
+.st-table caption { text-align: left; color: var(--muted); padding-bottom: 4px; }
+.st-table th, .st-table td { text-align: left; padding: 5px 6px 5px 0; border-top: .5px solid var(--line); font-variant-numeric: tabular-nums; }
+.st-table th { font-weight: 600; color: var(--muted); }
+.st-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-big { font-size: 1.9rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+.st-meter { width: 100%; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.st-meter > i { display: block; height: 100%; background: var(--accent); }
+.st-note { font-size: .8125rem; color: var(--muted); }
+.st-unit { margin: 0 .5em 0 .3em; }
+.st-unit + .muted { margin-left: 0; }

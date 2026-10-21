@@ -67,6 +67,27 @@ def parse_rhr(resp: dict[str, Any]) -> list[dict[str, Any]]:
     return [{"day": d, "metric": "resting_hr", "value": v} for p in pts if (d := _day(p.get("calendarDate"))) and (v := _num(p.get("value")))]
 
 
+def parse_steps(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Pas par jour. Un total à 0 signifie presque toujours « montre non portée » : ce n'est pas enregistré (donnée absente plutôt que fausse)."""
+    return [{"day": d, "metric": "steps", "value": v} for it in items or [] if isinstance(it, dict) and (d := _day(it.get("calendarDate"))) and (v := _num(it.get("totalSteps")))]
+
+
+def fetch_steps(client: Any, start: date, end: date, errors: tuple[type[Exception], ...]) -> list[dict[str, Any]]:
+    """Pas par tranches de 28 jours (limite de Garmin) ; une tranche en erreur n'efface pas celles déjà reçues."""
+    rows: list[dict[str, Any]] = []
+    cur = start
+    while cur <= end:
+        stop = min(cur + timedelta(days=27), end)
+        try:
+            rows += parse_steps(client.get_daily_steps(cur.isoformat(), stop.isoformat()))
+        except errors:
+            break
+        cur = stop + timedelta(days=1)
+        if cur <= end:
+            time.sleep(0.5)
+    return rows
+
+
 def parse_vo2(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for it in items or []:
@@ -139,7 +160,7 @@ class GarminGateway:
         return LoginResult(tokens=client.client.dumps())
 
     def fetch_metrics(self, tokens: str, start: date, end: date, monthly_predictions: bool) -> tuple[list[dict[str, Any]], str]:
-        """Mesures quotidiennes (FC au repos, VO2max, temps estimés, statut d'entraînement). Une section en erreur n'empêche pas les autres."""
+        """Mesures quotidiennes (FC au repos, pas, VO2max, temps estimés, statut d'entraînement). Une section en erreur n'empêche pas les autres."""
         g = self._lib()
         client = g.Garmin()
         rows: list[dict[str, Any]] = []
@@ -154,6 +175,7 @@ class GarminGateway:
                     lambda a=a, b=b: parse_rhr(client.connectapi(f"{client.garmin_connect_rhr_url}/{name}", params={"fromDate": a, "untilDate": b, "metricId": 60})),
                     lambda a=a, b=b: parse_vo2(client.connectapi(f"{client.garmin_connect_metrics_url}/{a}/{b}")),
                     lambda a=a, b=b: parse_predictions(client.get_race_predictions(a, b, "monthly" if monthly_predictions else "daily")),
+                    lambda cur=cur, stop=stop: fetch_steps(client, cur, stop, (g.GarminConnectConnectionError, g.GarminConnectTooManyRequestsError, KeyError, ValueError, TypeError)),
                 )
                 for step in steps:
                     try:
