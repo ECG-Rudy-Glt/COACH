@@ -1,11 +1,12 @@
 "use strict";
 // Écran « Statistiques » : graphiques SVG sans dépendance. Tout vient du moteur (GET /users/{id}/stats/…), rien n'est calculé ni inventé ici.
 // Chaque graphique a son alternative texte (aria-label + tableau des valeurs) ; les couleurs viennent des variables CSS des trois thèmes.
-// Dépend des utilitaires de app.js (h, api, show, tabbar, themeToggle, fail, icon, store, userId, SPORT_FR), chargé avant ce fichier.
+// Dépend de app.js (h, api, show, tabbar, themeToggle, store, userId, SPORT_FR, fmtDuration, __, langTag), chargé avant ce fichier. Les textes restent en français :
+// h() traduit ses enfants et attributs ; tout texte hors de h() (aria-label SVG, gabarits à variables) passe par __().
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const stFmt = (n, digits = 0) => (n == null ? "–" : Number(n).toLocaleString("fr-FR", { maximumFractionDigits: digits, minimumFractionDigits: digits }));
-const stDay = (iso, opts) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", opts);
+const stFmt = (n, digits = 0) => (n == null ? "–" : Number(n).toLocaleString(langTag(), { maximumFractionDigits: digits, minimumFractionDigits: digits }));
+const stDay = (iso, opts) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), opts);
 const stPace = (m) => { if (m == null) return null; const s = Math.round(m * 60); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
 function svgEl(tag, attrs, text) {
@@ -81,12 +82,12 @@ const stEmpty = (title, text, action) => stCard(title, h("p", { class: "muted" }
 // ---------- section « Quotidien » ----------
 
 function stepsCard(s) {
-  if (!s.connected) return stEmpty("Pas", "Connectez votre montre Garmin (Profil, puis Garmin) pour suivre vos pas. Sans montre, cette courbe reste vide plutôt que d'afficher des zéros.");
-  if (!s.days_measured && s.days.every((d) => d.steps == null)) return stEmpty("Pas", "Aucun relevé de pas pour l'instant. La prochaine synchronisation Garmin les récupère.");
+  if (!s.connected) return stEmpty("Pas par jour", "Connectez votre montre Garmin (Profil, puis Garmin) pour suivre vos pas. Sans montre, cette courbe reste vide plutôt que d'afficher des zéros.");
+  if (!s.days_measured && s.days.every((d) => d.steps == null)) return stEmpty("Pas par jour", "Aucun relevé de pas pour l'instant. La prochaine synchronisation Garmin les récupère.");
   const today = s.days[s.days.length - 1].day;
-  const label = `Pas par jour sur 7 jours${s.average != null ? `, moyenne ${stFmt(s.average)} pas` : ""}.`;
-  return stCard("Pas",
-    s.average != null ? h("p", null, h("span", { class: "st-big" }, stFmt(s.average)), " pas par jour en moyenne") : null,
+  const label = s.average != null ? __("Pas par jour sur 7 jours, moyenne {average} pas.", { average: stFmt(s.average) }) : __("Pas par jour sur 7 jours.");
+  return stCard("Pas par jour",
+    s.average != null ? h("p", null, h("span", { class: "st-big" }, stFmt(s.average)), h("span", { class: "st-unit" }, "pas par jour en moyenne")) : null,
     barChart({ days: s.days.map((d) => d.day), values: s.days.map((d) => d.steps), today, label, format: (v) => (v >= 1000 ? `${stFmt(v / 1000, 1)}k` : stFmt(v)) }),
     h("p", { class: "st-note" }, "Relevés de la montre. Aujourd'hui est en cours : il est grisé et ne compte pas dans la moyenne. « – » : pas de relevé."),
     valuesTable("Pas par jour", ["Jour", "Pas"], s.days.map((d) => [stDay(d.day, { weekday: "long", day: "numeric", month: "short" }), d.steps == null ? "pas de relevé" : stFmt(d.steps)])));
@@ -97,14 +98,16 @@ function mealsCard(n) {
   if (!est.length) return stEmpty("Repas des 7 derniers jours", "Aucun repas estimé cette semaine. Ajoutez vos repas dans Nutrition : les moyennes de la semaine apparaîtront ici.",
     h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => nutritionScreen() }, "Ouvrir Nutrition"));
   const a = n.average, today = n.days[n.days.length - 1].day, days = n.days.map((d) => d.day);
-  const chart = (key, tkey, unit, name) => h("div", { class: "stack", style: "gap:6px" }, h("strong", null, name),
-    barChart({ days, today, values: n.days.map((d) => d[key]), targets: n.days.map((d) => d[tkey]), format: (v) => stFmt(v),
-      label: `${name} estimées par jour sur 7 jours, en ${unit} : ${est.map((d) => `${stDay(d.day, { weekday: "long" })} ≈ ${stFmt(d[key])}`).join(", ")}.` }));
+  const listed = (key) => est.map((d) => `${stDay(d.day, { weekday: "long" })} ≈ ${stFmt(d[key])}`).join(", ");
+  const chart = (key, tkey, name, label) => h("div", { class: "stack", style: "gap:6px" }, h("strong", null, name),
+    barChart({ days, today, values: n.days.map((d) => d[key]), targets: n.days.map((d) => d[tkey]), format: (v) => stFmt(v), label }));
   return stCard("Repas des 7 derniers jours",
-    h("p", null, h("span", { class: "st-big" }, `≈ ${stFmt(a.kcal)}`), " kcal par jour en moyenne",
-      a.target_kcal != null ? h("span", { class: "muted" }, ` (cible ≈ ${stFmt(a.target_kcal)})`) : null),
-    h("p", { class: "muted" }, `Protéines ≈ ${stFmt(a.protein_g)} g par jour${a.target_protein_g != null ? ` (cible ≈ ${stFmt(a.target_protein_g)} g)` : ""}. Moyenne sur ${a.days} jour${a.days > 1 ? "s" : ""} avec repas estimés, sur 7.`),
-    chart("kcal", "target_kcal", "kcal", "Énergie"), chart("protein_g", "target_protein_g", "g", "Protéines"),
+    h("p", null, h("span", { class: "st-big" }, `≈ ${stFmt(a.kcal)}`), h("span", { class: "st-unit" }, "kcal par jour en moyenne"),
+      a.target_kcal != null ? h("span", { class: "muted" }, " ", __("(cible ≈ {target})", { target: stFmt(a.target_kcal) })) : null),
+    h("p", { class: "muted" }, __("Protéines ≈ {protein} g par jour.", { protein: stFmt(a.protein_g) }), a.target_protein_g != null ? [" ", __("Cible ≈ {target} g.", { target: stFmt(a.target_protein_g) })] : null, " ",
+      __("Moyenne calculée sur {days} jour{v} avec repas estimés, sur 7.", { days: a.days, v: a.days > 1 ? "s" : "" })),
+    chart("kcal", "target_kcal", "Énergie", __("Énergie estimée par jour sur 7 jours, en kcal : {values}.", { values: listed("kcal") })),
+    chart("protein_g", "target_protein_g", "Protéines", __("Protéines estimées par jour sur 7 jours, en g : {values}.", { values: listed("protein_g") })),
     n.has_target ? stLegend(["", "estimé"], ["target", "cible du jour"]) : h("p", { class: "muted" }, "Pas de cible affichée : renseignez votre taille, votre année de naissance et votre poids dans le profil."),
     h("p", { class: "st-note" }, "Estimations par texte ou photo : ordres de grandeur, souvent sous-évalués. Lisez la moyenne de la semaine plutôt qu'un jour isolé. Un jour sans repas estimé reste vide, il n'est pas compté comme zéro."),
     valuesTable("Repas estimés par jour", ["Jour", "Énergie (≈ kcal)", "Cible", "Protéines (≈ g)", "Cible"],
@@ -116,29 +119,32 @@ function weightCard(w) {
   if (!w.series.length) return stEmpty("Poids", "Aucune pesée enregistrée. Deux pesées par semaine, le matin, suffisent : on suit la tendance, pas le chiffre d'un jour.",
     h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => nutritionScreen() }, "Saisir mon poids"));
   const rate = w.rate_pct_per_week;
-  const label = `Courbe de poids sur 60 jours : tendance sur 7 jours ${stFmt(w.current, 1)} kg${w.target_kg ? `, objectif ${stFmt(w.target_kg, 1)} kg` : ""}.`;
+  const label = w.target_kg ? __("Courbe de poids sur 60 jours : tendance sur 7 jours {current} kg, objectif {target} kg.", { current: stFmt(w.current, 1), target: stFmt(w.target_kg, 1) })
+    : __("Courbe de poids sur 60 jours : tendance sur 7 jours {current} kg.", { current: stFmt(w.current, 1) });
   return stCard("Poids",
-    h("p", null, h("span", { class: "st-big" }, stFmt(w.current, 1)), " kg ", h("span", { class: "muted" }, "(tendance sur 7 jours)")),
-    rate != null ? h("p", { class: "muted" }, `Rythme : ${rate > 0 ? "+" : ""}${stFmt(rate, 2)} % par semaine.`) : h("p", { class: "muted" }, "Rythme non calculé : il faut au moins 3 pesées réparties sur 7 jours."),
+    h("p", null, h("span", { class: "st-big" }, stFmt(w.current, 1)), h("span", { class: "st-unit" }, "kg"), h("span", { class: "muted" }, "(tendance sur 7 jours)")),
+    rate != null ? h("p", { class: "muted" }, __("Rythme : {rate} % par semaine.", { rate: `${rate > 0 ? "+" : ""}${stFmt(rate, 2)}` })) : h("p", { class: "muted" }, "Rythme non calculé : il faut au moins 3 pesées réparties sur 7 jours."),
     lineChart({ series: w.series, target: w.target_kg, label }),
-    stLegend(["", "tendance 7 jours"], ["dot", "pesée"], ...(w.target_kg ? [["target", `objectif ${stFmt(w.target_kg, 1)} kg`]] : [])),
+    stLegend(["", "tendance 7 jours"], ["dot", "pesée"], ...(w.target_kg ? [["target", __("objectif {target} kg", { target: stFmt(w.target_kg, 1) })]] : [])),
     valuesTable("Pesées et tendance", ["Jour", "Pesée (kg)", "Tendance (kg)"], w.series.slice().reverse().map((p) => [stDay(p.day, { day: "numeric", month: "short", year: "2-digit" }), stFmt(p.kg, 1), stFmt(p.avg, 1)])));
 }
 
 function weekCard(wk) {
   const pct = wk.planned ? Math.min(100, Math.round((wk.done / wk.planned) * 100)) : 0;
   return stCard("Cette semaine",
-    wk.planned ? h("p", null, h("span", { class: "st-big" }, `${wk.done} / ${wk.planned}`), ` séance${wk.planned > 1 ? "s faites" : " faite"}`) : h("p", { class: "muted" }, "Pas de séance prévue cette semaine."),
-    wk.planned ? h("div", { class: "st-meter", role: "img", "aria-label": `${wk.done} séances faites sur ${wk.planned} prévues` }, h("i", { style: `width:${pct}%` })) : null,
-    h("p", { class: "muted" }, [wk.minutes ? `${fmtDuration(wk.minutes)} d'activité` : null, wk.run_km ? `${stFmt(wk.run_km, 1)} km de course` : null].filter(Boolean).join(" · ") || "Aucune activité enregistrée depuis lundi."));
+    wk.planned ? h("p", null, h("span", { class: "st-big" }, `${wk.done} / ${wk.planned}`), " ", wk.planned > 1 ? "séances faites" : "séance faite") : h("p", { class: "muted" }, "Pas de séance prévue cette semaine."),
+    wk.planned ? h("div", { class: "st-meter", role: "img", "aria-label": __("{done} séances faites sur {planned} prévues", { done: wk.done, planned: wk.planned }) }, h("i", { style: `width:${pct}%` })) : null,
+    h("p", { class: "muted" }, wk.minutes || wk.run_km ? [wk.minutes ? __("{duration} d'activité", { duration: fmtDuration(wk.minutes) }) : null, wk.minutes && wk.run_km ? " · " : null,
+      wk.run_km ? __("{km} km de course", { km: stFmt(wk.run_km, 1) }) : null] : "Aucune activité enregistrée depuis lundi."));
 }
 
 function recentCard(items) {
   if (!items.length) return stEmpty("Activités récentes", "Aucune activité sur les 14 derniers jours. Elles apparaissent ici quand la montre les synchronise ou quand vous validez une séance.");
   const sport = (s) => (typeof SPORT_FR !== "undefined" && SPORT_FR[s]) || "Autre";
   return stCard("Activités récentes", h("div", null, items.map((a) => h("div", { class: "item" },
-    h("span", { class: "l" }, h("strong", null, a.title), h("span", { class: "sub" }, `${stDay(a.day, { weekday: "short", day: "numeric", month: "short" })} · ${sport(a.sport)}${a.source === "saisie" ? " · saisie à la main" : ""}`)),
-    h("span", { class: "v" }, [a.minutes ? `${a.minutes} min` : null, a.distance_km ? `${stFmt(a.distance_km, 1)} km` : null, a.pace_min_km ? `${stPace(a.pace_min_km)} /km` : null, a.avg_hr ? `FC ${a.avg_hr}` : null].filter(Boolean).join(" · "))))));
+    h("span", { class: "l" }, h("strong", null, a.title), h("span", { class: "sub" }, stDay(a.day, { weekday: "short", day: "numeric", month: "short" }), " · ", sport(a.sport), a.source === "saisie" ? [" · ", "saisie à la main"] : null)),
+    h("span", { class: "v" }, [a.minutes ? __("{m} min", { m: a.minutes }) : null, a.distance_km ? `${stFmt(a.distance_km, 1)} km` : null, a.pace_min_km ? `${stPace(a.pace_min_km)} /km` : null,
+      a.avg_hr ? __("FC {hr}", { hr: a.avg_hr }) : null].filter(Boolean).join(" · "))))));
 }
 
 async function renderDaily(box) {
