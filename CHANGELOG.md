@@ -11,7 +11,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Reschedule a session: *Change day* on the session screen (bottom sheet, any date in range) or long-press then drag the session onto a day (touch on iPhone and Android, mouse on desktop). Non-blocking warnings for two hard sessions within 48 h or legs next to a key run (G5, I1, I2); the original day is kept (`moved_from`).
 - Long-horizon trajectory for dated *performance* goals (e.g. 10 km under 40 min in two years): current level from race records (C10), base → threshold → specific → taper phases with timed checkpoints every 3 months (C11), and a weekly-volume target instead of an unbounded build (C12). Exposed as `trajectory` on `GET /users/{id}/plan`, shown in the plan screen and given to the coach.
 - Threshold and goal-pace quality sessions during those phases; an undated or conflicting ultra is reported instead of silently ignored.
-- Nutrition: optional *big meal yesterday* correction (rule N9): after a day above target, lighten today's target by half the excess (400 kcal at most, never below the safety floor, never for protected profiles), only when you ask for it.
+- Meal form: *Lunchbox for tomorrow* — a meal prepared (and estimated) the evening before is saved on tomorrow's lunch, so its calories count on the day it is eaten; the day arrows now reach tomorrow.
 - Meal form: portion size (small / normal / big plate) is passed to the estimator.
 ### Changed
 - Meal estimates: the prompt now asks for the high end of the range for big plates (sauces, cooking fat, restaurant portions) and the per-meal ceiling is raised from 2,500 to 3,500 kcal; estimates were clipped and too low.

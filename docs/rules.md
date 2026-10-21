@@ -124,7 +124,6 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | N6 | Les estimations de repas par texte ou photo sont des ordres de grandeur (fourchette, confiance) : on suit les moyennes hebdomadaires, jamais un repas isolé ; aucun jugement moral | sous-estimation fréquente : l'estimateur est invité à retenir la fourchette haute, et la portion (petite, normale, grosse) est transmise | B |
 | N7 | Pas de déficit pour un mineur, en cas de grossesse ou post-partum, ni d'antécédent de trouble alimentaire déclaré : renvoi vers un professionnel | | C |
 | N8 | Qualité : 25 à 30 g de fibres, des légumes à chaque repas, produits ultra-transformés et alcool limités | | B |
-| N9 | Après un jour au-dessus de la cible (repas copieux), option de correction le lendemain : la moitié de l'excès, 400 kcal au plus, jamais sous le plancher N1, uniquement sur demande, jamais en perte de poids protégée (N7) ni en prise de poids ; en dessous de 200 kcal d'écart on ne corrige rien (marge d'erreur des estimations) | 50 %, 400 kcal | C (lissage hebdomadaire plutôt que compensation stricte : on suit la moyenne, N5-N6) |
 
 ## H. Vérifications automatiques (tests)
 

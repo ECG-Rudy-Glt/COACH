@@ -11,9 +11,6 @@ MET = {"run": 8.0, "bike": 7.0, "strength": 4.0, "swim": 6.0, "walk": 3.5, "othe
 KIND_SPORT = {"run_easy": "run", "run_long": "run", "run_quality": "run", "strength_upper": "strength", "strength_lower": "strength",
               "strength_full": "strength"}
 MIN_KCAL = {"homme": 1500, "femme": 1200}
-CARRY_MIN_SURPLUS = 200  # N9 : en dessous, l'écart est dans la marge d'erreur des estimations, on ne corrige rien
-CARRY_SHARE = 0.5  # N9 : on ne reprend que la moitié de l'écart de la veille
-CARRY_MAX = 400  # N9 : plafond de la correction, étalée sur une seule journée
 
 
 @dataclass
@@ -63,17 +60,8 @@ def build_profile(facts: dict[str, Any], today: date, latest_kg: float | None, s
     return p
 
 
-def carryover(p: NutritionProfile, prev_kcal: float, prev_target: float) -> int:
-    """N9 : kcal à retrancher aujourd'hui après un jour au-dessus de la cible (repas copieux). Jamais en cas de situation protégée (N7)."""
-    surplus = prev_kcal - prev_target
-    if p.blocked_reason or p.direction == "prendre" or surplus < CARRY_MIN_SURPLUS:
-        return 0
-    return int(min(round(surplus * CARRY_SHARE / 10) * 10, CARRY_MAX))
-
-
-def targets(p: NutritionProfile, day_load: str = "mean", carry_kcal: int = 0) -> dict[str, Any]:
-    """Cibles du jour. `day_load` : training | rest | mean (±120 kcal de glucides selon la charge, moyenne inchangée).
-    `carry_kcal` : correction demandée après un repas copieux la veille (N9), toujours bornée par le plancher N1."""
+def targets(p: NutritionProfile, day_load: str = "mean") -> dict[str, Any]:
+    """Cibles du jour. `day_load` : training | rest | mean (±120 kcal de glucides selon la charge, moyenne inchangée)."""
     bmr = bmr_mifflin(p.sex, p.weight_kg, p.height_cm, p.age)
     tdee = bmr * PAL.get(p.work, 1.25) + p.exercise_kcal_day
     rate = 0.0
@@ -87,17 +75,13 @@ def targets(p: NutritionProfile, day_load: str = "mean", carry_kcal: int = 0) ->
     limited = kcal > tdee - deficit + 1
     shift = {"training": 120, "rest": -120}.get(day_load, 0)
     kcal_day = max(kcal + shift, floor)  # le plancher de sécurité s'applique aussi aux jours de repos (N1)
-    carry_applied = 0
-    if carry_kcal > 0 and not p.blocked_reason:
-        carry_applied = int(max(min(carry_kcal, kcal_day - floor), 0))
-        kcal_day -= carry_applied
     protein = round(p.weight_kg * (2.0 if p.direction == "perdre" else 1.8))  # N2 : 1,8 à 2,4 g/kg ; 2,0 en déficit avec musculation
     fat = round(p.weight_kg * 0.8)  # N3
     carbs = max(round((kcal_day - protein * 4 - fat * 9) / 4), 0)
     rounded = -(-kcal_day // 10) * 10 if (limited or kcal_day <= floor + 1) else round(kcal_day / 10) * 10  # plancher appliqué : on arrondit vers le haut, jamais sous le BMR
     out = {"kcal": int(rounded), "protein_g": protein, "carbs_g": carbs, "fat_g": fat, "fiber_g": 28, "bmr": round(bmr),
            "tdee": round(tdee), "deficit_kcal": round(max(tdee - kcal, 0)), "rate_pct_per_week": round(rate * 100, 2), "floor_applied": limited,
-           "day_load": day_load, "carryover_kcal": carry_applied, "rules": ["N1", "N2", "N3"] + (["N9"] if carry_applied else [])}
+           "day_load": day_load, "rules": ["N1", "N2", "N3"]}
     if p.blocked_reason:
         out["notice"] = p.blocked_reason
     elif limited:
