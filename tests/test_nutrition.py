@@ -62,7 +62,7 @@ def test_weight_trend_uses_a_moving_average_and_advises():
 def test_analysis_validation_clips_and_recomputes_inconsistent_energy():
     out = nut_analyze.validate({"totals": {"kcal_min": 100, "kcal_max": 120, "protein_g": 40, "carbs_g": 60, "fat_g": 20}, "confidence": "bizarre",
                                 "items": [{"name": "riz", "kcal": 99999}] * 20})
-    assert out["confidence"] == "faible" and out["note"] and 500 < out["kcal"] < 800 and len(out["items"]) == 12 and out["items"][0]["kcal"] == 2000
+    assert out["confidence"] == "faible" and out["note"] and 500 < out["kcal"] < 800 and len(out["items"]) == 12 and out["items"][0]["kcal"] == nut_analyze.MAX_KCAL_MEAL
     assert nut_analyze.validate({"totals": {"kcal_min": 900, "kcal_max": 300}})["kcal_min"] == 300
 
 
@@ -150,3 +150,23 @@ def test_weight_and_progress(ctx):
     p = c.get(f"/users/{uid}/nutrition/progress").json()
     assert p["profile"]["bmi"] > 20 and p["trend"]["rate_pct_per_week"] < 0 and len(p["weights"]) == 8 and p["advice"] and "disclaimer" in p
     assert p["profile"]["weight_kg"] == pytest.approx(68 - 0.25 * 7)  # le dernier poids saisi pilote les cibles
+
+
+def test_lunchbox_prepared_today_is_counted_tomorrow_at_lunch(ctx):
+    c, uid, repo, llm = ctx
+    r = c.post(f"/users/{uid}/nutrition/meals", json={"slot": "dîner", "description": "bourguignon", "for_tomorrow": True})
+    assert r.status_code == 201
+    m = r.json()["meal"]
+    tomorrow = (TODAY + timedelta(days=1)).isoformat()
+    assert m["day"] == tomorrow and m["slot"] == "déjeuner" and m["analysis"]["kcal"] == 650
+    assert c.get(f"/users/{uid}/nutrition/day").json()["totals"]["kcal"] == 0
+    assert c.get(f"/users/{uid}/nutrition/day?day={tomorrow}").json()["totals"]["kcal"] == 650
+    # depuis demain, « pour demain » viserait après-demain : refusé
+    assert c.post(f"/users/{uid}/nutrition/meals", json={"day": tomorrow, "slot": "dîner", "description": "x", "for_tomorrow": True}).status_code == 422
+
+
+def test_big_portion_is_passed_to_the_estimator(ctx):
+    c, uid, repo, llm = ctx
+    r = c.post(f"/users/{uid}/nutrition/meals", json={"slot": "dîner", "description": "pâtes carbonara", "portion": "grosse"})
+    assert r.status_code == 201 and "grosse" in r.json()["meal"]["description"] and "grosse" in llm.calls[0][0]
+    assert "sous-évalue" in nut_analyze.SYSTEM and "poids × densité" in nut_analyze.SYSTEM and "bourguignon" in nut_analyze.SYSTEM

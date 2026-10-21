@@ -1442,6 +1442,7 @@ function shiftDay(iso, n) { const d = new Date(iso + "T12:00:00"); d.setDate(d.g
 function dayLabel(iso, today) {
   if (iso === today) return "Aujourd'hui";
   if (iso === shiftDay(today, -1)) return "Hier";
+  if (iso === shiftDay(today, 1)) return "Demain";
   return new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 }
 
@@ -1507,7 +1508,7 @@ async function nutritionScreen(day) {
   const dayNav = h("div", { class: "row between" },
     h("button", { class: "iconbtn", "aria-label": "Jour précédent", onclick: () => nutritionScreen(shiftDay(d.day, -1)) }, icon("back")),
     h("strong", null, dayLabel(d.day, d.today)),
-    h("button", { class: "iconbtn", "aria-label": "Jour suivant", disabled: d.day >= d.today, onclick: () => nutritionScreen(shiftDay(d.day, 1)) }, icon("next")));
+    h("button", { class: "iconbtn", "aria-label": "Jour suivant", disabled: d.day > d.today, onclick: () => nutritionScreen(shiftDay(d.day, 1)) }, icon("next")));
   const wInput = h("input", { id: "w-kg", type: "number", inputmode: "decimal", step: "0.1", min: "30", max: "250", placeholder: "Poids (kg)", "aria-label": "Poids en kilogrammes" });
   const wWaist = h("input", { id: "w-waist", type: "number", inputmode: "decimal", step: "0.5", placeholder: "Tour de taille (cm), facultatif", "aria-label": "Tour de taille en centimètres" });
   const wBtn = h("button", { class: "btn sm", style: "align-self:flex-start" }, "Enregistrer le poids");
@@ -1567,6 +1568,15 @@ function mealForm(day) {
     previewBox.hidden = !file; photoBtns.hidden = !!file;
   };
   for (const input of [cam, lib]) input.addEventListener("change", () => { setPhoto(input.files[0]); input.value = ""; });
+  let portion = "normale";
+  const portionBox = h("div", { class: "chips", role: "group", "aria-label": "Taille de la portion" });
+  const drawPortion = () => portionBox.replaceChildren(...[["petite", "Petite portion"], ["normale", "Portion normale"], ["grosse", "Gros plat"]].map(([k, label]) =>
+    h("button", { type: "button", class: "chip", "aria-pressed": portion === k, style: `border:0;cursor:pointer;opacity:${portion === k ? 1 : 0.5};${portion === k ? "outline:2px solid var(--accent)" : ""}`,
+      onclick: () => { portion = k; drawPortion(); } }, label)));
+  drawPortion();
+  const canTomorrow = day <= isoDay(new Date());  // la gamelle se compte le lendemain : impossible au-delà de demain
+  const box = h("input", { type: "checkbox", id: "meal-box" });
+  const boxRow = canTomorrow ? h("label", { class: "row", for: "meal-box" }, box, h("span", null, "Gamelle pour demain midi (comptée demain)")) : null;
   const est = h("input", { type: "checkbox", id: "meal-est", checked: true });
   const go = h("button", { class: "btn primary" }, "Enregistrer");
   go.addEventListener("click", async () => {
@@ -1574,18 +1584,18 @@ function mealForm(day) {
     if (!desc.value.trim() && !file) { err.textContent = "Décrivez votre repas ou ajoutez une photo."; return; }
     go.disabled = true; go.textContent = est.checked ? "Estimation en cours…" : "Enregistrement…";
     try {
-      const body = { day, slot, description: desc.value.trim(), estimate: est.checked };
+      const body = { day, slot, description: desc.value.trim(), estimate: est.checked, portion, for_tomorrow: canTomorrow && box.checked };
       if (file) body.photo_b64 = await fileToJpegB64(file);
       const r = await api(`/users/${userId}/nutrition/meals`, { method: "POST", body });
       if (r.analysis_error) toast("Repas enregistré. Estimation indisponible : " + r.analysis_error);
-      nutritionScreen(day);
+      nutritionScreen(body.for_tomorrow ? shiftDay(day, 1) : day);
     } catch (e) { err.textContent = e.message; go.disabled = false; go.textContent = "Enregistrer"; }
   });
   show(
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
     h("h1", null, "Ajouter un repas"),
-    h("div", { class: "card stack" }, slotsBox, desc, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
+    h("div", { class: "card stack" }, slotsBox, desc, portionBox, boxRow, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
       h("p", { class: "muted", style: "font-size:.8125rem" }, "Pour une meilleure estimation : photo de dessus, bien éclairée, assiette entière visible ; précisez dans la description les quantités, l'huile et les sauces (ce qu'on ne voit pas).")),
       h("label", { class: "row", for: "meal-est" }, est, h("span", null, "Estimer calories et macros avec l'IA")),
       h("p", { class: "muted", style: "font-size:.8125rem" }, "La photo est redimensionnée sur votre téléphone, stockée sur votre serveur et envoyée à l'IA uniquement pour l'estimation. Les chiffres sont des ordres de grandeur, souvent sous-estimés : suivez la tendance de la semaine, pas un repas isolé."), err),

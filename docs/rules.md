@@ -121,7 +121,7 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | N3 | Lipides au moins 0,8 g/kg ; glucides pour le reste ; ±120 kcal de glucides selon que la journée contient une séance de 45 min ou plus, la moyenne reste inchangée | 0,8 g/kg | C |
 | N4 | Rythme de perte 0,5 % du poids par semaine à moins de 12 semaines d'un objectif sportif, 0,75 % sinon ; sous 0,25 % pendant 3 semaines avec 14 jours renseignés : −100 à −150 kcal ; au-delà de 1 % : +150 kcal | 0,5 à 0,75 % | B (Garthe 2011 ; Helms 2014) |
 | N5 | Le poids se suit par moyenne glissante sur 7 jours, au moins deux pesées par semaine, jamais d'après le chiffre d'un jour (eau, sel, digestion) | 7 j | C |
-| N6 | Les estimations de repas par texte ou photo sont des ordres de grandeur (fourchette, confiance) : on suit les moyennes hebdomadaires, jamais un repas isolé ; aucun jugement moral | sous-estimation fréquente | B |
+| N6 | Les estimations de repas par texte ou photo sont des ordres de grandeur (fourchette, confiance) : on suit les moyennes hebdomadaires, jamais un repas isolé ; aucun jugement moral | sous-estimation fréquente : l'estimateur est invité à retenir la fourchette haute, et la portion (petite, normale, grosse) est transmise | B |
 | N7 | Pas de déficit pour un mineur, en cas de grossesse ou post-partum, ni d'antécédent de trouble alimentaire déclaré : renvoi vers un professionnel | | C |
 | N8 | Qualité : 25 à 30 g de fibres, des légumes à chaque repas, produits ultra-transformés et alcool limités | | B |
 

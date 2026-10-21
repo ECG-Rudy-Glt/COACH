@@ -35,6 +35,8 @@ class MealIn(BaseModel):
     description: str = Field(default="", max_length=800)
     photo_b64: str | None = Field(default=None, max_length=5_000_000)
     estimate: bool = True
+    portion: Literal["petite", "normale", "grosse"] = "normale"
+    for_tomorrow: bool = False  # gamelle préparée aujourd'hui, mangée demain midi : comptée le lendemain
 
 
 class WeightIn(BaseModel):
@@ -148,16 +150,22 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     def add_meal(body: MealIn, request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         today = date.today()
         d = body.day or today
+        slot = body.slot
+        if body.for_tomorrow:
+            d, slot = d + timedelta(days=1), "déjeuner"
         if d > today + timedelta(days=1) or d < today - timedelta(days=14):
             raise HTTPException(422, "Date hors de la plage autorisée (14 jours passés).")
         if not body.description.strip() and not body.photo_b64:
             raise HTTPException(422, "Décrivez votre repas ou ajoutez une photo.")
         if len(repo.list_meals(user_id, d, d)) >= MAX_MEALS_PER_DAY:
             raise HTTPException(422, "Trop de repas pour cette journée.")
+        description = body.description.strip()
+        if body.portion != "normale":  # transmis à l'IA par le texte : la réestimation garde l'indication
+            description = f"{description} (portion : {body.portion})".strip()
         path = None
         if body.photo_b64:
             path, _, _ = _save_photo(user_id, body.photo_b64)
-        meal = repo.add_meal(user_id, d, body.slot, body.description.strip(), path)
+        meal = repo.add_meal(user_id, d, slot, description, path)
         out: dict[str, Any] = {"meal": _public(meal), "analysis_error": None}
         if body.estimate:
             try:
