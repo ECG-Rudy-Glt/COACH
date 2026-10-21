@@ -15,6 +15,7 @@ review: |-
   shows whether loads are really going up. Never remove a lighter week or the taper; during the peak, propose nothing that adds load.
   The field "trajectoire" (if present) describes the long-range performance goal: current level, gap, phases (base, threshold, specific, taper), target volume and check-in tests.
   Mention it when useful, without ever promising the result; do not change the times or the phases.
+  Its level has a source type (level.source_kind): "saisi" (current time entered by the user), "garmin" (best recent effort from the watch; when level.bound is true it is only a bound: at least as fast as) or "record" (starting point, probably faster than the current level). Present it accordingly, never stronger than its source.
   If "fatigue_declaree" shows repeated fatigue or pain, propose lightening (reduce) rather than continuing the build-up.
   You may also cite publication identifiers (field source_ids) taken ONLY from the "sources" list provided; invent no reference; with no suitable source, leave source_ids empty.
   Never write a technical identifier (session number, "ID 53") in texts meant for the athlete: refer to sessions by their title and day.

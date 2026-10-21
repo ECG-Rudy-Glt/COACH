@@ -52,35 +52,47 @@ def fmt_pace(min_per_km: float) -> str:
     return f"{s // 60}:{s % 60:02d}"
 
 
-def current_level(facts: dict[str, Any], to_km: float) -> tuple[float, str] | None:
-    """Temps équivalent sur `to_km` d'après les records de course (C10). Le niveau actuel (« now ») prime sur le record.
+def level_info(facts: dict[str, Any], to_km: float) -> dict[str, Any] | None:
+    """Niveau actuel sur `to_km` (C10, C13, C14) : temps équivalent, texte de la source et `kind` = saisi | garmin | record.
 
-    En cas de doute on garde l'équivalent le plus lent : un record ancien ou une formule optimiste ne doivent pas rendre l'objectif trop proche.
+    Ordre de priorité : temps « actuel » saisi par l'utilisateur, puis meilleur effort récent mesuré par la montre (`estimate.run`, voir app.plan.level),
+    puis record seul. À l'intérieur d'un niveau, on garde l'équivalent le plus lent entre distances, par prudence.
     """
-    found: list[tuple[float, str]] = []
+    found: dict[str, list[tuple[float, str]]] = {"saisi": [], "record": []}
     for key, km in BENCH_KM.items():
         raw = facts.get(key)
         if not isinstance(raw, dict):
             continue
-        rec = raw.get("now") or raw.get("pr") or {}
-        minutes = parse_time(rec.get("time")) if isinstance(rec, dict) else None
-        if minutes:
-            found.append((riegel(minutes, km, to_km), f"{key.removeprefix('bench.run_').replace('half', 'semi')} en {fmt_time(minutes)}"))
-    return max(found) if found else None
+        for which, kind in (("now", "saisi"), ("pr", "record")):
+            rec = raw.get(which)
+            minutes = parse_time(rec.get("time")) if isinstance(rec, dict) else None
+            if minutes:
+                found[kind].append((riegel(minutes, km, to_km), f"{key.removeprefix('bench.run_').replace('half', 'semi')} en {fmt_time(minutes)}"))
+    if found["saisi"]:
+        minutes, source = max(found["saisi"])
+        return {"minutes": minutes, "source": source, "kind": "saisi"}
+    est = facts.get("estimate.run")
+    if isinstance(est, dict) and est.get("minutes") and abs(est.get("to_km", 0) - to_km) < 0.01:
+        day = date.fromisoformat(est["day"])
+        text = f"meilleure sortie récente : {str(est['from_km']).replace('.', ',')} km en {est['from_time']} le {day.strftime('%d/%m/%Y')}"
+        return {"minutes": est["minutes"], "source": text, "kind": "garmin", "bound": est.get("kind") != "estimate", "day": est["day"],
+                "from_km": est["from_km"], "from_time": est["from_time"]}
+    if found["record"]:
+        minutes, source = max(found["record"])
+        return {"minutes": minutes, "source": source, "kind": "record"}
+    return None
+
+
+def current_level(facts: dict[str, Any], to_km: float) -> tuple[float, str] | None:
+    """Temps équivalent sur `to_km` et sa source (voir `level_info`)."""
+    info = level_info(facts, to_km)
+    return (info["minutes"], info["source"]) if info else None
 
 
 def level_is_record_only(facts: dict[str, Any], to_km: float) -> bool:
-    """C13 : vrai si le niveau retenu par C10 vient d'un record seul. Un record est le meilleur temps jamais couru, pas le niveau du moment."""
-    best: tuple[float, bool] | None = None
-    for key, km in BENCH_KM.items():
-        raw = facts.get(key)
-        if not isinstance(raw, dict):
-            continue
-        now = parse_time((raw.get("now") or {}).get("time")) if isinstance(raw.get("now"), dict) else None
-        rec = now or (parse_time((raw.get("pr") or {}).get("time")) if isinstance(raw.get("pr"), dict) else None)
-        if rec and (best is None or riegel(rec, km, to_km) > best[0]):
-            best = (riegel(rec, km, to_km), not now)
-    return bool(best and best[1])
+    """C13 : vrai si le niveau retenu vient d'un record seul. Un record est le meilleur temps jamais couru, pas le niveau du moment."""
+    info = level_info(facts, to_km)
+    return bool(info and info["kind"] == "record")
 
 
 def volume_target_km(goal_minutes: float, goal_km: float) -> int:
@@ -157,8 +169,8 @@ def describe(target: dict[str, Any] | None, facts: dict[str, Any], goals: list[d
     if not target:
         return None
     km, goal = target["distance_km"], target["time_min"]
-    level = current_level(facts, km)
-    level_min = level[0] if level else None
+    info = level_info(facts, km)
+    level_min = info["minutes"] if info else None
     this = monday_of(today)
     end = monday_of(target["date"])
     # phases : semaine par semaine, regroupées
@@ -207,7 +219,8 @@ def describe(target: dict[str, Any] | None, facts: dict[str, Any], goals: list[d
                            else "c'est très ambitieux, mieux vaut repousser la date ou viser un temps plus lent."))
     return {
         "target": {"title": target["title"], "date": target["date"].isoformat(), "distance_km": km, "time": fmt_time(goal), "pace": fmt_pace(pace_goal)},
-        "level": {"time": fmt_time(level_min), "source": level[1], "record_only": level_is_record_only(facts, km)} if level else None,
+        "level": {"time": fmt_time(level_min), "source": info["source"], "source_kind": info["kind"], "record_only": info["kind"] == "record",
+                  "bound": info.get("bound", False), "source_date": info.get("day")} if info else None,
         "gap_pct": round(gap * 100, 1), "per_month_pct": round(per_month, 2), "verdict": verdict,
         "weekly_km_target": ceiling, "weeks_left": weeks_left, "phases": phases, "milestones": milestones, "warnings": warnings,
         "current_phase": phases[0]["macro"] if phases else None,

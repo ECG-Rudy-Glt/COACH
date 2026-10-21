@@ -178,10 +178,17 @@ def start_load(movement: str | None, facts: dict[str, Any], slot: dict[str, Any]
     if not movement:
         return None
     b = facts.get(f"bench.{movement}") or {}
-    ref = b.get("now") or (b.get("pr") and {**b["pr"], "weight": b["pr"].get("weight", 0) * 0.9})
-    if not ref or not ref.get("weight"):
-        return None
-    e1rm = ref["weight"] * (1 + (ref.get("reps") or 1) / 30)
+    ref = b.get("now")
+    est = facts.get(f"estimate.bench.{movement}")  # C15 : e1RM récent tiré des séances saisies, passe avant le record
+    if ref and ref.get("weight"):
+        e1rm = ref["weight"] * (1 + (ref.get("reps") or 1) / 30)
+    elif isinstance(est, dict) and est.get("e1rm"):
+        e1rm = est["e1rm"]
+    else:
+        ref = b.get("pr") and {**b["pr"], "weight": b["pr"].get("weight", 0) * 0.9}
+        if not ref or not ref.get("weight"):
+            return None
+        e1rm = ref["weight"] * (1 + (ref.get("reps") or 1) / 30)
     top = int(str(slot["reps"]).split("-")[-1])
     w = e1rm / (1 + (top + 2) / 30)
     return round(w / 2.5) * 2.5
@@ -275,6 +282,8 @@ def resolve(repo: Repo, slots: list[dict[str, Any]], facts: dict[str, Any]) -> l
             used.add(ex.id)
             main = next((m for m in ex.media if m.kind == "image"), None)
             item["exercise"] = {"id": ex.id, "name": ex.name, "thumb": main.id if main else None}
+            if cand.get("load"):
+                item["movement"] = cand["load"]  # id de « Mes performances » : relie les charges saisies au niveau estimé (C15)
             kg = start_load(cand.get("load"), facts, slot)
             if kg:
                 item["suggested_kg"] = kg

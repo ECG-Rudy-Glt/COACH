@@ -1363,5 +1363,9 @@
  "{num} à {num2} sur {num3}": "{num} to {num2} out of {num3}",
  "Jambes et gainage (entretien)": "Legs and core (maintenance)",
  "étude croisée": "crossover study",
- "revue exploratoire": "scoping review"
+ "revue exploratoire": "scoping review",
+  "Niveau actuel borné par votre montre : vous courez au moins aussi vite que {time} sur cette distance ({source}). Votre niveau réel est probablement plus rapide : renseignez un temps récent dans Mes performances pour un plan plus juste.": "Current level bounded by your watch: you run at least as fast as {time} over this distance ({source}). Your real level is probably faster: enter a recent time in My performances for a more accurate plan.",
+  "Niveau actuel estimé d'après votre montre : {time} ({source}).": "Current level estimated from your watch: {time} ({source}).",
+  "Niveau actuel estimé d'après vos séances : ≈ {e1rm} kg sur une répétition ({kg} kg × {reps}, {day}). Estimation : saisissez votre niveau actuel pour la remplacer.": "Current level estimated from your sessions: ≈ {e1rm} kg for one repetition ({kg} kg × {reps}, {day}). This is an estimate: enter your current level to replace it.",
+  "meilleure sortie récente : {name} km en {name2} le {name3}": "best recent run: {name} km in {name2} on {name3}"
 }

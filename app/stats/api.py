@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.nutrition import engine as eng
 from app.nutrition.api import _day_load, _profile
 from app.plan import trajectory
+from app.plan.level import with_estimates
 from app.questionnaire.models import Fact, current_facts
 from app.repo import Repo
 from app.stats import daily, progress, regularity
@@ -50,7 +51,7 @@ def progress_view(repo: Repo, user_id: int, today: date, catalog: dict[str, Any]
     return {
         "today": today.isoformat(),
         "records": {"running": progress.run_records(facts, activities, metrics), "lifts": progress.lift_records(sessions), "declared_lifts": progress.declared_lifts(facts, catalog)},
-        "trajectory": progress.trajectory_block(goals, facts, metrics, today),
+        "trajectory": progress.trajectory_block(goals, with_estimates(facts, activities, sessions, goals, today), metrics, today),
         "curves": progress.exercise_curves(sessions, today - timedelta(weeks=CURVE_WEEKS)),
         "volume": {"weeks": progress.weekly_volume(sessions, activities, today), "weekly_km_target": _weekly_km_target(goals, today)},
         "pace": progress.pace_outings(activities, today),

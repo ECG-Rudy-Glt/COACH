@@ -9,6 +9,7 @@ from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
 from app.plan.engine import KEY, advice, build_profile, outlook, plan_weeks
+from app.plan.level import with_estimates
 from app.plan.pain import pain_zones
 from app.plan.strength import annotate_history, resolve
 from app.questionnaire.models import current_facts
@@ -24,6 +25,13 @@ MOVE_PAST_DAYS = 56  # on ne rattache pas une séance à plus de 8 semaines en a
 MOVE_FUTURE_DAYS = 120
 ALLOWED_LOG = {"rpe", "minutes", "note", "adaptation", "changes", "exercises", "source", "garmin_id", "distance_km", "avg_hr", "max_hr", "calories", "training_load", "garmin_name"}  # noqa: E501
 CHANGES = {"plus léger", "plus court", "plus long", "exercice remplacé", "séries en moins", "séries en plus", "douleur", "trop facile", "trop dur", "matériel manquant"}
+
+
+def estimated_facts(repo: Repo, user_id: int, facts: dict[str, Any], goals: list[dict[str, Any]], today: date) -> dict[str, Any]:
+    """Faits + niveau récent estimé (C14, C15) d'après les sorties de la montre et les charges saisies."""
+    acts = repo.list_activities(user_id, today - timedelta(days=56), 500)
+    sess = repo.list_sessions(user_id, today - timedelta(days=84), today)
+    return with_estimates(facts, acts, sess, goals, today)
 
 
 def clean_log(raw: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -107,7 +115,9 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         zones = pain_zones(repo.list_sessions(user_id, today - timedelta(days=21), today), today)
         if zones:  # douleur signalée dans un retour de séance : traitée comme une blessure active (S2) pour cette génération
             facts = {**facts, "history.injuries": sorted({*(facts.get("history.injuries") or []), *zones} - {"aucune"})}
-        profile = build_profile(facts, repo.list_goals(user_id, None), today)
+        goals = repo.list_goals(user_id, None)
+        facts = estimated_facts(repo, user_id, facts, goals, today)  # C14/C15 : niveau récent estimé, sans toucher aux saisies
+        profile = build_profile(facts, goals, today)
         existing = repo.list_sessions(user_id, today - timedelta(days=today.weekday()), None)
         # la semaine en cours n'est jamais bouleversée : on ne remplace qu'à partir de lundi prochain
         cutoff = today + timedelta(days=7 - today.weekday()) if (existing or today.weekday() >= 5) else today  # le week-end, on prépare la semaine suivante
@@ -143,6 +153,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         rows = annotate_history(rows, repo.list_sessions(user_id, today - timedelta(days=180), None))
         facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
         goals = repo.list_goals(user_id, None)
+        facts = estimated_facts(repo, user_id, facts, goals, today)
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
                 "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today)}
