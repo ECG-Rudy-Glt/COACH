@@ -1,0 +1,19 @@
+run.recent_volume:
+  text: "How many kilometres a week do you run on average over the last 8 weeks?"
+run.longest:
+  text: "What is your longest recent run (duration)?"
+run.best_10k:
+  text: "What is your best recent 10 km time (or estimated equivalent)?"
+run.trail_experience:
+  text: "Have you ever run on trails (rough terrain with elevation)?"
+  options: { jamais: "Never", quelques sorties: "A few outings", régulièrement: "Regularly", en compétition: "In competition" }
+run.longest_trail:
+  text: "What is your longest trail outing or race (distance and elevation gain)?"
+run.terrain:
+  text: "Do you have access to trails with elevation near home?"
+  options: { non: "No", un peu: "A little", oui facilement: "Yes, easily" }
+run.hr_max:
+  text: "Do you know your maximum heart rate?"
+run.history_years:
+  text: "For how many years have you been running, with or without breaks?"
+  unit: "years"

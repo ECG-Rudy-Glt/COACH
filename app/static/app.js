@@ -1,5 +1,10 @@
 "use strict";
 
+// Traduction : voir i18n.js. Le français est la langue source ; __("texte {nom}", { nom }) traduit puis remplit les trous.
+const __ = (s, vars) => I18N.t(s, vars);
+const TR_ATTRS = new Set(["aria-label", "placeholder", "title", "alt"]);
+const langTag = () => I18N.tag();
+
 const app = document.getElementById("app");
 const DOMAINS = {
   goals: "Objectifs et corps", health: "Santé", constraints: "Contraintes", history: "Parcours",
@@ -48,11 +53,11 @@ function h(tag, attrs, ...kids) {
     if (k === "class") el.className = v;
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else if (k === "pressed") el.setAttribute("aria-pressed", String(v));
-    else el.setAttribute(k, v === true ? "" : v);
+    else el.setAttribute(k, v === true ? "" : TR_ATTRS.has(k) && typeof v === "string" ? __(v) : v);
   }
   for (const kid of kids.flat(Infinity)) {
     if (kid == null || kid === false) continue;
-    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    el.append(kid.nodeType ? kid : document.createTextNode(typeof kid === "string" ? __(kid) : String(kid)));
   }
   return el;
 }
@@ -120,8 +125,7 @@ function sheet(title, ...nodes) {
   return close;
 }
 
-const DAY_ABBR = ["L", "M", "M", "J", "V", "S", "D"];
-const longDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+const longDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { weekday: "long", day: "numeric", month: "long" });
 
 async function moveSession(s, day) {
   try {
@@ -159,7 +163,7 @@ function attachLongPress(el, days, onDrop, board = null) {
       }, 16);
     } else {
       tray = h("div", { class: "daytray", role: "group", "aria-label": "Déposer sur un jour" },
-        days.map((d) => h("div", { class: "daychip" + (d.ok ? "" : " off"), "data-day": d.iso, "data-ok": d.ok ? "1" : "0" }, h("span", null, DAY_ABBR[(new Date(d.iso + "T12:00:00").getDay() + 6) % 7]), h("strong", null, String(Number(d.iso.slice(8)))))));
+        days.map((d) => h("div", { class: "daychip" + (d.ok ? "" : " off"), "data-day": d.iso, "data-ok": d.ok ? "1" : "0" }, h("span", null, I18N.weekday((new Date(d.iso + "T12:00:00").getDay() + 6) % 7, "narrow")), h("strong", null, String(Number(d.iso.slice(8)))))));
       document.body.append(ghost, tray);
     }
     if (navigator.vibrate) navigator.vibrate(18);
@@ -215,7 +219,7 @@ function toast(msg) {
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     method: opts.method || "GET",
-    headers: opts.body ? { "Content-Type": "application/json" } : undefined,
+    headers: { "X-Lang": I18N.locale(), ...(opts.body ? { "Content-Type": "application/json" } : {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
     keepalive: opts.keepalive || undefined,
   });
@@ -223,7 +227,7 @@ async function api(path, opts = {}) {
   try { data = await res.json(); } catch { /* corps vide */ }
   if (!res.ok) {
     const msg = Array.isArray(data?.detail) ? data.detail.map((d) => d.msg).filter(Boolean).join(" ; ") : data?.detail;
-    const err = new Error(typeof msg === "string" && msg ? msg : `Erreur ${res.status}`);
+    const err = new Error(typeof msg === "string" && msg ? msg : __("Erreur {status}", { status: res.status }));
     err.status = res.status;
     if (res.status === 401 && !path.startsWith("/auth/")) { userId = null; authScreen(); err.handled = true; }
     throw err;
@@ -233,7 +237,7 @@ async function api(path, opts = {}) {
 
 function fmtDuration(min) {
   const hh = Math.floor(min / 60), m = Math.round(min % 60);
-  return hh ? `${hh} h${m ? " " + String(m).padStart(2, "0") : ""}` : `${m} min`;
+  return hh ? `${hh} h${m ? " " + String(m).padStart(2, "0") : ""}` : __("{m} min", { m });
 }
 
 function label(q, o) { return o === OTHER ? "Autre…" : (q.option_labels && q.option_labels[o]) || o; }
@@ -249,14 +253,14 @@ function fmtEntry(q, e) {
 function fmtValue(q, facts) {
   const v = facts[q.fact_key];
   const other = facts[q.fact_key + ".other"];
-  if (q.type === "entries") return Array.isArray(v) && v.length ? `${v.length} ${v.length > 1 ? "entrées" : "entrée"}` : "Rien à signaler";
+  if (q.type === "entries") return Array.isArray(v) && v.length ? __(v.length > 1 ? "{n} entrées" : "{n} entrée", { n: v.length }) : "Rien à signaler";
   if (Array.isArray(v)) return v.map((x) => (x === OTHER && other ? other : label(q, x))).join(", ");
   if (v === OTHER && other) return other;
   if (q.type === "single") return label(q, v);
   if (q.type === "duration") return fmtDuration(v);
-  if (q.type === "date") return new Date(v).toLocaleDateString("fr-FR");
+  if (q.type === "date") return new Date(v).toLocaleDateString(langTag());
   if (q.type === "number" && q.unit) return `${v} ${q.unit}`;
-  if (q.type === "scale") return `${v} sur 5`;
+  if (q.type === "scale") return __("{v} sur 5", { v });
   return String(v);
 }
 
@@ -281,6 +285,20 @@ function applyTheme(theme) {
   document.documentElement.className = theme;
   store.set("theme", theme);
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => { m.removeAttribute("media"); m.setAttribute("content", THEME_COLORS[theme]); });
+}
+
+// ---------- langue ----------
+// Choix mémorisé sur l'appareil (localStorage) et sur le compte (les notifications et les mails du coach suivent) ; le changement recharge l'écran.
+async function chooseLanguage(lang) {
+  store.set("lang", lang);
+  if (userId) { try { await api("/auth/language", { method: "PUT", body: { lang } }); } catch { /* le choix de l'appareil suffit pour l'affichage */ } }
+  location.reload();
+}
+
+function langSwitch() {
+  return h("div", { class: "themes", role: "group", "aria-label": "Langue" }, Object.entries(I18N.LOCALES).map(([code, info]) =>
+    h("button", { type: "button", lang: code, "aria-label": info.name, title: info.name, pressed: I18N.locale() === code,
+      onclick: () => { if (I18N.locale() !== code) chooseLanguage(code); } }, code.toUpperCase())));
 }
 
 function themeToggle() {
@@ -314,10 +332,10 @@ function authScreen(mode = "login") {
   const adoptBox = h("div", { class: "field", hidden: true }, h("label", { for: "adopt" }, "Reprendre un profil existant"), adopt);
   if (reg) {
     api("/auth/status").then((st) => {
-      if (st.registration !== "open") { err.textContent = "Les inscriptions sont fermées."; return; }
+      if (st.registration !== "open") { err.textContent = __("Les inscriptions sont fermées."); return; }
       if (st.legacy.length) {
         adopt.replaceChildren(h("option", { value: "" }, "Non, nouveau profil"),
-          ...st.legacy.map((u) => h("option", { value: u.id }, `${u.name} (${u.answers} réponses)`)));
+          ...st.legacy.map((u) => h("option", { value: u.id }, __("{name} ({answers} réponses)", { name: u.name, answers: u.answers }))));
         adoptBox.hidden = false;
       }
     }).catch(() => {});
@@ -329,12 +347,14 @@ function authScreen(mode = "login") {
     try {
       const r = await api(reg ? "/auth/register" : "/auth/login", { method: "POST", body });
       userId = String(r.id); userName = r.name;
+      if (r.lang && r.lang !== I18N.locale() && !store.get("lang")) { store.set("lang", r.lang); location.reload(); return; }  // nouvel appareil : la langue du compte
+      if (r.lang !== I18N.locale()) api("/auth/language", { method: "PUT", body: { lang: I18N.locale() } }).catch(() => {});
       route();
-    } catch (e) { err.textContent = e.message; }
+    } catch (e) { err.textContent = __(e.message); }
   };
   app.onkeydown = (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") go(); };
   show(
-    h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Sport Coach"), themeToggle()),
+    h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Sport Coach"), h("div", { class: "row" }, langSwitch(), themeToggle())),
     h("h1", null, reg ? "Créer votre compte" : "Content de vous revoir."),
     h("p", { class: "muted" }, reg
       ? "Vos données restent sur votre serveur. Un compte protège votre profil et votre historique."
@@ -356,7 +376,7 @@ function passwordScreen() {
     try {
       await api("/auth/change-password", { method: "POST", body: { current: cur.querySelector("input").value, new: nw.querySelector("input").value } });
       toast("Mot de passe modifié"); home();
-    } catch (e) { err.textContent = e.message; }
+    } catch (e) { err.textContent = __(e.message); }
   };
   show(
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: home }, icon("back")), h("span", { class: "grow" })),
@@ -402,11 +422,11 @@ async function home() {
       st.remaining ? icon("next") : null);
   });
   show(
-    h("div", { class: "head" }, h("span", { class: "eyebrow" }, userName ? `Bonjour ${userName}` : "Bonjour"), themeToggle()),
+    h("div", { class: "head" }, h("span", { class: "eyebrow" }, userName ? __("Bonjour {userName}", { userName }) : "Bonjour"), themeToggle()),
     h("div", { class: "hero" }, ring,
       h("div", { class: "stack grow" },
         h("h1", null, finished ? "Profil complet" : "Votre profil"),
-        h("p", { class: "muted" }, finished ? "Il s'enrichira avec vos séances." : `${prof.remaining_visible} questions pour l'instant. Elles s'adaptent à vos réponses.`))),
+        h("p", { class: "muted" }, finished ? "Il s'enrichira avec vos séances." : __("{remaining_visible} questions pour l'instant. Elles s'adaptent à vos réponses.", { remaining_visible: prof.remaining_visible })))),
     finished ? null : h("button", { class: "btn primary", onclick: () => nextQuestion() }, prof.answered ? "Continuer le questionnaire" : "Commencer le questionnaire"),
     goalsCard(goalsData),
     planCard(),
@@ -415,7 +435,7 @@ async function home() {
       : bench.total
       ? h("div", { class: "card row" },
         h("div", { class: "grow stack" }, h("h3", null, "Mes performances"),
-          h("p", { class: "muted" }, `Record et niveau actuel par exercice. ${bench.filled} sur ${bench.total} renseignés.`)),
+          h("p", { class: "muted" }, __("Record et niveau actuel par exercice. {filled} sur {total} renseignés.", { filled: bench.filled, total: bench.total }))),
         h("button", { class: "btn sm", onclick: benchmarks }, "Remplir"))
       : prof.answered
         ? h("div", { class: "card" }, h("p", { class: "muted" }, "Choisissez vos sports dans le questionnaire : la page des performances apparaîtra ensuite."))
@@ -471,12 +491,12 @@ function questionView(q, { progress, prefill, onDone, onBack, editing, note, eye
         body: { question_id: bq.id, value: v, other_text: hasOther() ? st.other.trim() : null },
       });
       onDone();
-    } catch (e) { errBox.textContent = e.message; submit.disabled = false; }
+    } catch (e) { errBox.textContent = __(e.message); submit.disabled = false; }
   }
 
   async function skip() {
     try { await api(`/users/${userId}/skip`, { method: "POST", body: { question_id: bq.id } }); onDone(); }
-    catch (e) { errBox.textContent = e.message; }
+    catch (e) { errBox.textContent = __(e.message); }
   }
 
   function drawEntries() {
@@ -607,7 +627,7 @@ async function benchmarks() {
   const vals = JSON.parse(JSON.stringify(page.values || {}));
   const dirty = new Set();
   const save = h("button", { class: "btn primary", disabled: true }, "Enregistrer");
-  const mark = (id) => { dirty.add(id); save.disabled = false; save.textContent = `Enregistrer (${dirty.size})`; };
+  const mark = (id) => { dirty.add(id); save.disabled = false; save.textContent = __("Enregistrer ({size})", { size: dirty.size }); };
 
   const cell = (it, side, title) => {
     vals[it.id] = vals[it.id] || {};
@@ -624,7 +644,7 @@ async function benchmarks() {
     else if (it.kind === "reps") inputs = num("reps", "reps", "répétitions");
     else if (it.kind === "rounds") inputs = num("reps", "tours", "tours");
     else if (it.kind === "watts") inputs = num("watts", "W", "watts");
-    else inputs = h("input", { type: "text", inputmode: "numeric", placeholder: "mm:ss", value: cur.time ?? "", "aria-label": `${it.label}, ${title.toLowerCase()}, temps`, oninput: (e) => set("time", e.target.value.trim()) });
+    else inputs = h("input", { type: "text", inputmode: "numeric", placeholder: "mm:ss", value: cur.time ?? "", "aria-label": __("{label}, {toLowerCase}, temps", { label: it.label, toLowerCase: title.toLowerCase() }), oninput: (e) => set("time", e.target.value.trim()) });
     return h("div", { class: "cell" }, h("span", null, title), inputs);
   };
 
@@ -639,7 +659,7 @@ async function benchmarks() {
     save.disabled = true;
     try {
       await api(`/users/${userId}/benchmarks`, { method: "PUT", body: { items } });
-      dirty.clear(); save.textContent = "Enregistrer"; toast("Performances enregistrées");
+      dirty.clear(); save.textContent = __("Enregistrer"); toast("Performances enregistrées");
     } catch (e) { save.disabled = false; toast(e.message); }
   });
 
@@ -666,11 +686,11 @@ async function profile() {
   }
   const sections = Object.keys(DOMAINS).filter((d) => groups.has(d)).map((d) => {
     const qs = groups.get(d).sort((x, y) => x.order - y.order);
-    return fold(`profile-${d}`, `${qs.length} réponse${qs.length > 1 ? "s" : ""}`, DOMAINS[d], null,
+    return fold(`profile-${d}`, qs.length > 1 ? __("{n} réponses", { n: qs.length }) : __("{n} réponse", { n: qs.length }), DOMAINS[d], null,
       qs.map((q) => h("button", { class: "item", onclick: () => edit(q, facts) }, h("span", { class: "l" }, q.text), h("span", { class: "v" }, fmtValue(q, facts)))));
   });
   show(
-    h("div", { class: "top" }, h("span", { class: "grow" }), h("span", { class: "muted" }, `${prof.answered} réponses`)),
+    h("div", { class: "top" }, h("span", { class: "grow" }), h("span", { class: "muted" }, __("{answered} réponses", { answered: prof.answered }))),
     h("h1", null, "Profil"),
     sections.length ? sections : h("p", { class: "muted" }, "Rien pour l'instant."),
     h("div", { class: "card row" },
@@ -682,6 +702,8 @@ async function profile() {
     h("div", { class: "card row" },
       h("div", { class: "grow stack" }, h("h3", null, "Sources scientifiques"), h("p", { class: "muted" }, "Les publications qui fondent le plan, la nutrition et le coach.")),
       h("button", { class: "btn sm", onclick: () => evidenceScreen() }, "Consulter")),
+    h("div", { class: "card stack" }, h("h3", null, "Langue"), langSwitch(),
+      h("p", { class: "muted" }, "Langue de l'application, du coach IA et des mails.")),
     h("div", { class: "card stack" }, h("h3", null, "Compte"),
       h("button", { class: "link", style: "text-align:left", onclick: passwordScreen }, "Changer mon mot de passe"),
       h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter")),
@@ -705,9 +727,9 @@ const PRIORITIES = ["principal", "important", "si possible"];
 function countdown(iso) {
   if (!iso) return "Sans échéance";
   const days = Math.round((new Date(iso) - new Date(new Date().toDateString())) / 86400000);
-  if (days < 0) return `Échéance dépassée de ${-days} j`;
+  if (days < 0) return __("Échéance dépassée de {v} j", { v: -days });
   if (days === 0) return "Aujourd'hui";
-  return days < 14 ? `Dans ${days} jours` : `Dans ${Math.round(days / 7)} semaines`;
+  return days < 14 ? __("Dans {days} jours", { days }) : __("Dans {round} semaines", { round: Math.round(days / 7) });
 }
 
 function goalsCard(data) {
@@ -715,7 +737,7 @@ function goalsCard(data) {
   return h("div", { class: "card row" },
     h("div", { class: "grow stack" }, h("h3", null, "Mes objectifs"),
       h("p", { class: "muted" }, next
-        ? `${data.goals.length} actif${data.goals.length > 1 ? "s" : ""}. Prochain : ${next.title}, ${countdown(next.target_date).toLowerCase()}.`
+        ? __("{length} actif{v}. Prochain : {title}, {toLowerCase}.", { length: data.goals.length, v: data.goals.length > 1 ? "s" : "", title: next.title, toLowerCase: countdown(next.target_date).toLowerCase() })
         : "Ajoutez ce que vous voulez accomplir. Vous pouvez en ajouter ou en changer à tout moment.")),
     h("button", { class: "btn sm", onclick: goalsScreen }, next ? "Gérer" : "Ajouter"));
 }
@@ -767,20 +789,20 @@ function goalForm(g) {
     if (kind.value === "event") { if (dist.value) details.distance_km = Number(dist.value); if (elev.value) details.elevation_m = Number(elev.value); }
     const body = { title: title.value.trim(), kind: kind.value, priority: prio.value, success: success.value.trim() || null, details };
     if (date.value) body.target_date = date.value; else if (!isNew) body.clear_date = true;
-    if (!body.title) { err.textContent = "Donnez un nom à cet objectif."; return; }
+    if (!body.title) { err.textContent = __("Donnez un nom à cet objectif."); return; }
     try {
       await api(isNew ? `/users/${userId}/goals` : `/users/${userId}/goals/${g.id}`, { method: isNew ? "POST" : "PATCH", body });
       toast(isNew ? "Objectif ajouté" : "Objectif enregistré"); goalsScreen();
-    } catch (e) { err.textContent = e.message; }
+    } catch (e) { err.textContent = __(e.message); }
   }
   const setStatus = async (status, msg) => {
     try { await api(`/users/${userId}/goals/${g.id}`, { method: "PATCH", body: { status } }); toast(msg); goalsScreen(); }
-    catch (e) { err.textContent = e.message; }
+    catch (e) { err.textContent = __(e.message); }
   };
   let armed = false;
   const del = h("button", { class: "link", onclick: async () => {
-    if (!armed) { armed = true; del.textContent = "Confirmer la suppression définitive"; return; }
-    try { await api(`/users/${userId}/goals/${g.id}`, { method: "DELETE" }); goalsScreen(); } catch (e) { err.textContent = e.message; }
+    if (!armed) { armed = true; del.textContent = __("Confirmer la suppression définitive"); return; }
+    try { await api(`/users/${userId}/goals/${g.id}`, { method: "DELETE" }); goalsScreen(); } catch (e) { err.textContent = __(e.message); }
   } }, "Supprimer");
   show(
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: goalsScreen }, icon("back")), h("span", { class: "grow" })),
@@ -813,24 +835,24 @@ async function garminScreen() {
     const run = async (btn, path, method, msg) => {
       btn.disabled = true; err.textContent = "";
       try { const r = await api(path, { method }); toast(typeof msg === "function" ? msg(r) : msg); garminScreen(); }
-      catch (e) { err.textContent = e.message; btn.disabled = false; }
+      catch (e) { err.textContent = __(e.message); btn.disabled = false; }
     };
     const sync = h("button", { class: "btn primary" }, "Synchroniser maintenant");
-    sync.addEventListener("click", () => run(sync, `/users/${userId}/garmin/sync`, "POST", (r) => `${r.added} nouvelle${r.added > 1 ? "s" : ""} activité${r.added > 1 ? "s" : ""}`));
+    sync.addEventListener("click", () => run(sync, `/users/${userId}/garmin/sync`, "POST", (r) => r.added > 1 ? __("{added} nouvelles activités", { added: r.added }) : __("{added} nouvelle activité", { added: r.added })));
     let armed = false;
     const off = h("button", { class: "link", style: "text-align:left" }, "Déconnecter Garmin");
     off.addEventListener("click", () => {
-      if (!armed) { armed = true; off.textContent = "Confirmer : supprimer le jeton et mes activités importées"; return; }
+      if (!armed) { armed = true; off.textContent = __("Confirmer : supprimer le jeton et mes activités importées"); return; }
       run(off, `/users/${userId}/garmin?purge=true`, "DELETE", "Garmin déconnecté");
     });
     return show(back, h("span", { class: "eyebrow" }, "Garmin"), h("h1", null, "Garmin connecté"),
       h("div", { class: "card stack" }, h("p", null, st.email),
-        h("p", { class: "muted" }, st.last_sync_at ? `Dernière synchronisation : ${new Date(st.last_sync_at).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}` : "Pas encore synchronisé."),
+        h("p", { class: "muted" }, st.last_sync_at ? __("Dernière synchronisation : {toLocaleString}", { toLocaleString: new Date(st.last_sync_at).toLocaleString(langTag(), { dateStyle: "medium", timeStyle: "short" }) }) : "Pas encore synchronisé."),
         st.last_error ? h("p", { class: "error" }, st.last_error) : null, sync, err),
       st.recent.length ? h("div", { class: "card" }, h("h3", null, "Dernières activités"), h("div", { style: "margin-top:6px" }, st.recent.map((a) =>
         h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, a.name || SPORT_FR[a.sport] || "Activité"),
-          h("span", { class: "sub" }, `${new Date(a.day + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · ${SPORT_FR[a.sport] || "Autre"}`)),
-          h("span", { class: "v" }, [a.duration_s ? `${Math.round(a.duration_s / 60)} min` : null, a.distance_m ? `${(a.distance_m / 1000).toFixed(1)} km` : null].filter(Boolean).join(" · ")))))) : null,
+          h("span", { class: "sub" }, `${new Date(a.day + "T12:00:00").toLocaleDateString(langTag(), { weekday: "short", day: "numeric", month: "short" })} · ${SPORT_FR[a.sport] || "Autre"}`)),
+          h("span", { class: "v" }, [a.duration_s ? __("{round} min", { round: Math.round(a.duration_s / 60) }) : null, a.distance_m ? `${(a.distance_m / 1000).toFixed(1)} km` : null].filter(Boolean).join(" · ")))))) : null,
       h("div", { class: "card stack" }, h("p", { class: "muted" }, "Vos séances planifiées sont marquées comme faites quand une activité Garmin correspond. Le volume de course mesuré remplace votre estimation."), off));
   }
   const f = (id, text, attrs) => h("div", { class: "field" }, h("label", { for: id }, text), h("input", { id, ...attrs }));
@@ -847,9 +869,9 @@ async function garminScreen() {
       const r = mfa
         ? await api(`/users/${userId}/garmin/mfa`, { method: "POST", body: { code: code.querySelector("input").value } })
         : await api(`/users/${userId}/garmin/connect`, { method: "POST", body: { email: email.querySelector("input").value, password: pw.querySelector("input").value } });
-      if (r.status === "mfa_required") { mfa = true; codeBox.hidden = false; go.textContent = "Valider le code"; go.disabled = false; return; }
+      if (r.status === "mfa_required") { mfa = true; codeBox.hidden = false; go.textContent = __("Valider le code"); go.disabled = false; return; }
       toast("Garmin connecté"); garminScreen();
-    } catch (e) { err.textContent = e.message; go.disabled = false; }
+    } catch (e) { err.textContent = __(e.message); go.disabled = false; }
   });
   show(back, h("span", { class: "eyebrow" }, "Garmin"), h("h1", null, "Connecter Garmin"),
     h("p", { class: "muted" }, "Pour importer vos activités et ajuster votre plan à ce que vous faites vraiment."),
@@ -865,7 +887,7 @@ function bubble(m) {
   const mine = m.role === "user";
   return h("div", { class: "msg " + (mine ? "mine" : "coach") },
     ...m.body.split("\n").map((l, i) => h("p", { style: i ? "margin-top:6px" : "" }, l)),
-    h("span", { class: "when" }, new Date(m.created_at).toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" })));
+    h("span", { class: "when" }, new Date(m.created_at).toLocaleString(langTag(), { weekday: "short", hour: "2-digit", minute: "2-digit" })));
 }
 
 const SUGGESTIONS = ["Fais le point sur ma semaine", "Je suis fatigué : j'allège ?", "Explique-moi ma prochaine séance"];
@@ -946,7 +968,7 @@ async function notifScreen() {
         await api(`/users/${userId}/coach/push/subscribe`, { method: "POST", body: sub.toJSON() });
       }
       toast(here ? "Notifications désactivées ici" : "Notifications activées"); notifScreen();
-    } catch (e) { err.textContent = e.message; native.disabled = false; }
+    } catch (e) { err.textContent = __(e.message); native.disabled = false; }
   });
   const f = (id, text, attrs) => h("div", { class: "field" }, h("label", { for: id }, text), h("input", { id, ...attrs }));
   const topic = f("nt-topic", "Sujet ntfy (votre canal privé)", { type: "text", autocomplete: "off", autocapitalize: "off" });
@@ -960,12 +982,12 @@ async function notifScreen() {
   const save = h("button", { class: "btn primary" }, "Enregistrer");
   save.addEventListener("click", async () => {
     err.textContent = "";
-    try { await api(`/users/${userId}/coach/notifications`, { method: "PUT", body: body() }); toast("Notifications enregistrées"); } catch (e) { err.textContent = e.message; }
+    try { await api(`/users/${userId}/coach/notifications`, { method: "PUT", body: body() }); toast("Notifications enregistrées"); } catch (e) { err.textContent = __(e.message); }
   });
   const test = (ch) => h("button", { class: "btn sm", onclick: async () => {
     err.textContent = "";
     try { await api(`/users/${userId}/coach/notifications`, { method: "PUT", body: body() }); await api(`/users/${userId}/coach/notifications/test/${ch}`, { method: "POST" }); toast("Test envoyé"); }
-    catch (e) { err.textContent = e.message; }
+    catch (e) { err.textContent = __(e.message); }
   } }, ch === "push" ? "Tester le téléphone" : "Tester le mail");
   show(h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: coachChat }, icon("back"), "Coach"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, "Coach"), h("h1", null, "Notifications"),
@@ -974,11 +996,11 @@ async function notifScreen() {
       !p.server.webpush ? h("p", { class: "muted" }, "Les notifications natives ne sont pas encore activées sur le serveur.")
         : !supports ? h("p", { class: "muted" }, "Ce navigateur ne gère pas les notifications. Sur iPhone, ouvrez l'application depuis l'écran d'accueil.")
           : !standalone ? h("p", { class: "muted" }, "Sur iPhone, ajoutez d'abord l'application à l'écran d'accueil (Partager, puis Sur l'écran d'accueil), ouvrez-la depuis l'icône, puis revenez ici.")
-            : [h("p", { class: "muted" }, `Alertes natives comme n'importe quelle application. Appareils abonnés : ${p.devices}.`), native],
+            : [h("p", { class: "muted" }, __("Alertes natives comme n'importe quelle application. Appareils abonnés : {devices}.", { devices: p.devices })), native],
       pushRow, test("push")),
     h("details", { class: "card" }, h("summary", { style: "font-weight:600;cursor:pointer" }, "Option : application ntfy"),
       h("p", { class: "muted", style: "margin:8px 0" }, p.server.push
-        ? `Alternative : installez l'application ntfy, ajoutez le serveur ${p.ntfy_url || ""} puis abonnez-vous à un sujet de 8 à 64 caractères (lettres, chiffres, - et _), commençant par coach-.`
+        ? __("Alternative : installez l'application ntfy, ajoutez le serveur {v} puis abonnez-vous à un sujet de 8 à 64 caractères (lettres, chiffres, - et _), commençant par coach-.", { v: p.ntfy_url || "" })
         : "Le canal ntfy n'est pas activé sur le serveur."), topic),
     h("div", { class: "card stack" }, h("h3", null, "Par mail"),
       h("p", { class: "muted" }, p.server.email ? "Chaque dimanche : quelques conseils pour chaque sport que vous pratiquez." : "L'envoi de mails n'est pas encore activé sur le serveur."),
@@ -991,22 +1013,22 @@ function coachCard(c) {
   if (!c.configured) return null;
   const latest = c.latest;
   const d = latest ? latest.data : null;
-  const act = (p) => p.action === "reduce" ? `Raccourcir « ${p.session_title} » de ${p.duration_min} à ${p.new_duration_min} min`
-    : p.action === "swap_easy" ? `Remplacer « ${p.session_title} » par un footing facile`
-      : `Déplacer « ${p.session_title} » au ${new Date(p.to_day + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`;
+  const act = (p) => p.action === "reduce" ? __("Raccourcir « {session_title} » de {duration_min} à {new_duration_min} min", { session_title: p.session_title, duration_min: p.duration_min, new_duration_min: p.new_duration_min })
+    : p.action === "swap_easy" ? __("Remplacer « {session_title} » par un footing facile", { session_title: p.session_title })
+      : __("Déplacer « {session_title} » au {toLocaleDateString}", { session_title: p.session_title, toLocaleDateString: new Date(p.to_day + "T12:00:00").toLocaleDateString(langTag(), { weekday: "long", day: "numeric", month: "long" }) });
   const decide = async (i, kind) => {
     try { await api(`/users/${userId}/coach/proposals/${latest.id}/${i}/${kind}`, { method: "POST" }); toast(kind === "apply" ? "Ajustement appliqué" : "Proposition ignorée"); planScreen(true); }
     catch (e) { toast(e.message); }
   };
   const btn = h("button", { class: latest ? "btn sm" : "btn primary", disabled: !c.budget.available }, latest ? "Nouveau bilan" : "Faire le bilan de la semaine");
   btn.addEventListener("click", async () => {
-    btn.disabled = true; btn.textContent = "Le coach analyse votre semaine…";
+    btn.disabled = true; btn.textContent = __("Le coach analyse votre semaine…");
     try { await api(`/users/${userId}/coach/review`, { method: "POST" }); planScreen(true); }
     catch (e) { toast(e.message); btn.disabled = !c.budget.available; btn.textContent = latest ? "Nouveau bilan" : "Faire le bilan de la semaine"; }
   });
   const pending = !!d && (d.proposals.some((p) => p.status === "proposed") || d.questions.length > 0);  // il y a quelque chose à décider ou à répondre : ouvert par défaut
-  const when = latest ? new Date(latest.created_at).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) : null;
-  const note = pending ? `${d.proposals.filter((p) => p.status === "proposed").length} proposition(s), ${d.questions.length} question(s)` : (latest && latest.summary ? latest.summary.slice(0, 90) + (latest.summary.length > 90 ? "…" : "") : "Le coach relit vos séances et propose des ajustements");
+  const when = latest ? new Date(latest.created_at).toLocaleDateString(langTag(), { weekday: "long", day: "numeric", month: "long" }) : null;
+  const note = pending ? __("{length} proposition(s), {length2} question(s)", { length: d.proposals.filter((p) => p.status === "proposed").length, length2: d.questions.length }) : (latest && latest.summary ? latest.summary.slice(0, 90) + (latest.summary.length > 90 ? "…" : "") : "Le coach relit vos séances et propose des ajustements");
   return fold("coach", "Bilan du coach", when || "Pas encore de bilan", note, [
     latest && latest.summary ? h("p", null, latest.summary) : h("p", { class: "muted" }, "Le coach relit vos séances et vos activités Garmin, puis propose des ajustements que vous validez."),
     d && d.adherence ? h("p", { class: "muted" }, d.adherence) : null,
@@ -1020,42 +1042,41 @@ function coachCard(c) {
       h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => coachChat() }, "Répondre au coach")) : null,
     btn,
     h("button", { class: "link", onclick: () => coachChat() }, "Parler au coach"),
-    h("p", { class: "muted" }, `Budget IA ce mois : ${c.budget.spent_eur.toFixed(2)} € sur ${c.budget.limit_eur} €.`)], pending);
+    h("p", { class: "muted" }, __("Budget IA ce mois : {toFixed} € sur {limit_eur} €.", { toFixed: c.budget.spent_eur.toFixed(2), limit_eur: c.budget.limit_eur }))], pending);
 }
 
 // ---------- plan ----------
 const KIND_LABEL = { run_easy: "Course facile", run_long: "Sortie longue", run_quality: "Qualité", strength_upper: "Haut du corps",
   strength_lower: "Jambes", strength_full: "Musculation", strength_crossfit: "CrossFit" };
-const DAYS_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 const isRun = (k) => k.startsWith("run_");
 
 function fmtDay(iso, today) {
   const d = new Date(iso + "T12:00:00");
   const t = new Date(today + "T12:00:00");
   const diff = Math.round((d - t) / 86400000);
-  const name = `${DAYS_FR[(d.getDay() + 6) % 7]} ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-  return diff === 0 ? `Aujourd'hui · ${name}` : diff === 1 ? `Demain · ${name}` : name;
+  const name = `${I18N.weekday((d.getDay() + 6) % 7)} ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return diff === 0 ? __("Aujourd'hui · {name}", { name }) : diff === 1 ? __("Demain · {name}", { name }) : name;
 }
 
 function outlookCard(o) {
   if (!o) return null;
-  return fold("outlook", o.ok ? "Objectif" : "Objectif ambitieux", o.event, `Dans ${o.weeks_to_event} semaines · ${o.ok ? "cohérent avec votre préparation" : "à reconsidérer"}`, [
+  return fold("outlook", o.ok ? "Objectif" : "Objectif ambitieux", o.event, __("Dans {weeks_to_event} semaines · {v}", { weeks_to_event: o.weeks_to_event, v: o.ok ? __("cohérent avec votre préparation") : __("à reconsidérer") }), [
     h("p", { class: o.ok ? "muted" : "" }, o.message),
-    h("p", { class: "muted" }, `Volume projeté ${o.projected_peak_km} km par semaine (repère : ${o.needed_peak_km} km).`)]);
+    h("p", { class: "muted" }, __("Volume projeté {projected_peak_km} km par semaine (repère : {needed_peak_km} km).", { projected_peak_km: o.projected_peak_km, needed_peak_km: o.needed_peak_km }))]);
 }
 
 function trajectoryCard(t) {
   if (!t) return null;
-  const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  const fullFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-  const level = t.level ? `Niveau actuel estimé : ${t.level.time} (${t.level.source}).` : "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.";
-  const gap = t.level ? ` Écart à combler : ${t.gap_pct} % (${t.per_month_pct} % par mois), jugé ${t.verdict}.` : "";
+  const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { month: "long", year: "numeric" });
+  const fullFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long", year: "numeric" });
+  const level = t.level ? __("Niveau actuel estimé : {time} ({source}).", { time: t.level.time, source: t.level.source }) : "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.";
+  const gap = t.level ? __(" Écart à combler : {gap_pct} % ({per_month_pct} % par mois), jugé {verdict}.", { gap_pct: t.gap_pct, per_month_pct: t.per_month_pct, verdict: t.verdict }) : "";
   const phases = h("ol", { class: "traj" }, t.phases.filter((p) => p.macro !== "race").map((p, i) =>
-    h("li", { class: i === 0 ? "now" : "" }, h("strong", null, p.label), ` · ${dayFr(p.start)} → ${dayFr(p.end)} · ${p.weeks} sem.`)));
+    h("li", { class: i === 0 ? "now" : "" }, h("strong", null, p.label), __(" · {dayFr} → {dayFr2} · {weeks} sem.", { dayFr: dayFr(p.start), dayFr2: dayFr(p.end), weeks: p.weeks }))));
   const tests = t.milestones.length ? h("p", { class: "muted" }, "Tests de contrôle : " + t.milestones.map((m) => `${fullFr(m.date)} (${m.label} en ${m.target_time})`).join(", ") + ".") : null;
-  const head = t.level ? `${t.level.time} → ${t.target.time} · écart ${t.gap_pct} % (${t.verdict})` : `Objectif ${t.target.time}`;
+  const head = t.level ? __("{time} → {time2} · écart {gap_pct} % ({verdict})", { time: t.level.time, time2: t.target.time, gap_pct: t.gap_pct, verdict: t.verdict }) : __("Objectif {time}", { time: t.target.time });
   return fold("trajectory", "Trajectoire", `${t.target.title} · ${fullFr(t.target.date)}`, head, [
-    h("p", { class: "muted" }, `${level}${gap} Volume visé : environ ${t.weekly_km_target} km par semaine.`),
+    h("p", { class: "muted" }, __("{level}{gap} Volume visé : environ {weekly_km_target} km par semaine.", { level, gap, weekly_km_target: t.weekly_km_target })),
     phases, tests,
     ...t.warnings.map((w) => h("p", null, w))], t.warnings.length > 0);
 }
@@ -1063,11 +1084,11 @@ function trajectoryCard(t) {
 function cycleCard(c) {
   if (!c) return null;
   const cur = c.current;
-  const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long" });
   const strip = h("div", { class: "weeks", role: "img", "aria-label": "Prochaines semaines" }, c.upcoming.map((u) =>
-    h("span", { class: "wk" + (u.allegee ? " light" : "") + (u.semaine === c.upcoming[0].semaine ? " now" : ""), title: `Semaine du ${dayFr(u.semaine)} : ${u.phase}${u.allegee ? ", allégée" : ""}` })));
-  const note = [c.next_deload ? `Prochaine semaine allégée : semaine du ${dayFr(c.next_deload)}.` : null,
-    cur.weeks_to_event != null ? `Objectif dans ${cur.weeks_to_event} semaine${cur.weeks_to_event > 1 ? "s" : ""}.` : null].filter(Boolean).join(" ");
+    h("span", { class: "wk" + (u.allegee ? " light" : "") + (u.semaine === c.upcoming[0].semaine ? " now" : ""), title: __("Semaine du {dayFr} : {phase}{v}", { dayFr: dayFr(u.semaine), phase: u.phase, v: u.allegee ? __(", allégée") : "" }) })));
+  const note = [c.next_deload ? __("Prochaine semaine allégée : semaine du {dayFr}.", { dayFr: dayFr(c.next_deload) }) : null,
+    cur.weeks_to_event != null ? __("Objectif dans {weeks_to_event} semaine{v}.", { weeks_to_event: cur.weeks_to_event, v: cur.weeks_to_event > 1 ? "s" : "" }) : null].filter(Boolean).join(" ");
   return fold("cycle", "Cycle d'entraînement", `${cur.macro_label} · ${cur.label}`, cur.macro_text, [strip, note ? h("p", { class: "muted" }, note) : null]);
 }
 
@@ -1094,7 +1115,7 @@ async function planScreen(restore = false) {
       const r = await api(`/users/${userId}/plan/generate`, { method: "POST", body: { weeks: 1 } });
       toast(r.created ? "Semaine générée" : r.reason || "Aucune séance générée");
       if (r.created && coach.configured && coach.budget.available) { // le coach relit vos retours et ajuste la nouvelle semaine
-        btn.textContent = "Le coach relit vos retours…";
+        btn.textContent = __("Le coach relit vos retours…");
         try { await api(`/users/${userId}/coach/review`, { method: "POST" }); } catch { /* le bilan reste disponible à la main */ }
       }
       planScreen();
@@ -1118,7 +1139,7 @@ async function planScreen(restore = false) {
   const bounds = weekData.bounds || data.bounds || {};
   const firstW = bounds.first ? mondayOf(bounds.first) : thisMonday0, lastW = bounds.last ? mondayOf(bounds.last) : thisMonday0;
   const labelOf = (w) => w === thisMonday0 ? "Cette semaine" : w === shiftDay(thisMonday0, 7) ? "Semaine prochaine" : w === shiftDay(thisMonday0, -7) ? "Semaine dernière"
-    : `Semaine du ${new Date(w + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`;
+    : __("Semaine du {toLocaleDateString}", { toLocaleDateString: new Date(w + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long" }) });
   const goWeek = (w) => { planView.week = w === thisMonday0 ? null : w; scrollMemo.plan = null; planScreen(); };
   const weekNav = h("div", { class: "row between" },
     h("button", { class: "iconbtn", "aria-label": "Semaine précédente", disabled: viewWeek <= firstW, onclick: () => goWeek(shiftDay(viewWeek, -7)) }, icon("back")),
@@ -1135,19 +1156,19 @@ async function planScreen(restore = false) {
       const later = o.day !== a.day;
       try {
         await api(`/users/${userId}/plan/sessions/${o.id}/link`, { method: "POST", body: { garmin_id: a.garmin_id, move: later } });
-        close(); toast(later ? `Séance reliée et placée au ${longDay(a.day)}` : "Activité reliée à la séance"); reload();
+        close(); toast(later ? __("Séance reliée et placée au {longDay}", { longDay: longDay(a.day) }) : "Activité reliée à la séance"); reload();
       } catch (e) { toast(e.message); }
     };
     close = sheet("Rapprocher d'une séance",
-      h("p", { class: "muted" }, `${a.name || SPORT_LBL[a.sport] || "Activité"} · ${longDay(a.day)} · ${a.duration_s ? Math.round(a.duration_s / 60) + " min" : ""}`),
+      h("p", { class: "muted" }, `${a.name || SPORT_LBL[a.sport] || "Activité"} · ${longDay(a.day)} · ${a.duration_s ? __("{round} min", { round: Math.round(a.duration_s / 60) }) : ""}`),
       options.length ? h("div", { class: "stack" }, options.map((o) => h("button", { class: "opt", onclick: () => pick(o) },
-        h("strong", null, o.title), h("span", { class: "muted" }, `${longDay(o.day)} · ${o.duration_min} min${o.day !== a.day ? " · sera placée au jour de l'activité" : ""}`))))
+        h("strong", null, o.title), h("span", { class: "muted" }, __("{longDay} · {duration_min} min{v}", { longDay: longDay(o.day), duration_min: o.duration_min, v: o.day !== a.day ? __(" · sera placée au jour de l'activité") : "" })))))
         : h("p", { class: "muted" }, "Aucune séance de la semaine à rapprocher. Générez ou ajoutez une séance, ou laissez cette activité hors plan."));
   };
   const actsCard = (weekData.activities || []).length ? h("div", { class: "card" }, h("h3", null, "Activités Garmin hors plan"), h("div", { style: "margin-top:6px" }, weekData.activities.map((a) =>
     h("div", null, h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, a.name || SPORT_LBL[a.sport] || "Activité"),
       h("span", { class: "sub" }, `${longDay(a.day)} · ${SPORT_LBL[a.sport] || "Autre"}`)),
-      h("span", { class: "v" }, [a.duration_s ? `${Math.round(a.duration_s / 60)} min` : null, a.distance_m ? `${(a.distance_m / 1000).toFixed(1)} km` : null].filter(Boolean).join(" · "))),
+      h("span", { class: "v" }, [a.duration_s ? __("{round} min", { round: Math.round(a.duration_s / 60) }) : null, a.distance_m ? `${(a.distance_m / 1000).toFixed(1)} km` : null].filter(Boolean).join(" · "))),
       h("button", { class: "link", style: "padding:2px 4px 10px", onclick: () => linkSheet(a) }, a.suggestions.length ? "Rapprocher d'une séance" : "Choisir une séance…"))))) : null;
   const emptyWeek = (viewSessions.length || actsCard) ? null : h("div", { class: "card" }, h("p", { class: "muted" }, "Aucune séance prévue cette semaine."));
   const byDay = new Map();
@@ -1163,10 +1184,10 @@ async function planScreen(restore = false) {
     for (const iso of Array.from({ length: 7 }, (_, i) => shiftDay(viewWeek, i))) {
       const list = byDay.get(iso) || [];
       wrap.append(h("div", { class: "bcol" + (iso === data.today ? " today" : ""), "data-day": iso, "data-ok": "1", "aria-label": longDay(iso) },
-        h("div", { class: "bhead" }, h("span", null, DAYS_FR[(new Date(iso + "T12:00:00").getDay() + 6) % 7].slice(0, 3)), h("strong", null, String(Number(iso.slice(8))))),
+        h("div", { class: "bhead" }, h("span", null, I18N.weekday((new Date(iso + "T12:00:00").getDay() + 6) % 7).slice(0, 3)), h("strong", null, String(Number(iso.slice(8))))),
         ...list.map((s) => {
           const card = h("button", { class: `bcard ${s.status} ${isRun(s.kind) ? "k-run" : "k-str"}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
-            h("span", { class: "bt" }, s.title), h("span", { class: "bm" }, `${s.duration_min} min${s.details.moved_from ? " · déplacée" : ""}`),
+            h("span", { class: "bt" }, s.title), h("span", { class: "bm" }, __("{duration_min} min{v}", { duration_min: s.duration_min, v: s.details.moved_from ? __(" · déplacée") : "" })),
             s.status === "done" ? h("span", { class: "bdone" }, icon("check")) : null);
           if (s.status !== "skipped") attachLongPress(card, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); }, wrap);
           return card;
@@ -1183,11 +1204,11 @@ async function planScreen(restore = false) {
       curWeek = wk;
       const n = [...byDay.keys()].filter((k) => weekOf(k) === wk).length;
       const wc = list[0].details.cycle;
-      nodes.push(h("p", { class: "muted", style: "margin-top:-12px" }, `${n} jour${n > 1 ? "s" : ""} d'entraînement` + (wc ? ` · ${wc.macro_label} · ${wc.label}` : "")));
+      nodes.push(h("p", { class: "muted", style: "margin-top:-12px" }, __("{n} jour{v} d'entraînement", { n, v: n > 1 ? "s" : "" }) + (wc ? ` · ${wc.macro_label} · ${wc.label}` : "")));
     }
     nodes.push(h("div", { class: "dayhead" + (day === data.today ? " today" : "") }, fmtDay(day, data.today)));
     nodes.push(h("div", { class: "card", style: "padding:0;overflow:hidden" }, list.map((s) => {
-      const sub = [`${s.duration_min} min`, s.details.zone, s.details.format, s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
+      const sub = [__("{duration_min} min", { duration_min: s.duration_min }), s.details.zone, s.details.format, s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
       const row = h("button", { class: `sess ${s.status}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
         h("span", { class: "dot" }, s.status === "done" ? icon("check") : isRun(s.kind) ? "C" : "M"),
         h("span", { class: "grow" }, h("strong", null, s.title), h("span", { class: "sub" }, sub)),
@@ -1231,16 +1252,16 @@ function sessionScreen(s, today) {
     if (!dirty) return inflight;
     dirty = false;
     const mine = { ...(s.logged || {}), ...collect() };
-    saved.textContent = "Enregistrement…";
+    saved.textContent = __("Enregistrement…");
     inflight = inflight.then(() => api(`/users/${userId}/plan/sessions/${s.id}`, { method: "PATCH", body: { status: s.status, logged: mine }, keepalive }))
-      .then(() => { s.logged = mine; if (!dirty) { store.del(draftKey); saved.textContent = "Enregistré"; err.textContent = ""; } })
-      .catch((e) => { dirty = true; saved.textContent = "Pas encore enregistré (le brouillon est gardé sur cet appareil)"; if (!e.handled) err.textContent = e.message; });
+      .then(() => { s.logged = mine; if (!dirty) { store.del(draftKey); saved.textContent = __("Enregistré"); err.textContent = ""; } })
+      .catch((e) => { dirty = true; saved.textContent = __("Pas encore enregistré (le brouillon est gardé sur cet appareil)"); if (!e.handled) err.textContent = __(e.message); });
     return inflight;
   };
   const touch = () => {
     dirty = true;
     store.set(draftKey, JSON.stringify(collect()));
-    saved.textContent = "Modification en cours…";
+    saved.textContent = __("Modification en cours…");
     clearTimeout(timer);
     timer = setTimeout(() => persist(false), 700);
   };
@@ -1256,19 +1277,19 @@ function sessionScreen(s, today) {
     return h("div", { class: "card exbox" },
       h("div", { class: "row" }, slot.exercise?.thumb ? h("img", { src: `/media/${slot.exercise.thumb}`, alt: "", loading: "lazy" }) : null,
         h("div", { class: "grow stack", style: "gap:2px" }, h("strong", null, name),
-          h("span", { class: "muted" }, slot.role === "core" ? `${slot.sets} séries · ${slot.reps} · repos ${slot.rest}`
-            : `${slot.sets} séries · ${slot.reps} reps · RIR ${slot.rir} (RPE ${slot.rpe}) · repos ${slot.rest}`),
-          slot.last ? h("span", { class: "muted" }, `Dernière fois (${new Date(slot.last.day + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}) : ${lastTxt}`) : null,
+          h("span", { class: "muted" }, slot.role === "core" ? __("{sets} séries · {reps} · repos {rest}", { sets: slot.sets, reps: slot.reps, rest: slot.rest })
+            : __("{sets} séries · {reps} reps · RIR {rir} (RPE {rpe}) · repos {rest}", { sets: slot.sets, reps: slot.reps, rir: slot.rir, rpe: slot.rpe, rest: slot.rest })),
+          slot.last ? h("span", { class: "muted" }, __("Dernière fois ({toLocaleDateString}) : {lastTxt}", { toLocaleDateString: new Date(slot.last.day + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "short" }), lastTxt })) : null,
           slot.target ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, slot.target.text)
-            : slot.suggested_kg ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, `Charge de départ conseillée : ${slot.suggested_kg} kg`) : null),
+            : slot.suggested_kg ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, __("Charge de départ conseillée : {suggested_kg} kg", { suggested_kg: slot.suggested_kg })) : null),
         slot.exercise ? h("button", { class: "link", onclick: () => exerciseDetail(slot.exercise.id) }, "Fiche") : null),
       slot.cue ? h("p", { class: "muted" }, slot.cue) : null,
-      slot.why ? h("p", { class: "muted", style: "font-style:italic" }, `Pourquoi : ${slot.why}`) : null,
+      slot.why ? h("p", { class: "muted", style: "font-style:italic" }, __("Pourquoi : {why}", { why: slot.why })) : null,
       h("div", { class: "sets" }, h("span", null, ""), h("span", null, "kg"), h("span", null, "reps"),
         Array.from({ length: n }, (_, k) => {
           st.sets[i].sets[k] = st.sets[i].sets[k] || {};
-          return [h("span", null, k + 1), num(st.sets[i].sets[k].kg, (v) => { st.sets[i].sets[k].kg = v; }, "kg", `${name}, série ${k + 1}, kg`),
-            num(st.sets[i].sets[k].reps, (v) => { st.sets[i].sets[k].reps = v; }, "reps", `${name}, série ${k + 1}, répétitions`)];
+          return [h("span", null, k + 1), num(st.sets[i].sets[k].kg, (v) => { st.sets[i].sets[k].kg = v; }, "kg", __("{name}, série {v}, kg", { name, v: k + 1 })),
+            num(st.sets[i].sets[k].reps, (v) => { st.sets[i].sets[k].reps = v; }, "reps", __("{name}, série {v}, répétitions", { name, v: k + 1 }))];
         })));
   });
 
@@ -1281,14 +1302,14 @@ function sessionScreen(s, today) {
     oninput: (e) => { st.adaptation = e.target.value; touch(); } }, st.adaptation);
   const saveAdapt = async () => { dirty = true; await persist(false); if (!dirty) toast("Adaptation enregistrée : le coach la prendra en compte"); };
   const rpe = h("select", { id: "rpe", "aria-label": "Effort ressenti" }, h("option", { value: "" }, "Effort ressenti"),
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => h("option", { value: n }, `${n} sur 10`)));
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => h("option", { value: n }, __("{n} sur 10", { n }))));
   rpe.value = st.rpe; rpe.addEventListener("change", () => { st.rpe = rpe.value === "" ? "" : Number(rpe.value); touch(); });
   const save = async (status) => {
     err.textContent = "";
     clearTimeout(timer); await inflight;
     const body = { status, logged: { ...(s.logged || {}), ...collect() } }; // la saisie est toujours conservée, quel que soit le statut
     try { await api(`/users/${userId}/plan/sessions/${s.id}`, { method: "PATCH", body }); dirty = false; store.del(draftKey); flushActive = null; toast(status === "done" ? "Séance enregistrée" : status === "skipped" ? "Séance passée" : "Séance rouverte"); planScreen(true); }
-    catch (e) { err.textContent = e.message; }
+    catch (e) { err.textContent = __(e.message); }
   };
   const moveDialog = () => {
     const ahead = s.status !== "done";
@@ -1301,7 +1322,7 @@ function sessionScreen(s, today) {
     close = sheet(ahead ? "Reprogrammer la séance" : "Séance faite un autre jour",
       h("p", { class: "muted" }, ahead ? "Choisissez le jour où vous la ferez." : "Choisissez le jour où vous l'avez réellement faite."),
       h("div", { class: "daygrid" }, days.map((d) => h("button", { class: "daychip" + (d === s.day ? " cur" : ""), onclick: () => go(d), "aria-label": longDay(d) },
-        h("span", null, DAY_ABBR[(new Date(d + "T12:00:00").getDay() + 6) % 7]), h("strong", null, String(Number(d.slice(8))))))),
+        h("span", null, I18N.weekday((new Date(d + "T12:00:00").getDay() + 6) % 7, "narrow")), h("strong", null, String(Number(d.slice(8))))))),
       h("div", { class: "field" }, h("label", null, "Autre date"), dateInput));
   };
   const unlink = async () => {
@@ -1311,22 +1332,22 @@ function sessionScreen(s, today) {
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: async () => { await persist(false); if (!dirty) planScreen(true); } }, icon("back"), "Plan"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, fmtDay(s.day, today)),
     h("h1", null, s.title),
-    h("div", { class: "chips" }, s.details.cycle ? h("span", { class: "chip" }, `${s.details.cycle.macro_label} · ${s.details.cycle.label}`) : null, h("span", { class: "chip" }, `${s.duration_min} min`), s.details.zone ? h("span", { class: "chip" }, s.details.zone) : null,
+    h("div", { class: "chips" }, s.details.cycle ? h("span", { class: "chip" }, `${s.details.cycle.macro_label} · ${s.details.cycle.label}`) : null, h("span", { class: "chip" }, __("{duration_min} min", { duration_min: s.duration_min })), s.details.zone ? h("span", { class: "chip" }, s.details.zone) : null,
       s.details.format ? h("span", { class: "chip" }, s.details.format) : null, s.details.vert_m ? h("span", { class: "chip" }, `≈ ${s.details.vert_m} m D+`) : null),
     s.notes.length ? h("div", { class: "card" }, s.notes.map((n) => h("p", { class: "muted" }, n))) : null,
     s.status === "skipped" ? null : h("div", { class: "card row" }, h("div", { class: "grow stack", style: "gap:2px" }, h("strong", null, "Jour de la séance"),
-      h("span", { class: "muted" }, longDay(s.day) + (s.details.moved_from ? ` · prévue le ${longDay(s.details.moved_from)}` : ""))),
+      h("span", { class: "muted" }, longDay(s.day) + (s.details.moved_from ? __(" · prévue le {longDay}", { longDay: longDay(s.details.moved_from) }) : ""))),
       h("button", { class: "btn sm", onclick: moveDialog }, "Changer de jour")),
     logged.garmin_id ? h("div", { class: "card stack" }, h("h3", null, "Mesuré par la montre"),
-      h("div", { class: "chips" }, [logged.minutes ? `${logged.minutes} min` : null, logged.distance_km ? `${logged.distance_km} km` : null, logged.avg_hr ? `FC moy ${logged.avg_hr}` : null,
-        logged.max_hr ? `FC max ${logged.max_hr}` : null, logged.calories ? `${logged.calories} kcal` : null, logged.training_load ? `charge ${logged.training_load}` : null]
+      h("div", { class: "chips" }, [logged.minutes ? __("{minutes} min", { minutes: logged.minutes }) : null, logged.distance_km ? `${logged.distance_km} km` : null, logged.avg_hr ? __("FC moy {avg_hr}", { avg_hr: logged.avg_hr }) : null,
+        logged.max_hr ? __("FC max {max_hr}", { max_hr: logged.max_hr }) : null, logged.calories ? __("{calories} kcal", { calories: logged.calories }) : null, logged.training_load ? __("charge {training_load}", { training_load: logged.training_load }) : null]
         .filter(Boolean).map((t) => h("span", { class: "chip" }, t))),
       h("button", { class: "link", style: "align-self:flex-start;padding:2px 0", onclick: unlink }, "Dissocier de cette activité")) : null,
     ...slots,
     ...(s.details.blocks || []).map((b) => h("div", { class: "card stack" },
-      h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, `${b.minutes} min`)),
+      h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, __("{minutes} min", { minutes: b.minutes }))),
       h("ul", { class: "plain" }, b.items.map((it) => h("li", null, it))),
-      b.effort ? h("p", { class: "muted" }, `Effort visé : ${b.effort}`) : null)),
+      b.effort ? h("p", { class: "muted" }, __("Effort visé : {effort}", { effort: b.effort })) : null)),
     slots.length ? h("details", { class: "card" }, h("summary", { style: "font-weight:600;cursor:pointer" }, "Comment doser l'effort (RIR et RPE)"),
       h("p", { class: "muted", style: "margin-top:8px" }, "RIR = répétitions en réserve : combien de répétitions vous pourriez encore faire à la fin de la série. RIR 2 signifie qu'il vous en restait 2 (RPE 8 sur 10). RIR 4 : très facile, RPE 6."),
       h("p", { class: "muted", style: "margin-top:6px" }, "Au fil des semaines, on se rapproche de l'échec (RIR 2-3, puis 2, puis 1-2), et la semaine allégée repart très facile. Quand vous atteignez le haut de la fourchette de répétitions sur toutes les séries, augmentez la charge.")) : null,
@@ -1338,13 +1359,13 @@ function sessionScreen(s, today) {
         num(st.minutes, (v) => { st.minutes = v; }, String(s.duration_min), "Durée réelle en minutes")) : null,
       rpe, h("div", { class: "field" }, h("label", { for: "note" }, "Remarque"),
         h("input", { id: "note", type: "text", value: st.note, maxlength: 600, placeholder: "Sensations, douleurs…", oninput: (e) => { st.note = e.target.value; touch(); } })), saved, err),
-    h("p", { class: "muted" }, `Règles appliquées : ${s.rules.join(", ")}.`),
+    h("p", { class: "muted" }, __("Règles appliquées : {join}.", { join: s.rules.join(", ") })),
     actionBar(done ? h("button", { class: "btn", onclick: () => save("planned") }, "Rouvrir la séance")
       : h("button", { class: "btn primary", onclick: () => save("done") }, "Terminer la séance"),
       h("div", { class: "links" }, !done && s.status !== "skipped" ? h("button", { class: "link", onclick: () => save("skipped") }, "Passer cette séance") : null)),
   );
   flushActive = (keepalive) => persist(keepalive);
-  if (draft) { dirty = true; saved.textContent = "Saisie reprise, enregistrement…"; timer = setTimeout(() => persist(false), 300); }
+  if (draft) { dirty = true; saved.textContent = __("Saisie reprise, enregistrement…"); timer = setTimeout(() => persist(false), 300); }
 }
 
 // ---------- bibliothèque d'exercices ----------
@@ -1376,8 +1397,8 @@ async function library(restore = false) {
     const p = new URLSearchParams({ limit: "24", offset: String(offset) });
     for (const [k, v] of Object.entries(libState)) if (v) p.set(k, v);
     let r;
-    try { r = await api(`/exercises?${p}`); } catch (e) { count.textContent = e.message; return; }
-    count.textContent = `${r.total} exercice${r.total > 1 ? "s" : ""}`;
+    try { r = await api(`/exercises?${p}`); } catch (e) { count.textContent = __(e.message); return; }
+    count.textContent = __("{total} exercice{v}", { total: r.total, v: r.total > 1 ? "s" : "" });
     list.append(...r.items.map((x) => h("button", { class: "ex", onclick: () => { scrollMemo.lib = window.scrollY; libKeep = offset; exerciseDetail(x.id); } },
       x.thumb ? h("img", { src: `/media/${x.thumb}`, alt: "", loading: "lazy", width: 64, height: 64 }) : h("span", { class: "noimg" }, "Aa"),
       h("span", { class: "grow" }, h("strong", null, x.name),
@@ -1419,15 +1440,15 @@ async function exerciseDetail(id) {
     h("span", { class: "eyebrow" }, meta.kinds[e.kind] || e.kind),
     h("h1", null, e.name),
     e.name_en && e.name_en !== e.name ? h("p", { class: "muted" }, e.name_en) : null,
-    images.length ? h("div", { class: "gallery" }, images.map((m) => h("img", { src: `/media/${m.id}`, alt: `Illustration : ${e.name}`, loading: "lazy" }))) : null,
+    images.length ? h("div", { class: "gallery" }, images.map((m) => h("img", { src: `/media/${m.id}`, alt: __("Illustration : {name}", { name: e.name }), loading: "lazy" }))) : null,
     h("div", { class: "chips" }, chips(e.muscles_primary, meta.muscles), chips(e.equipment, meta.equipment)),
-    e.muscles_secondary.length ? h("p", { class: "muted" }, "Muscles secondaires : " + e.muscles_secondary.map((m) => meta.muscles[m] || m).join(", ")) : null,
+    e.muscles_secondary.length ? h("p", { class: "muted" }, __("Muscles secondaires : {join}", { join: e.muscles_secondary.map((m) => meta.muscles[m] || m).join(", ") })) : null,
     e.instructions ? h("div", { class: "card stack" }, h("h3", null, "Exécution"),
       h("p", { class: "prose" }, e.instructions),
       e.instructions_lang === "en" ? h("p", { class: "muted" }, "Texte en anglais (source).") : null) : null,
     videos.length ? h("div", { class: "stack" }, videos.map((m) => h("a", { class: "btn sm", href: m.video_url, target: "_blank", rel: "noopener noreferrer" }, "Voir la vidéo"))) : null,
     h("div", { class: "card" }, h("h3", null, "Sources et licences"),
-      h("ul", { class: "credits" }, h("li", null, `Fiche : ${e.author || "auteur non indiqué"}, `,
+      h("ul", { class: "credits" }, h("li", null, __("Fiche : {v}, ", { v: e.author || __("auteur non indiqué") }),
         e.license_url ? h("a", { href: e.license_url, target: "_blank", rel: "noopener noreferrer" }, e.license) : e.license),
       images.map((m) => credit(m, "Image")), videos.map((m) => credit(m, "Vidéo")))),
   );
@@ -1443,7 +1464,7 @@ function dayLabel(iso, today) {
   if (iso === today) return "Aujourd'hui";
   if (iso === shiftDay(today, -1)) return "Hier";
   if (iso === shiftDay(today, 1)) return "Demain";
-  return new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { weekday: "long", day: "numeric", month: "long" });
 }
 
 async function fileToJpegB64(file, max = 1280, q = 0.72) {
@@ -1487,22 +1508,22 @@ async function nutritionScreen(day) {
   nutDay.value = d.day;
   const t = d.targets, tot = d.totals;
   const del = (m) => { let armed = false; const b = h("button", { class: "link" }, "Supprimer");
-    b.addEventListener("click", async () => { if (!armed) { armed = true; b.textContent = "Confirmer la suppression"; return; }
+    b.addEventListener("click", async () => { if (!armed) { armed = true; b.textContent = __("Confirmer la suppression"); return; }
       try { await api(`/users/${userId}/nutrition/meals/${m.id}`, { method: "DELETE" }); nutritionScreen(d.day); } catch (e) { toast(e.message); } });
     return b; };
   const mealCard = (m) => {
     const a = m.analysis;
     const est = h("button", { class: "btn sm" }, "Estimer avec l'IA");
-    est.addEventListener("click", async () => { est.disabled = true; est.textContent = "Estimation en cours…";
-      try { await api(`/users/${userId}/nutrition/meals/${m.id}/estimate`, { method: "POST" }); nutritionScreen(d.day); } catch (e) { toast(e.message); est.disabled = false; est.textContent = "Estimer avec l'IA"; } });
+    est.addEventListener("click", async () => { est.disabled = true; est.textContent = __("Estimation en cours…");
+      try { await api(`/users/${userId}/nutrition/meals/${m.id}/estimate`, { method: "POST" }); nutritionScreen(d.day); } catch (e) { toast(e.message); est.disabled = false; est.textContent = __("Estimer avec l'IA"); } });
     return h("div", { class: "card stack" },
       h("div", { class: "row between" }, h("span", { class: "chip" }, m.slot), del(m)),
-      m.has_photo ? h("img", { src: `/users/${userId}/nutrition/meals/${m.id}/photo`, alt: `Photo : ${m.description || m.slot}`, loading: "lazy", style: "width:100%;max-height:220px;object-fit:cover;border-radius:12px" }) : null,
+      m.has_photo ? h("img", { src: `/users/${userId}/nutrition/meals/${m.id}/photo`, alt: __("Photo : {v}", { v: m.description || m.slot }), loading: "lazy", style: "width:100%;max-height:220px;object-fit:cover;border-radius:12px" }) : null,
       m.description ? h("p", null, m.description) : null,
       a ? h("div", { class: "stack", style: "gap:6px" },
-        h("div", { class: "chips" }, h("span", { class: "chip" }, `≈ ${a.kcal} kcal (${a.kcal_min}-${a.kcal_max})`), h("span", { class: "chip" }, `P ${a.protein_g} g`), h("span", { class: "chip" }, `G ${a.carbs_g} g`), h("span", { class: "chip" }, `L ${a.fat_g} g`)),
+        h("div", { class: "chips" }, h("span", { class: "chip" }, __("≈ {kcal} kcal ({kcal_min}-{kcal_max})", { kcal: a.kcal, kcal_min: a.kcal_min, kcal_max: a.kcal_max })), h("span", { class: "chip" }, `P ${a.protein_g} g`), h("span", { class: "chip" }, `G ${a.carbs_g} g`), h("span", { class: "chip" }, `L ${a.fat_g} g`)),
         a.feedback ? h("p", { class: "muted" }, a.feedback) : null, ...(a.tips || []).map((x) => h("p", { class: "muted" }, "• " + x)),
-        h("p", { class: "muted", style: "font-size:.8125rem" }, `Estimation (confiance ${a.confidence}). ${a.assumptions || ""}`))
+        h("p", { class: "muted", style: "font-size:.8125rem" }, __("Estimation (confiance {confidence}). {v}", { confidence: a.confidence, v: a.assumptions || "" })))
         : est);
   };
   const dayNav = h("div", { class: "row between" },
@@ -1526,16 +1547,16 @@ async function nutritionScreen(day) {
       h("div", { class: "row between" }, h("h3", null, "Objectif du jour"), h("span", { class: "chip" }, t.day_load === "training" ? "Jour d'entraînement" : "Jour de repos")),
       h("p", null, h("span", { class: "num", style: "font-size:1.9rem" }, `≈ ${t.kcal}`), " kcal"),
       bar("Énergie", tot.kcal, t.kcal, "kcal"), bar("Protéines", tot.protein_g, t.protein_g, "g"), bar("Glucides", tot.carbs_g, t.carbs_g, "g"), bar("Lipides", tot.fat_g, t.fat_g, "g"),
-      tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, `${tot.meals - tot.estimated_meals} repas sans estimation : ils ne sont pas comptés.`) : null,
+      tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, __("{v} repas sans estimation : ils ne sont pas comptés.", { v: tot.meals - tot.estimated_meals })) : null,
       t.notice ? h("p", { class: "muted" }, t.notice) : null,
-      h("p", { class: "muted", style: "font-size:.8125rem" }, `Dépense estimée ${t.tdee} kcal, déficit ${t.deficit_kcal} kcal (${t.rate_pct_per_week} % du poids par semaine). Règles ${t.rules.join(", ")}.`)),
+      h("p", { class: "muted", style: "font-size:.8125rem" }, __("Dépense estimée {tdee} kcal, déficit {deficit_kcal} kcal ({rate_pct_per_week} % du poids par semaine). Règles {join}.", { tdee: t.tdee, deficit_kcal: t.deficit_kcal, rate_pct_per_week: t.rate_pct_per_week, join: t.rules.join(", ") }))),
     h("button", { class: "btn primary", onclick: () => mealForm(d.day) }, "Ajouter un repas"),
     ...d.meals.map(mealCard),
     d.meals.length ? null : h("div", { class: "card" }, h("p", { class: "muted" }, "Aucun repas enregistré ce jour. Décrivez ce que vous avez mangé, avec ou sans photo : l'IA estime calories et macros (ordres de grandeur).")),
     h("div", { class: "card stack" }, h("h3", null, "Suivi du poids"),
-      h("p", { class: "muted" }, `Taille ${pr.height_cm} cm · IMC ${pr.bmi}${pr.target_kg ? ` · objectif ${pr.target_kg} kg` : ""}`),
+      h("p", { class: "muted" }, __("Taille {height_cm} cm · IMC {bmi}{v}", { height_cm: pr.height_cm, bmi: pr.bmi, v: pr.target_kg ? __(" · objectif {target_kg} kg", { target_kg: pr.target_kg }) : "" })),
       weightChart(tr.series.slice(-30), pr.target_kg),
-      tr.current ? h("p", null, `Tendance (moyenne sur 7 jours) : ${tr.current} kg`, tr.rate_pct_per_week != null ? h("span", { class: "muted" }, ` · ${tr.rate_pct_per_week > 0 ? "+" : ""}${tr.rate_pct_per_week} % par semaine`) : null) : h("p", { class: "muted" }, "Aucune pesée pour l'instant."),
+      tr.current ? h("p", null, __("Tendance (moyenne sur 7 jours) : {current} kg", { current: tr.current }), tr.rate_pct_per_week != null ? h("span", { class: "muted" }, __(" · {v}{rate_pct_per_week} % par semaine", { v: tr.rate_pct_per_week > 0 ? "+" : "", rate_pct_per_week: tr.rate_pct_per_week })) : null) : h("p", { class: "muted" }, "Aucune pesée pour l'instant."),
       ...prog.advice.map((a) => h("p", { class: "muted" }, a)),
       h("div", { class: "grid2" }, wInput, wWaist), wBtn,
       h("p", { class: "muted", style: "font-size:.8125rem" }, prog.disclaimer)),
@@ -1575,15 +1596,15 @@ function mealForm(day) {
   const go = h("button", { class: "btn primary" }, "Enregistrer");
   go.addEventListener("click", async () => {
     err.textContent = "";
-    if (!desc.value.trim() && !file) { err.textContent = "Décrivez votre repas ou ajoutez une photo."; return; }
+    if (!desc.value.trim() && !file) { err.textContent = __("Décrivez votre repas ou ajoutez une photo."); return; }
     go.disabled = true; go.textContent = est.checked ? "Estimation en cours…" : "Enregistrement…";
     try {
       const body = { day, slot, description: desc.value.trim(), estimate: est.checked, for_tomorrow: canTomorrow && box.checked };
       if (file) body.photo_b64 = await fileToJpegB64(file);
       const r = await api(`/users/${userId}/nutrition/meals`, { method: "POST", body });
-      if (r.analysis_error) toast("Repas enregistré. Estimation indisponible : " + r.analysis_error);
+      if (r.analysis_error) toast(__("Repas enregistré. Estimation indisponible : {analysis_error}", { analysis_error: r.analysis_error }));
       nutritionScreen(body.for_tomorrow ? shiftDay(day, 1) : day);
-    } catch (e) { err.textContent = e.message; go.disabled = false; go.textContent = "Enregistrer"; }
+    } catch (e) { err.textContent = __(e.message); go.disabled = false; go.textContent = __("Enregistrer"); }
   });
   show(
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
@@ -1615,12 +1636,12 @@ async function evidenceScreen(focusId) {
     const q = evState.q.toLowerCase();
     const items = data.items.filter((e) => (!evState.topic || e.topic === evState.topic) && (!q || (e.citation + e.finding_fr).toLowerCase().includes(q)))
       .sort((a, b) => (a.id === focusId ? -1 : b.id === focusId ? 1 : 0));
-    count.textContent = `${items.length} publication${items.length > 1 ? "s" : ""}`;
+    count.textContent = __("{length} publication{v}", { length: items.length, v: items.length > 1 ? "s" : "" });
     list.replaceChildren(...items.map((e) => h("div", { class: "card stack", id: e.id, style: e.id === focusId ? "outline:2px solid var(--accent)" : "" },
       h("div", { class: "row between" }, h("strong", null, e.id), h("span", { class: "chip" }, CONF[e.confidence] || e.confidence)),
       h("p", null, e.citation), h("p", { class: "muted" }, `${e.design}`),
-      h("p", null, e.finding_fr), h("p", { class: "muted" }, `Limites : ${e.limits_fr}`),
-      e.applies_to.length ? h("div", { class: "chips" }, e.applies_to.map((r) => h("span", { class: "chip" }, `Règle ${r}`))) : null,
+      h("p", null, e.finding_fr), h("p", { class: "muted" }, __("Limites : {limits_fr}", { limits_fr: e.limits_fr })),
+      e.applies_to.length ? h("div", { class: "chips" }, e.applies_to.map((r) => h("span", { class: "chip" }, __("Règle {r}", { r })))) : null,
       h("a", { class: "btn sm", style: "align-self:flex-start", href: e.url, target: "_blank", rel: "noopener noreferrer" }, "Voir la publication"))));
   };
   let timer;
@@ -1655,7 +1676,7 @@ function welcomeScreen() {
     ["lock", "Vos données restent chez vous", "Elles sont hébergées sur votre serveur. Rien n'est vendu ni partagé."]];
   show(h("div", { class: "welcome" },
     h("div", { class: "welcome-logo" }, h("img", { src: "/icons/icon-192.png", alt: "", width: 84, height: 84 })),
-    h("h1", null, userName ? `Bienvenue, ${userName}` : "Bienvenue"),
+    h("h1", null, userName ? __("Bienvenue, {userName}", { userName }) : "Bienvenue"),
     h("p", { class: "lead" }, "Votre coach sportif construit un plan pour vous, puis l'adapte chaque semaine."),
     h("ul", { class: "benefits" }, rows.map(([ic, t, d]) => h("li", null, h("span", { class: "bicon" }, icon(ic)), h("div", { class: "stack", style: "gap:2px" }, h("strong", null, t), h("span", { class: "muted" }, d)))))),
     actionBar(h("button", { class: "btn primary", onclick: onboardingNext }, "Commencer"), h("p", { class: "muted", style: "text-align:center;font-size:.875rem" }, "Environ 3 minutes · vous pouvez passer ce que vous ne savez pas")));
@@ -1666,7 +1687,7 @@ async function onboardingNext() {
   try { r = await api(`/users/${userId}/questions/next?n=1&tier=essential`); } catch (e) { return fail(e); }
   if (!r.questions.length) return intakeScreen();
   const total = r.essential.answered + r.essential.remaining;
-  questionView(r.questions[0], { progress: { answered: r.essential.answered, remaining_visible: r.essential.remaining }, eyebrow: `Question ${r.essential.answered + 1} sur ${total}`,
+  questionView(r.questions[0], { progress: { answered: r.essential.answered, remaining_visible: r.essential.remaining }, eyebrow: __("Question {v} sur {total}", { v: r.essential.answered + 1, total }),
     onDone: onboardingNext, onBack: r.essential.answered ? undefined : welcomeScreen });
 }
 
@@ -1720,7 +1741,7 @@ function clarification(c, n, total, onDone) {
   go.addEventListener("click", async () => {
     go.disabled = true;
     try { await api(`/users/${userId}/coach/intake/clarification`, { method: "POST", body: { index: c.index, answer: txt.value.trim() } }); onDone(); }
-    catch (e) { err.textContent = e.message; go.disabled = false; }
+    catch (e) { err.textContent = __(e.message); go.disabled = false; }
   });
   show(h("div", { class: "top" }, h("span", { class: "grow" }), segments(n - 1, total - n + 1)),
     h("span", { class: "eyebrow" }, "Votre coach demande"), h("h2", { class: "q" }, c.question),
@@ -1728,16 +1749,26 @@ function clarification(c, n, total, onDone) {
     actionBar(go, h("div", { class: "links" }, h("button", { class: "link", onclick: onDone }, "Préférer ne pas répondre"))));
 }
 
+// Langue de l'interface : choix mémorisé sur l'appareil, sinon langue du compte, sinon langue du navigateur (anglais pour une langue non gérée).
+async function setupLocale(me) {
+  const stored = store.get("lang");
+  const locale = await I18N.load(I18N.detect(stored && I18N.LOCALES[stored] ? stored : me && me.lang, navigator.languages));
+  document.documentElement.lang = locale;
+  return locale;
+}
+
 async function start() {
+  let me = null;
+  try { me = await api("/auth/me"); } catch (e) { if (e.status !== 401) return fail(e); }
+  const locale = await setupLocale(me);
   try {
-    bank = await api("/bank");
+    bank = await api(`/bank?lang=${locale}`);
     byId = new Map(bank.map((q) => [q.id, q]));
   } catch (e) { return fail(e); }
-  try {
-    const me = await api("/auth/me");
-    userId = String(me.id); userName = me.name;
-    route();
-  } catch (e) { if (e.status === 401) authScreen(); else if (!e.handled) fail(e); }
+  if (!me) return authScreen();
+  userId = String(me.id); userName = me.name;
+  if (me.lang !== locale) api("/auth/language", { method: "PUT", body: { lang: locale } }).catch(() => {});  // le compte suit l'appareil (notifications, mails)
+  route();
 }
 
 if ("serviceWorker" in navigator) {

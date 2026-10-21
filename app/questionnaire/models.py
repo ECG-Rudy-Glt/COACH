@@ -14,6 +14,7 @@ class EntryField(BaseModel):
     label: str
     type: FieldType
     options: list[str] | None = None
+    option_labels: dict[str, str] | None = None  # libellés affichés des options (valeurs stockées inchangées)
     unit: str | None = None
     optional: bool = False
 

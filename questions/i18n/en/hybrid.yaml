@@ -1,0 +1,20 @@
+hy.hyrox_done:
+  text: "Have you ever taken part in a Hyrox race?"
+  options: { jamais: "Never", une fois: "Once", plusieurs fois: "Several times" }
+hy.hyrox_time:
+  text: "What is your best total time?"
+hy.hyrox_cat:
+  text: "Which category are you aiming for?"
+  options: { Open: "Open", Pro: "Pro", Doubles: "Doubles", Relais: "Relay" }
+hy.hyrox_weak:
+  text: "Which stations are your weak points?"
+  options: { SkiErg: "SkiErg", sled push: "Sled push", sled pull: "Sled pull", burpee broad jumps: "Burpee broad jumps", rameur: "Rowing", farmers carry: "Farmers carry", sandbag lunges: "Sandbag lunges", wall balls: "Wall balls", course: "Running" }
+hy.cf_years:
+  text: "For how many years have you been doing CrossFit?"
+  unit: "years"
+hy.cf_skills:
+  text: "Which movements have you mastered?"
+  options: { muscle-up: "Muscle-up", double unders: "Double unders", handstand push-up: "Handstand push-up", snatch: "Snatch", clean and jerk: "Clean and jerk", pistol squat: "Pistol squat", aucun: "None" }
+hy.cf_access:
+  text: "Where do you train?"
+  options: { box: "CrossFit box", garage ou salle perso: "Home garage or gym", aucun lieu fixe: "No fixed place" }

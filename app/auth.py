@@ -10,8 +10,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from app import i18n
 from app.repo import Repo
 
 COOKIE = "sc_session"
@@ -88,6 +89,10 @@ class ChangePassword(BaseModel):
     new: str
 
 
+class Language(BaseModel):
+    lang: str = Field(max_length=10)
+
+
 class Login(BaseModel):
     email: str
     password: str
@@ -162,7 +167,7 @@ def build_router(get_repo: Any) -> tuple[APIRouter, Any]:
         else:
             uid = repo.create_account(name, email, pw)
         _open_session(repo, uid, request, response)
-        return {"id": uid, "name": name, "email": email}
+        return {"id": uid, "name": name, "email": email, "lang": None}
 
     @router.post("/login")
     def login(body: Login, request: Request, response: Response,
@@ -181,7 +186,7 @@ def build_router(get_repo: Any) -> tuple[APIRouter, Any]:
         _fails.pop(key, None)
         _fails.pop(f"*|{email}", None)
         _open_session(repo, acct["id"], request, response)
-        return {"id": acct["id"], "name": acct["name"], "email": email}
+        return {"id": acct["id"], "name": acct["name"], "email": email, "lang": acct.get("lang")}
 
     @router.post("/logout")
     def logout(request: Request, response: Response, repo: Repo = Depends(get_repo)) -> dict[str, bool]:
@@ -205,6 +210,15 @@ def build_router(get_repo: Any) -> tuple[APIRouter, Any]:
             raise HTTPException(422, "Le nouveau mot de passe doit être différent.")
         repo.set_password(user["id"], hash_password(body.new), token_hash(request.cookies.get(COOKIE, "")))
         return {"ok": True}
+
+    @router.put("/language")
+    def set_language(body: Language, user: dict[str, Any] = Depends(current_user), repo: Repo = Depends(get_repo)) -> dict[str, str]:
+        """Langue du compte : l'interface la mémorise sur l'appareil, le serveur s'en sert pour les notifications, les mails et le coach IA."""
+        lang = i18n.normalize(body.lang)
+        if lang is None:
+            raise HTTPException(422, "Langue non gérée.")
+        repo.set_language(user["id"], lang)
+        return {"lang": lang}
 
     @router.get("/me")
     def me(user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:

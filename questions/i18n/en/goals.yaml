@@ -1,0 +1,28 @@
+# English labels. Ids, stored option values (French) and conditions never change: only what is displayed.
+goal.sports:
+  text: "Which sports do you practise or want to practise?"
+  options: { running: "Running", strength: "Strength training", trail: "Trail running", cycling: "Cycling", crossfit: "CrossFit", hyrox: "Hyrox", swimming: "Swimming", triathlon: "Triathlon", climbing: "Climbing", team sport: "Team sport" }
+goal.primary:
+  text: "What are your goals for the coming months?"
+  options: { perte de gras: "Fat loss", prise de muscle: "Muscle gain", recomposition: "Body recomposition", performance: "Performance", "préparation d'une course": "Preparing for a race", santé et forme: "Health and fitness" }
+goal.weight_direction:
+  text: "Do you want to lose, gain or maintain your weight?"
+  options: { perdre: "Lose", prendre: "Gain", maintenir: "Maintain" }
+goal.target_weight:
+  text: "What weight are you aiming for?"
+goal.target_date:
+  text: "By what date would you like to reach it?"
+goal.physique:
+  text: "Are there areas of the body you would like to develop in particular?"
+  options: { haut du corps: "Upper body", épaules: "Shoulders", dos: "Back", pectoraux: "Chest", bras: "Arms", abdominaux: "Abs", jambes: "Legs", aucune: "None" }
+goal.race:
+  text: "Do you have a race or an event as a goal? (name, distance, elevation gain, date)"
+body.height:
+  text: "How tall are you?"
+body.weight:
+  text: "What is your current weight?"
+body.birth_year:
+  text: "What is your year of birth?"
+body.sex:
+  text: "Which sex should be used for the energy expenditure calculations?"
+  options: { homme: "Male", femme: "Female" }

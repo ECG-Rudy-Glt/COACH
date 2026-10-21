@@ -1,0 +1,24 @@
+he.disclaimer:
+  text: "This app does not replace a doctor or a dietitian. Do you understand?"
+  options: { je comprends: "I understand" }
+he.red_flags:
+  text: "Do you feel any of these signs during exercise?"
+  options: { aucun: "None", douleur thoracique: "Chest pain", malaise ou perte de connaissance: "Feeling faint or passing out", essoufflement inhabituel: "Unusual shortness of breath", palpitations: "Palpitations" }
+he.medical_advice:
+  text: "Have you talked to a doctor about it?"
+  options: { oui: "Yes", non: "No" }
+he.conditions:
+  text: "Would you like to mention a particular situation?"
+  options: { aucune: "None", asthme: "Asthma", diabète: "Diabetes", hypertension: "High blood pressure", thyroïde: "Thyroid condition", trouble alimentaire passé: "Past eating disorder", grossesse ou post-partum: "Pregnancy or postpartum" }
+he.medication:
+  text: "Are you taking a medication that could affect exercise (e.g. beta-blockers)?"
+  options: { non: "No", oui: "Yes" }
+he.family:
+  text: "Is there a history of heart or metabolic disease in your close family?"
+  options: { aucun: "None", maladie cardiaque précoce: "Early heart disease", mort subite: "Sudden death", hypertension: "High blood pressure", diabète: "Diabetes", cholestérol: "Cholesterol" }
+he.allergies:
+  text: "Do you have any food allergies or intolerances?"
+  options: { aucune: "None", arachides: "Peanuts", fruits à coque: "Tree nuts", œufs: "Eggs", poisson: "Fish", crustacés: "Shellfish", soja: "Soy", lait: "Milk", gluten: "Gluten" }
+he.diet:
+  text: "Do you follow a particular diet?"
+  options: { aucun: "None", végétarien: "Vegetarian", végétalien: "Vegan", sans gluten: "Gluten-free", sans lactose: "Lactose-free", halal: "Halal", casher: "Kosher" }

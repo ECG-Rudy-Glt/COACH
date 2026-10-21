@@ -1,0 +1,21 @@
+ms.priority:
+  text: "If you had to choose, which sport is your priority for the coming months?"
+  options: { running: "Running", strength: "Strength training", trail: "Trail running", cycling: "Cycling", crossfit: "CrossFit", hyrox: "Hyrox", aucune priorité: "No priority" }
+ms.split:
+  text: "How would you like to split your training time?"
+  options: { majoritairement endurance: "Mostly endurance", équilibré: "Balanced", majoritairement force: "Mostly strength" }
+ms.sameday:
+  text: "Do you accept two sessions on the same day?"
+  options: { non: "No", "oui avec au moins 6 h d'écart": "Yes, at least 6 hours apart", oui enchaînées: "Yes, back to back" }
+ms.leg_fatigue:
+  text: "Do your legs feel heavy when running after a leg session?"
+  options: { jamais: "Never", parfois: "Sometimes", souvent: "Often" }
+ms.run_days:
+  text: "Which days do you prefer for running?"
+  options: { lundi: "Monday", mardi: "Tuesday", mercredi: "Wednesday", jeudi: "Thursday", vendredi: "Friday", samedi: "Saturday", dimanche: "Sunday" }
+ms.strength_days:
+  text: "Which days do you prefer for strength training?"
+  options: { lundi: "Monday", mardi: "Tuesday", mercredi: "Wednesday", jeudi: "Thursday", vendredi: "Friday", samedi: "Saturday", dimanche: "Sunday" }
+ms.rest_days:
+  text: "Which days are you unavailable (compulsory rest)?"
+  options: { lundi: "Monday", mardi: "Tuesday", mercredi: "Wednesday", jeudi: "Thursday", vendredi: "Friday", samedi: "Saturday", dimanche: "Sunday" }

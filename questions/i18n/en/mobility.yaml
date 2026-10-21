@@ -1,0 +1,9 @@
+mo.stretch:
+  text: "Do you do stretching or mobility work?"
+  options: { jamais: "Never", parfois: "Sometimes", régulièrement: "Regularly" }
+mo.limits:
+  text: "Which areas are stiff or limited?"
+  options: { chevilles: "Ankles", hanches: "Hips", épaules: "Shoulders", dos: "Back", ischio-jambiers: "Hamstrings", aucune: "None" }
+mo.core:
+  text: "How often do you do core work?"
+  options: { jamais: "Never", une fois par semaine: "Once a week", plusieurs fois par semaine: "Several times a week" }

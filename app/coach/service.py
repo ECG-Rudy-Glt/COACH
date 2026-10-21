@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 from fastapi import HTTPException
 
+from app.coach import prompts
 from app.coach.history import past_digest
 from app.coach.llm import LLMError, default_model, price_eur
 from app.plan import trajectory
@@ -256,7 +257,7 @@ def review(repo: Repo, llm: Any, user_id: int, today: date | None = None) -> dic
     ctx = build_context(repo, user_id, today)
     model = default_model()
     try:
-        res = llm.complete(SYSTEM, json.dumps(ctx, ensure_ascii=False, default=str), 1400, model, json_mode=True)
+        res = llm.complete(prompts.get("review", SYSTEM), json.dumps(ctx, ensure_ascii=False, default=str), 1400, model, json_mode=True)
     except LLMError as e:
         repo.log_llm_call(user_id, "weekly_review", model, (0, 0), 0.0, False, str(e)[:200])
         raise HTTPException(502, str(e)) from e

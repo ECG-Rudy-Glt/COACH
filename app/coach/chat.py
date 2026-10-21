@@ -9,7 +9,8 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.coach import history, service
+from app import i18n
+from app.coach import history, prompts, service
 from app.coach.llm import LLMError, default_model, price_eur
 from app.repo import Repo
 
@@ -79,7 +80,8 @@ def chat(repo: Repo, llm: Any, user_id: int, text: str, today: date | None = Non
         raise HTTPException(429, "Beaucoup de messages aujourd'hui : reprenons demain.")
     prior = repo.list_messages(user_id, HISTORY)
     mine = repo.add_message(user_id, "user", text)  # conservé même si le service IA échoue
-    system = CHAT_SYSTEM + service.SOURCES_RULE + "\n\nCONTEXTE :\n" + json.dumps(service.build_context(repo, user_id, today), ensure_ascii=False, default=str)
+    context = json.dumps(service.build_context(repo, user_id, today), ensure_ascii=False, default=str)
+    system = prompts.get("chat", CHAT_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + ("\n\nCONTEXTE :\n" if i18n.current() == "fr" else "\n\nCONTEXT:\n") + context
     model = default_model()
     try:
         past = _alternating(prior)

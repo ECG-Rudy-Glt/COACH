@@ -16,6 +16,7 @@ from typing import Any
 
 import yaml
 
+from app.coach import prompts
 from app.config import env
 
 log = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ class AnthropicLLM:
     def converse(self, system: str, user: str, max_tokens: int, model: str | None, history: list[dict[str, str]] | None,
                  tools: list[dict[str, Any]], run_tool: Any, max_rounds: int = 3) -> LLMResult:
         """Échange avec outils de lecture : le modèle demande une recherche, le serveur l'exécute (bornée), puis le modèle conclut."""
+        system = prompts.with_language(system)  # langue de la requête (sans effet en français ni si le prompt la précise déjà)
         model = model or default_model()
         if not supports_tools(model, "anthropic"):  # outils désactivés : réponse simple, sans recherche dans l'historique
             return self.complete(system, user, max_tokens, model, history)
@@ -177,6 +179,7 @@ class AnthropicLLM:
 
     def complete(self, system: str, user: str, max_tokens: int, model: str | None = None, history: list[dict[str, str]] | None = None,
                  image: tuple[str, str] | None = None, json_mode: bool = False) -> LLMResult:
+        system = prompts.with_language(system)  # langue de la requête (sans effet en français ni si le prompt la précise déjà)
         model = model or default_model()
         content: Any = user if not image else [
             {"type": "image", "source": {"type": "base64", "media_type": image[0], "data": image[1]}}, {"type": "text", "text": user}]
@@ -224,6 +227,7 @@ class OpenAICompatLLM:
 
     def complete(self, system: str, user: str, max_tokens: int, model: str | None = None, history: list[dict[str, str]] | None = None,
                  image: tuple[str, str] | None = None, json_mode: bool = False) -> LLMResult:
+        system = prompts.with_language(system)  # langue de la requête (sans effet en français ni si le prompt la précise déjà)
         model = model or default_model()
         content: Any = user if not image else [
             {"type": "image_url", "image_url": {"url": f"data:{image[0]};base64,{image[1]}"}}, {"type": "text", "text": user}]
@@ -246,6 +250,7 @@ class OpenAICompatLLM:
 
     def converse(self, system: str, user: str, max_tokens: int, model: str | None, history: list[dict[str, str]] | None,
                  tools: list[dict[str, Any]], run_tool: Any, max_rounds: int = 3) -> LLMResult:
+        system = prompts.with_language(system)  # langue de la requête (sans effet en français ni si le prompt la précise déjà)
         model = model or default_model()
         if self._no_tools or not supports_tools(model, self.provider):  # modèle sans outils : réponse simple, la recherche dans l'historique est désactivée
             return self.complete(system, user, max_tokens, model, history)

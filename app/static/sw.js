@@ -1,6 +1,6 @@
 // Service worker minimal : l'interface reste ouverte hors ligne, l'API n'est jamais mise en cache.
-const CACHE = "sc-v16";
-const SHELL = ["/", "/style.css", "/app.js", "/theme.js", "/manifest.webmanifest", "/icons/icon-192.png", "/fonts/Inter.woff2"];
+const CACHE = "sc-v17";
+const SHELL = ["/", "/style.css", "/app.js", "/i18n.js", "/i18n/en.json", "/theme.js", "/manifest.webmanifest", "/icons/icon-192.png", "/fonts/Inter.woff2"];
 const API = ["/users", "/bank", "/version", "/healthz"];
 
 self.addEventListener("install", (e) => {

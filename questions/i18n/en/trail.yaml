@@ -1,0 +1,41 @@
+tr.distance:
+  text: "What distance does your trail goal cover?"
+  options: { moins de 25 km: "Under 25 km", 25 à 50 km: "25 to 50 km", 50 à 80 km: "50 to 80 km", 80 à 120 km: "80 to 120 km", plus de 120 km: "Over 120 km", pas encore défini: "Not decided yet" }
+tr.elevation:
+  text: "How much total elevation gain does it have?"
+  unit: "m gain"
+tr.event_date:
+  text: "What is the date of the goal?"
+tr.terrain_type:
+  text: "What kind of terrain is the target race on?"
+  options: { sentiers roulants: "Smooth, runnable trails", technique et rocailleux: "Technical and rocky", boue: "Mud", neige ou glace: "Snow or ice", haute montagne: "High mountain" }
+tr.vert_week:
+  text: "How much elevation gain do you do per week at the moment?"
+  unit: "m gain"
+tr.longest_vert:
+  text: "What is the biggest elevation gain of your longest recent outing?"
+  unit: "m gain"
+tr.downhill:
+  text: "How do you handle descents?"
+  options: { "à l'aise": "Comfortable", correct: "Fine", quadriceps douloureux le lendemain: "Sore quads the next day", peur ou manque de technique: "Afraid or lacking technique" }
+tr.uphill_style:
+  text: "How do you tackle steep climbs?"
+  options: { je cours presque tout: "I run almost everything", "j'alterne marche et course": "I alternate walking and running", je marche surtout: "I mostly walk" }
+tr.poles:
+  text: "Do you use poles?"
+  options: { jamais: "Never", débutant: "Beginner", "à l'aise": "Comfortable" }
+tr.fueling:
+  text: "How do you fuel on long outings?"
+  options: { rien: "Nothing", gels: "Gels", barres: "Bars", aliments solides: "Solid food", "boisson d'effort": "Sports drink" }
+tr.gi:
+  text: "Do you have digestive problems during exercise?"
+  options: { jamais: "Never", parfois: "Sometimes", souvent: "Often" }
+tr.night:
+  text: "Does your goal include night running?"
+  options: { non: "No", "oui j'en ai déjà fait": "Yes, I have done it before", oui première fois: "Yes, my first time" }
+tr.gear:
+  text: "What equipment do you have?"
+  options: { gilet ou sac: "Vest or pack", bâtons: "Poles", frontale: "Headlamp", chaussures trail: "Trail shoes", montre GPS: "GPS watch" }
+tr.legs_prehab:
+  text: "Do you do specific strengthening for ankles, quads and calves?"
+  options: { jamais: "Never", parfois: "Sometimes", régulièrement: "Regularly" }
