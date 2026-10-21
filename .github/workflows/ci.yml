@@ -42,6 +42,40 @@ jobs:
         if: always()
         run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY" || true
 
+  js-check:
+    name: JS static check (undefined variables)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: "22" }
+      - name: Syntax check
+        run: for f in app/static/*.js; do node --check "$f"; done
+      - name: eslint no-undef / no-redeclare on i18n.js + app.js + stats.js (config in eslint.config.mjs, version pinned in scripts/lint-js.sh)
+        run: scripts/lint-js.sh
+
+  e2e:
+    name: UI journeys (Playwright, mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-e2e.txt
+      - name: Cache Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements-e2e.txt') }}
+      - name: Install Chromium (download skipped when cached; system libraries are always checked)
+        run: playwright install --with-deps chromium
+      - name: Journeys on the demo server (MemoryRepo, fake LLM, no network)
+        run: pytest tests/e2e -q
+
   changelog:
     name: Changelog entry
     if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && !contains(github.event.pull_request.labels.*.name, 'skip-changelog')

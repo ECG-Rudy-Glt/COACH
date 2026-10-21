@@ -132,7 +132,7 @@ function weightCard(w) {
     valuesTable("Pesées et tendance", ["Jour", "Pesée (kg)", "Tendance (kg)"], w.series.slice().reverse().map((p) => [stDay(p.day, { day: "numeric", month: "short", year: "2-digit" }), stFmt(p.kg, 1), stFmt(p.avg, 1)])));
 }
 
-function weekCard(wk) {
+function statsWeekCard(wk) {
   const pct = wk.planned ? Math.min(100, Math.round((wk.done / wk.planned) * 100)) : 0;
   return stCard("Cette semaine",
     wk.planned ? h("p", null, h("span", { class: "st-big" }, `${wk.done} / ${wk.planned}`), " ", wk.planned > 1 ? "séances faites" : "séance faite") : h("p", { class: "muted" }, "Pas de séance prévue cette semaine."),
@@ -152,7 +152,7 @@ function recentCard(items) {
 
 async function renderDaily(box) {
   const d = await api(`/users/${userId}/stats/daily`);
-  box.replaceChildren(weekCard(d.week), stepsCard(d.steps), mealsCard(d.nutrition), weightCard(d.weight), recentCard(d.recent));
+  box.replaceChildren(statsWeekCard(d.week), stepsCard(d.steps), mealsCard(d.nutrition), weightCard(d.weight), recentCard(d.recent));
 }
 
 // ---------- section « Progression » ----------

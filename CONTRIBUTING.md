@@ -13,6 +13,13 @@ Thanks for helping! Because COACH handles health data and gives training advice,
    ```sh
    .venv/bin/ruff check . && .venv/bin/pytest -q && docker compose config -q
    ```
+   UI journey tests (Playwright, Chromium, 390 px screen) run separately; `pytest -q` skips them:
+   ```sh
+   .venv/bin/pip install -r requirements-e2e.txt && .venv/bin/playwright install chromium   # once (CHROMIUM_PATH=/path/to/chrome reuses an installed browser)
+   .venv/bin/pytest tests/e2e          # ~15 s: scripts/demo_server.py data, in-memory storage, fake LLM (tests/e2e/serve.py), no network
+   scripts/lint-js.sh                  # eslint (pinned, via npx; Node 20+): undefined variables and redeclared functions in app/static/*.js
+   ```
+   A JavaScript error on any screen fails a journey. Write waits with `expect(...)` (auto-waiting), never fixed sleeps; one journey per file in `tests/e2e/`. CI runs both as the jobs "UI journeys" and "JS static check".
 5. **Open a pull request** against `main` using the template. Link the issue (`Closes #123`). Keep it to one concern.
 6. CI must be green and at least one maintainer review is required. Address comments with new commits; we squash-merge.
 
