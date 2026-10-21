@@ -125,6 +125,16 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | N7 | Pas de déficit pour un mineur, en cas de grossesse ou post-partum, ni d'antécédent de trouble alimentaire déclaré : renvoi vers un professionnel | | C |
 | N8 | Qualité : 25 à 30 g de fibres, des légumes à chaque repas, produits ultra-transformés et alcool limités | | B |
 
+## G ter. Statistiques : écran de suivi des données
+
+| Id | Règle | Valeur | Preuve |
+|---|---|---|---|
+| ST1 | Chaque chiffre de l'écran Statistiques vient des données stockées et d'un calcul déterministe du moteur, jamais d'un LLM ; une donnée absente est affichée comme absente (ni 0, ni valeur interpolée) ; une estimation est marquée « ≈ » ; chaque graphique a une alternative texte (tableau) | | C |
+| ST2 | Repas : la moyenne de la semaine ne porte que sur les jours ayant au moins un repas estimé (un jour sans estimation n'est pas un zéro) ; la cible n'est affichée que si la taille, l'année de naissance et un poids sont connus ; l'écart à la cible est présenté sans jugement (voir N6) | 7 jours | C |
+| ST3 | Poids : la courbe montre les pesées et leur moyenne glissante sur 7 jours (N5) ; le rythme hebdomadaire n'est affiché que lorsque le moteur dispose de 3 pesées sur au moins 7 jours | 7 j | C |
+| ST4 | Pas : relevés de la montre par jour ; la journée en cours est incomplète et n'entre pas dans la moyenne ; un total à 0 (montre non portée) n'est pas enregistré | 7 jours | C |
+| ST5 | Activité récente : une séance reliée à la montre n'est comptée qu'une fois (via l'activité) ; l'allure n'est calculée que pour une course d'au moins 1 km | 14 jours | C |
+
 ## H. Vérifications automatiques (tests)
 
 - Aucun plan ne dépasse G1, G5, C2, C8 ni ne viole S1 à S6 (tests par propriétés sur des profils aléatoires).

@@ -56,3 +56,8 @@ N5: "Poids : moyenne glissante sur 7 jours, deux pesées par semaine au moins, j
 N6: "Estimations de repas (texte ou photo) : ordres de grandeur avec sous-estimation fréquente ; on suit les moyennes hebdomadaires, jamais un repas isolé ; aucun jugement moral."
 N7: "Pas de déficit pour un mineur, une grossesse, ni un antécédent de trouble alimentaire : renvoi vers un professionnel."
 N8: "Qualité : 25-30 g de fibres, légumes à chaque repas, ultra-transformés et alcool limités."
+ST1: "Statistiques : chaque chiffre vient des données stockées et du moteur, jamais d'un LLM ; donnée absente = absente ; estimation marquée ≈ ; alternative texte à chaque graphique."
+ST2: "Statistiques repas : moyenne sur les jours estimés seulement, cible affichée seulement si taille, naissance et poids connus, sans jugement."
+ST3: "Statistiques poids : pesées et moyenne glissante 7 jours ; rythme seulement avec 3 pesées sur 7 jours au moins."
+ST4: "Statistiques pas : relevés de la montre, jour en cours hors moyenne, total 0 non enregistré."
+ST5: "Statistiques activité : séance reliée à la montre comptée une fois ; allure seulement pour une course d'au moins 1 km."

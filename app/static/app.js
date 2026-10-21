@@ -430,6 +430,7 @@ async function home() {
     finished ? null : h("button", { class: "btn primary", onclick: () => nextQuestion() }, prof.answered ? "Continuer le questionnaire" : "Commencer le questionnaire"),
     goalsCard(goalsData),
     planCard(),
+    typeof statsCard === "function" ? statsCard() : null,
     bench.novice
       ? h("div", { class: "card" }, h("h3", null, "Vos repères"), h("p", { class: "muted" }, "Pas de record à saisir pour l'instant : vos premières séances serviront de référence, et le coach en déduira vos charges."))
       : bench.total
