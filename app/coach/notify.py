@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 from app import i18n
 from app.coach import prompts, service
-from app.coach.llm import LLMError, default_model, price_eur
+from app.coach.llm import LLMError, default_model, price_result
 from app.config import env
 from app.questionnaire.models import current_facts
 from app.repo import Repo
@@ -169,7 +169,7 @@ def _ask(repo: Repo, llm: Any, user_id: int, kind: str, system: str, payload: di
             system += prompts.get("json_retry", JSON_RETRY)
             max_tokens = int(max_tokens * 1.5)
             continue
-        repo.log_llm_call(user_id, kind, res.model, (res.input_tokens, res.output_tokens), price_eur(res.input_tokens, res.output_tokens), True, None)
+        repo.log_llm_call(user_id, kind, res.model, (res.input_tokens, res.output_tokens), price_result(res), True, None)
         return out
     return None
 

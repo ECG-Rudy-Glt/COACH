@@ -7,6 +7,7 @@ le chat et l'estimation des repas sont alors inactifs). `LLM_MODEL` fixe le mod�
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -32,9 +33,11 @@ class LLMError(Exception):
 @dataclass
 class LLMResult:
     text: str
-    input_tokens: int
+    input_tokens: int  # tous les tokens d'entrée facturés, y compris ceux lus ou écrits dans le cache de prompt (sous-ensembles ci-dessous)
     output_tokens: int
     model: str
+    cache_read_tokens: int = 0  # entrée relue dans le cache (≈ 0,1 × le prix d'entrée)
+    cache_write_tokens: int = 0  # entrée écrite dans le cache (≈ 1,25 × le prix d'entrée)
 
 
 @lru_cache(maxsize=1)
@@ -95,12 +98,69 @@ def fast_model() -> str:
     return env("LLM_MODEL_FAST") or env("LLM_MODEL") or str(info.get("fast") or info.get("model", ""))
 
 
-def price_eur(input_tokens: int, output_tokens: int) -> float:
-    """Estimation du coût (€) pour le plafond mensuel ; tarifs réglables par l'environnement (0 par défaut pour un modèle local)."""
+# Tarifs publics de l'API Anthropic en USD par million de tokens (entrée / sortie), relevés dans la documentation officielle des modèles le 2026-10-06.
+# `cache_read` = part du prix d'entrée facturée pour une lecture du cache (0,1 sauf mention), l'écriture à 5 min coûte 1,25 × le prix d'entrée.
+# Claude Haiku 5.5 : 0,10 / 0,50 jusqu'à 100 000 tokens d'entrée (0,50 / 2,50 au-delà, hors de portée des contextes du coach).
+PRICES_USD: dict[str, dict[str, float]] = {
+    "claude-fable-5-1": {"in": 10, "out": 50, "cache_read": 0.025},
+    "claude-fable-5": {"in": 10, "out": 50},
+    "claude-opus-5-5": {"in": 4, "out": 20, "cache_read": 0.05},
+    "claude-opus-5": {"in": 5, "out": 25},
+    "claude-opus-4-8": {"in": 5, "out": 25},
+    "claude-opus-4-7": {"in": 5, "out": 25},
+    "claude-opus-4-6": {"in": 5, "out": 25},
+    "claude-sonnet-5-5": {"in": 2, "out": 10},
+    "claude-sonnet-5": {"in": 2, "out": 10},
+    "claude-sonnet-4-6": {"in": 3, "out": 15},
+    "claude-haiku-5-5": {"in": 0.10, "out": 0.50},
+    "claude-haiku-4-5": {"in": 1, "out": 5},
+}
+DEFAULT_USD_TO_EUR = 0.90  # prudent (le cours réel a oscillé entre 0,84 et 0,95) : mieux vaut surestimer un plafond de dépense ; réglable par LLM_USD_TO_EUR
+FALLBACK_EUR_PER_MTOK = (3.0, 15.0)  # modèle inconnu : l'ancien défaut (€/M tokens), jamais 0 hors modèle local
+CACHE_READ_FACTOR, CACHE_WRITE_FACTOR = 0.1, 1.25
+
+
+def _float_env(name: str, default: float | None) -> float | None:
+    raw = env(name)
+    try:
+        return float(raw) if raw else default
+    except ValueError:
+        log.warning("%s=%r n'est pas un nombre : valeur ignorée.", name, raw)
+        return default
+
+
+def model_price(model: str | None) -> dict[str, float] | None:
+    """Tarif USD du modèle s'il est connu (le suffixe daté d'un identifiant, `-20251001`, est ignoré), sinon None."""
+    return PRICES_USD.get(re.sub(r"-\d{8}$", "", (model or "").strip().lower()))
+
+
+def price_eur(input_tokens: int, output_tokens: int, model: str | None = None, cache_read: int = 0, cache_write: int = 0) -> float:
+    """Estimation du coût (€) pour le plafond mensuel.
+
+    `input_tokens` compte toute l'entrée, `cache_read` et `cache_write` en étant des sous-ensembles facturés au tarif du cache.
+    Tarif d'un modèle connu (`PRICES_USD` × `LLM_USD_TO_EUR`) sinon 3 / 15 ; 0 pour un modèle local.
+    `LLM_PRICE_IN_EUR_PER_MTOK` et `LLM_PRICE_OUT_EUR_PER_MTOK` restent prioritaires, chacun séparément.
+    """
     free = bool(provider_info().get("free"))
-    pin = float(os.environ.get("LLM_PRICE_IN_EUR_PER_MTOK", "0" if free else "3"))
-    pout = float(os.environ.get("LLM_PRICE_OUT_EUR_PER_MTOK", "0" if free else "15"))
-    return (input_tokens * pin + output_tokens * pout) / 1_000_000
+    known = model_price(model or default_model())
+    rate = _float_env("LLM_USD_TO_EUR", DEFAULT_USD_TO_EUR) or DEFAULT_USD_TO_EUR
+    if free:
+        base_in = base_out = 0.0
+    elif known:
+        base_in, base_out = known["in"] * rate, known["out"] * rate
+    else:
+        base_in, base_out = FALLBACK_EUR_PER_MTOK
+    pin = _float_env("LLM_PRICE_IN_EUR_PER_MTOK", base_in)
+    pout = _float_env("LLM_PRICE_OUT_EUR_PER_MTOK", base_out)
+    read_factor = known.get("cache_read", CACHE_READ_FACTOR) if known else CACHE_READ_FACTOR
+    cache_read, cache_write = max(0, min(cache_read, input_tokens)), max(0, cache_write)
+    plain = max(0, input_tokens - cache_read - cache_write)
+    return ((plain + cache_read * read_factor + cache_write * CACHE_WRITE_FACTOR) * (pin or 0.0) + output_tokens * (pout or 0.0)) / 1_000_000
+
+
+def price_result(res: Any) -> float:
+    """Coût (€) d'une réponse du fournisseur, cache de prompt compris (les doubles de test sans champs de cache restent acceptés)."""
+    return price_eur(res.input_tokens, res.output_tokens, getattr(res, "model", None), getattr(res, "cache_read_tokens", 0), getattr(res, "cache_write_tokens", 0))
 
 
 def describe() -> dict[str, Any]:
@@ -141,6 +201,12 @@ class NoLLM:
         raise LLMError("Aucun fournisseur d'IA n'est configuré sur ce serveur.")
 
 
+def anthropic_usage(u: dict[str, Any]) -> tuple[int, int, int, int]:
+    """(entrée totale, sortie, lue du cache, écrite dans le cache) : l'API sépare l'entrée non mise en cache de ses lectures et écritures."""
+    read, write = int(u.get("cache_read_input_tokens") or 0), int(u.get("cache_creation_input_tokens") or 0)
+    return int(u.get("input_tokens") or 0) + read + write, int(u.get("output_tokens") or 0), read, write
+
+
 class AnthropicLLM:
     def _key(self) -> str:
         return env("ANTHROPIC_API_KEY") or env("LLM_API_KEY")
@@ -163,15 +229,15 @@ class AnthropicLLM:
         if not supports_tools(model, "anthropic"):  # outils désactivés : réponse simple, sans recherche dans l'historique
             return self.complete(system, user, max_tokens, model, history)
         messages: list[dict[str, Any]] = [*(history or []), {"role": "user", "content": user}]
-        tin = tout = 0
+        tin = tout = tread = twrite = 0
         for rnd in range(max_rounds + 1):
             d = self._post({"model": model, "max_tokens": max_tokens, "system": system, "messages": messages, **({"tools": tools} if rnd < max_rounds else {})})
-            u = d.get("usage", {})
-            tin, tout = tin + int(u.get("input_tokens", 0)), tout + int(u.get("output_tokens", 0))
+            i, o, r, w = anthropic_usage(d.get("usage", {}))
+            tin, tout, tread, twrite = tin + i, tout + o, tread + r, twrite + w
             blocks = d.get("content", [])
             calls = [b for b in blocks if b.get("type") == "tool_use"]
             if not calls or rnd == max_rounds:
-                return LLMResult("".join(b.get("text", "") for b in blocks if b.get("type") == "text"), tin, tout, model)
+                return LLMResult("".join(b.get("text", "") for b in blocks if b.get("type") == "text"), tin, tout, model, tread, twrite)
             messages.append({"role": "assistant", "content": blocks})
             messages.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": c["id"],
                                                           "content": json.dumps(run_tool(c["name"], c.get("input") or {}), ensure_ascii=False, default=str)[:6000]} for c in calls]})
@@ -186,8 +252,8 @@ class AnthropicLLM:
         d = self._post({"model": model, "max_tokens": max_tokens, "system": system,
                         "messages": [*(history or []), {"role": "user", "content": content}]})
         text = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
-        u = d.get("usage", {})
-        return LLMResult(text, int(u.get("input_tokens", 0)), int(u.get("output_tokens", 0)), model)
+        i, o, r, w = anthropic_usage(d.get("usage", {}))
+        return LLMResult(text, i, o, model, r, w)
 
 
 class OpenAICompatLLM:

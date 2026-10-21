@@ -12,7 +12,7 @@ from fastapi import HTTPException
 
 from app.coach import prompts
 from app.coach.history import past_digest
-from app.coach.llm import LLMError, default_model, price_eur
+from app.coach.llm import LLMError, default_model, price_result
 from app.plan import trajectory
 from app.plan.cycles import describe
 from app.plan.engine import DAYS
@@ -268,7 +268,7 @@ def review(repo: Repo, llm: Any, user_id: int, today: date | None = None) -> dic
     except LLMError as e:
         repo.log_llm_call(user_id, "weekly_review", model, (0, 0), 0.0, False, str(e)[:200])
         raise HTTPException(502, str(e)) from e
-    cost = price_eur(res.input_tokens, res.output_tokens)
+    cost = price_result(res)
     repo.log_llm_call(user_id, "weekly_review", res.model, (res.input_tokens, res.output_tokens), cost, True, None)
     try:
         out = parse_json(res.text)

@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 from app import i18n
 from app.coach import history, prompts, service
-from app.coach.llm import LLMError, default_model, price_eur
+from app.coach.llm import LLMError, default_model, price_result
 from app.repo import Repo
 
 MAX_CHAT_PER_DAY = 60
@@ -98,7 +98,7 @@ def chat(repo: Repo, llm: Any, user_id: int, text: str, today: date | None = Non
     except LLMError as e:
         repo.log_llm_call(user_id, "chat", model, (0, 0), 0.0, False, str(e)[:200])
         raise HTTPException(502, str(e)) from e
-    repo.log_llm_call(user_id, "chat", res.model, (res.input_tokens, res.output_tokens), price_eur(res.input_tokens, res.output_tokens), True, None)
+    repo.log_llm_call(user_id, "chat", res.model, (res.input_tokens, res.output_tokens), price_result(res), True, None)
     out = parse_reply(res.text)
     if out["remember"]:
         repo.add_memory(user_id, "decision", (today, today), out["remember"], {"source": "chat"})

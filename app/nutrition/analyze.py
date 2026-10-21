@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 from app.coach import prompts
-from app.coach.llm import LLMError, price_eur
+from app.coach.llm import LLMError, price_result
 from app.coach.service import parse_json
 
 SYSTEM = """Tu estimes l'apport nutritionnel d'UN repas décrit par l'utilisateur (texte et/ou photo), pour un suivi de poids et de sport.
@@ -104,7 +104,7 @@ def analyze(llm: Any, description: str, image: tuple[str, str] | None, model: st
     except (ValueError, json.JSONDecodeError) as e:
         raise ValueError("réponse illisible") from e
     out["model"] = res.model
-    usage = {"model": res.model, "in": res.input_tokens, "out": res.output_tokens, "cost": price_eur(res.input_tokens, res.output_tokens)}
+    usage = {"model": res.model, "in": res.input_tokens, "out": res.output_tokens, "cost": price_result(res)}
     return out, usage
 
 
