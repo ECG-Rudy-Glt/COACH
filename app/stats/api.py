@@ -11,7 +11,7 @@ from app.plan import trajectory
 from app.plan.level import with_estimates
 from app.questionnaire.models import Fact, current_facts
 from app.repo import Repo
-from app.stats import daily, progress, regularity
+from app.stats import daily, progress, radar, regularity
 
 PROFILE_FACTS = ("body.height_cm", "body.birth_year")  # sans eux, la cible énergétique serait celle d'un profil par défaut : on ne l'affiche pas (ST1)
 
@@ -81,6 +81,13 @@ def regularity_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
     return regularity.regularity_view(repo.list_sessions(user_id, today - timedelta(weeks=regularity.HISTORY_WEEKS), today + timedelta(days=7)), today)
 
 
+def radar_view(repo: Repo, user_id: int, today: date, catalog: dict[str, Any]) -> dict[str, Any]:
+    facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
+    since = today - timedelta(days=HISTORY_DAYS)
+    return radar.radar_view(repo.list_sessions(user_id, since, today + timedelta(days=1)), repo.list_activities(user_id, since, 5000), facts, repo.list_goals(user_id, None),
+                            {k: b.label for k, b in catalog.items()}, read_prefs(repo, user_id)["regularity"], today)
+
+
 def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     router = APIRouter(prefix="/users/{user_id}/stats", tags=["stats"])
 
@@ -95,6 +102,10 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     @router.get("/regularity")
     def regularity_stats(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         return regularity_view(repo, user_id, date.today())
+
+    @router.get("/radar")
+    def radar_stats(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        return radar_view(repo, user_id, date.today(), request.app.state.bench_index)
 
     @router.get("/preferences")
     def get_prefs(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, bool]:

@@ -25,3 +25,9 @@
 .st-note { font-size: .8125rem; color: var(--muted); }
 .st-unit { margin: 0 .5em 0 .3em; }
 .st-unit + .muted { margin-left: 0; }
+.st-chart .st-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.st-chart .st-spoke { stroke: var(--line); stroke-width: 1; }
+.st-chart .st-area { fill: var(--accent); fill-opacity: .22; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.st-chart .st-area-before { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; }
+.st-chart .st-point { fill: var(--accent); stroke: var(--surface); stroke-width: 1.5; }
+.st-legend i.before { border-top: 2px dashed var(--muted); }
