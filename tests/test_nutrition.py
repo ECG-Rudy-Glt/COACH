@@ -169,4 +169,4 @@ def test_big_portion_is_passed_to_the_estimator(ctx):
     c, uid, repo, llm = ctx
     r = c.post(f"/users/{uid}/nutrition/meals", json={"slot": "dîner", "description": "pâtes carbonara", "portion": "grosse"})
     assert r.status_code == 201 and "grosse" in r.json()["meal"]["description"] and "grosse" in llm.calls[0][0]
-    assert "sous-évalue" in nut_analyze.SYSTEM
+    assert "sous-évalue" in nut_analyze.SYSTEM and "poids × densité" in nut_analyze.SYSTEM and "bourguignon" in nut_analyze.SYSTEM
