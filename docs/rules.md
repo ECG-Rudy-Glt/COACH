@@ -137,6 +137,11 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | ST3 | Poids : la courbe montre les pesées et leur moyenne glissante sur 7 jours (N5) ; le rythme hebdomadaire n'est affiché que lorsque le moteur dispose de 3 pesées sur au moins 7 jours | 7 j | C |
 | ST4 | Pas : relevés de la montre par jour ; la journée en cours est incomplète et n'entre pas dans la moyenne ; un total à 0 (montre non portée) n'est pas enregistré | 7 jours | C |
 | ST5 | Activité récente : une séance reliée à la montre n'est comptée qu'une fois (via l'activité) ; l'allure n'est calculée que pour une course d'au moins 1 km | 14 jours | C |
+| ST6 | Records de course (5 km, 10 km) : trois sources affichées séparément, jamais fusionnées ni extrapolées : record déclaré, meilleure allure mesurée sur une sortie d'au moins cette distance, dernière estimation de la montre | 5 km, 10 km | C |
+| ST7 | Charges : l'e1RM (Epley, charge × (1 + répétitions / 30)) n'est calculé que pour une série chargée de 1 à 10 répétitions et marqué « ≈ » ; sans charge, la courbe suit le meilleur nombre de répétitions ; un point par jour, seulement les séances faites ; une charge illisible écarte la série | 1 à 10 reps, 16 semaines | C (formule d'estimation, pas une mesure) |
+| ST8 | Trajectoire : affichée seulement avec un objectif de performance actif et daté ; phases, jalons et volume viennent de C10 à C12 sans recalcul ; la ligne de repère est une interpolation, pas une prévision ; les points mesurés sont les estimations de la montre (converties par Riegel, C10) | | C |
+| ST9 | Volume hebdomadaire : semaines du lundi au dimanche, la semaine en cours est signalée incomplète ; kilomètres de course seulement quand la montre les mesure ; une séance reliée à la montre n'est comptée qu'une fois ; repère de volume visé = C12 | 12 semaines | C |
+| ST10 | Allure par sortie : points non reliés (une sortie facile et une séance de vitesse ne sont pas comparables) ; comparaison 28 jours contre 28 jours précédents seulement avec 3 sorties d'au moins 3 km de chaque côté, allure globale (temps total / distance totale) | 28 j | C |
 
 ## H. Vérifications automatiques (tests)
 

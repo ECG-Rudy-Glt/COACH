@@ -2,12 +2,14 @@
 from datetime import date, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from app.nutrition import engine as eng
 from app.nutrition.api import _day_load, _profile
+from app.plan import trajectory
+from app.questionnaire.models import current_facts
 from app.repo import Repo
-from app.stats import daily
+from app.stats import daily, progress
 
 PROFILE_FACTS = ("body.height_cm", "body.birth_year")  # sans eux, la cible énergétique serait celle d'un profil par défaut : on ne l'affiche pas (ST1)
 
@@ -33,11 +35,41 @@ def daily_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
     }
 
 
+CURVE_WEEKS = 16  # courbes par exercice : quatre mois de séances
+HISTORY_DAYS = 730
+
+
+def progress_view(repo: Repo, user_id: int, today: date, catalog: dict[str, Any]) -> dict[str, Any]:
+    facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
+    goals = repo.list_goals(user_id, None)
+    since = today - timedelta(days=HISTORY_DAYS)
+    sessions = repo.list_sessions(user_id, since, today + timedelta(days=1))
+    activities = repo.list_activities(user_id, since, 5000)
+    metrics = [m for name in ("race_5k", "race_10k", "race_half") for m in repo.list_metrics(user_id, name, today - timedelta(days=365))]
+    return {
+        "today": today.isoformat(),
+        "records": {"running": progress.run_records(facts, activities, metrics), "lifts": progress.lift_records(sessions), "declared_lifts": progress.declared_lifts(facts, catalog)},
+        "trajectory": progress.trajectory_block(goals, facts, metrics, today),
+        "curves": progress.exercise_curves(sessions, today - timedelta(weeks=CURVE_WEEKS)),
+        "volume": {"weeks": progress.weekly_volume(sessions, activities, today), "weekly_km_target": _weekly_km_target(goals, today)},
+        "pace": progress.pace_outings(activities, today),
+    }
+
+
+def _weekly_km_target(goals: list[dict[str, Any]], today: date) -> int | None:
+    target = trajectory.pick_target(goals, today)
+    return trajectory.volume_target_km(target["time_min"], target["distance_km"]) if target else None
+
+
 def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     router = APIRouter(prefix="/users/{user_id}/stats", tags=["stats"])
 
     @router.get("/daily")
     def daily_stats(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         return daily_view(repo, user_id, date.today())
+
+    @router.get("/progress")
+    def progress_stats(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        return progress_view(repo, user_id, date.today(), request.app.state.bench_index)
 
     return router
