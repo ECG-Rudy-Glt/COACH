@@ -441,11 +441,28 @@ function radarTableRows(axes, weeks) {
   });
 }
 
+function radarLabel(d, drawn) {
+  const weeks = d.compare_weeks;
+  return __("Forme sur {n} axes, en pourcentage de votre référence : {values}.", { n: drawn.length,
+    values: drawn.map((a) => `${__(RADAR_TEXT[a.id].name)} ${a.now.score} %${d.compare ? __(" (il y a {n} semaines : {score} %)", { n: weeks, score: a.before.score }) : ""}`).join(", ") });
+}
+
+// Rubrique « Ma forme » de l'écran Profil : même rendu que la section Forme des Statistiques, avec un lien vers le détail.
+function radarProfileCard() {
+  const box = h("div", { class: "stack" }, h("p", { class: "muted" }, "Chargement…"));
+  api(`/users/${userId}/stats/radar`).then((d) => {
+    const drawn = d.axes.filter((a) => a.status === "ok");
+    box.replaceChildren(d.chart ? radarChart(drawn, d.compare, radarLabel(d, drawn)) : radarHowTo(d.axes, drawn.length),
+      ...(d.chart ? [stLegend(["", "maintenant"], ...(d.compare ? [["before", __("il y a {n} semaines", { n: d.compare_weeks })]] : []))] : []),
+      h("button", { class: "btn sm", onclick: () => statsScreen("radar") }, "Voir le détail dans Statistiques"));
+  }).catch(() => box.replaceChildren(h("p", { class: "muted" }, "Forme indisponible pour l'instant.")));
+  return fold("profile-radar", "Statistiques", "Ma forme", null, box, true);
+}
+
 async function renderRadar(box) {
   const d = await api(`/users/${userId}/stats/radar`);
   const drawn = d.axes.filter((a) => a.status === "ok"), weeks = d.compare_weeks;
-  const label = __("Forme sur {n} axes, en pourcentage de votre référence : {values}.", { n: drawn.length,
-    values: drawn.map((a) => `${__(RADAR_TEXT[a.id].name)} ${a.now.score} %${d.compare ? __(" (il y a {n} semaines : {score} %)", { n: weeks, score: a.before.score }) : ""}`).join(", ") });
+  const label = radarLabel(d, drawn);
   const head = ["Axe", "Maintenant", __("Il y a {n} semaines", { n: weeks }), "Valeur", "Référence"];
   const intro = stCard("Forme",
     h("p", { class: "muted" }, "Chaque axe compare une mesure à votre propre référence : 100 % veut dire référence atteinte ou dépassée. Aucune comparaison avec d'autres personnes, aucun score global."),

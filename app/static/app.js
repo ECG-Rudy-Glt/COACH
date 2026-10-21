@@ -681,7 +681,39 @@ async function benchmarks() {
 }
 
 // ---------- profil ----------
+// Vue d'ensemble : rubriques repliées. Les réponses au questionnaire (longue liste) sont sur un écran à part.
 async function profile() {
+  let prof, goalsData;
+  try { [prof, goalsData] = await Promise.all([api(`/users/${userId}/profile`), api(`/users/${userId}/goals?status=active`)]); } catch (e) { return fail(e); }
+  const facts = prof.facts, total = prof.answered + prof.remaining_visible, pct = total ? Math.round((prof.answered / total) * 100) : 0;
+  const sports = [].concat(facts["sports.practiced"] || []).join(", ");
+  const link = (label, fn) => h("button", { class: "item", onclick: fn }, h("span", { class: "l" }, label), icon("next"));
+  const goalsSummary = goalsData.goals.length ? __("{n} objectif(s) actif(s)", { n: goalsData.goals.length }) : "Aucun objectif actif";
+  show(
+    h("div", { class: "top" }, h("span", { class: "grow" }), h("span", { class: "muted" }, __("{answered} réponses", { answered: prof.answered }))),
+    h("h1", null, "Profil"),
+    typeof radarProfileCard === "function" ? radarProfileCard() : null,
+    fold("profile-identity", "Identité", userName || "Mon compte", null, [
+      h("div", { class: "stack" }, h("h3", null, "Langue"), langSwitch(), h("p", { class: "muted" }, "Langue de l'application, du coach IA et des mails.")),
+      h("div", { class: "stack" }, h("h3", null, "Thème"), themeToggle())]),
+    fold("profile-sports", "Sports et objectifs", sports || "Sports non renseignés", goalsSummary, [
+      goalsCard(goalsData), link("Mes performances", benchmarks)]),
+    fold("profile-prefs", "Préférences", "Statistiques, Garmin, bibliothèque", null, [
+      typeof statsPrefCard === "function" ? statsPrefCard() : null,
+      link("Garmin : importer mes activités", garminScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
+    fold("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
+      link("Changer mon mot de passe", passwordScreen),
+      h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter")]),
+    h("div", { class: "card row" },
+      h("div", { class: "grow stack" }, h("span", { class: "eyebrow" }, "Questionnaire"), h("h3", null, __("{pct} % complété", { pct })),
+        h("div", { class: "st-meter", role: "img", "aria-label": __("Questionnaire complété à {pct} %", { pct }) }, h("i", { style: `width:${pct}%` }))),
+      h("button", { class: "btn sm", onclick: questionnaireScreen }, "Ouvrir")),
+    tabbar("user"),
+  );
+}
+
+// Les domaines de questions et les réponses déjà données (édition d'une réponse, reprise du questionnaire).
+async function questionnaireScreen() {
   let prof;
   try { prof = await api(`/users/${userId}/profile`); } catch (e) { return fail(e); }
   const facts = prof.facts;
@@ -697,24 +729,11 @@ async function profile() {
       qs.map((q) => h("button", { class: "item", onclick: () => edit(q, facts) }, h("span", { class: "l" }, q.text), h("span", { class: "v" }, fmtValue(q, facts)))));
   });
   show(
-    h("div", { class: "top" }, h("span", { class: "grow" }), h("span", { class: "muted" }, __("{answered} réponses", { answered: prof.answered }))),
-    h("h1", null, "Profil"),
+    h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: profile }, icon("back")), h("span", { class: "grow" }),
+      h("span", { class: "muted" }, __("{answered} réponses", { answered: prof.answered }))),
+    h("h1", null, "Questionnaire"),
+    prof.remaining_visible ? h("button", { class: "btn primary", onclick: () => nextQuestion() }, prof.answered ? "Continuer le questionnaire" : "Commencer le questionnaire") : h("p", { class: "muted" }, "Questionnaire complet."),
     sections.length ? sections : h("p", { class: "muted" }, "Rien pour l'instant."),
-    h("div", { class: "card row" },
-      h("div", { class: "grow stack" }, h("h3", null, "Garmin"), h("p", { class: "muted" }, "Importez vos activités pour ajuster le plan.")),
-      h("button", { class: "btn sm", onclick: garminScreen }, "Ouvrir")),
-    h("div", { class: "card row" },
-      h("div", { class: "grow stack" }, h("h3", null, "Bibliothèque d'exercices"), h("p", { class: "muted" }, "Plus de 1 700 exercices avec schémas, illustrations et vidéos.")),
-      h("button", { class: "btn sm", onclick: () => library() }, "Explorer")),
-    h("div", { class: "card row" },
-      h("div", { class: "grow stack" }, h("h3", null, "Sources scientifiques"), h("p", { class: "muted" }, "Les publications qui fondent le plan, la nutrition et le coach.")),
-      h("button", { class: "btn sm", onclick: () => evidenceScreen() }, "Consulter")),
-    h("div", { class: "card stack" }, h("h3", null, "Langue"), langSwitch(),
-      h("p", { class: "muted" }, "Langue de l'application, du coach IA et des mails.")),
-    typeof statsPrefCard === "function" ? statsPrefCard() : null,
-    h("div", { class: "card stack" }, h("h3", null, "Compte"),
-      h("button", { class: "link", style: "text-align:left", onclick: passwordScreen }, "Changer mon mot de passe"),
-      h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter")),
     tabbar("user"),
   );
 }
@@ -723,8 +742,8 @@ function edit(q, facts) {
   questionView(q, {
     editing: true,
     prefill: { value: facts[q.fact_key], other: facts[q.fact_key + ".other"] || "" },
-    onDone: profile,
-    onBack: profile,
+    onDone: questionnaireScreen,
+    onBack: questionnaireScreen,
   });
 }
 
