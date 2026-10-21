@@ -86,6 +86,17 @@ def test_stats_screens(logged: Page):
     expect(logged.locator("p.error")).to_have_count(0)
 
 
+def test_stats_sections_all_visible_without_scroll(logged: Page):
+    logged.locator(".card", has_text="Pas, repas, poids").get_by_role("button", name="Voir").click()
+    forme = logged.get_by_role("button", name="Forme", exact=True)
+    expect(forme).to_be_visible()
+    box = forme.bounding_box()
+    assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390 - 8, box  # entièrement dans l'écran, avec une marge
+    assert logged.evaluate("document.querySelector('.st-seg').scrollWidth <= document.querySelector('.st-seg').clientWidth")
+    forme.click()
+    expect(logged.get_by_text("Pour faire apparaître l'araignée")).to_be_visible()  # moins de 3 axes : on explique quoi saisir
+
+
 def test_switch_to_english(page: Page):
     page.goto("/")
     page.get_by_role("button", name="English").click()
