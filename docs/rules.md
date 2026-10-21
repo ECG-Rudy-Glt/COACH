@@ -124,6 +124,8 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | N6 | Les estimations de repas par texte ou photo sont des ordres de grandeur (fourchette, confiance) : on suit les moyennes hebdomadaires, jamais un repas isolé ; aucun jugement moral | sous-estimation fréquente : l'estimateur est invité à retenir la fourchette haute; un poids indiqué est multiplié par la densité du plat cuit | B |
 | N7 | Pas de déficit pour un mineur, en cas de grossesse ou post-partum, ni d'antécédent de trouble alimentaire déclaré : renvoi vers un professionnel | | C |
 | N8 | Qualité : 25 à 30 g de fibres, des légumes à chaque repas, produits ultra-transformés et alcool limités | | B |
+| N9 | Quand la confiance d'une estimation de repas n'est pas élevée, l'estimateur peut poser 1 à 2 questions courtes (quantité, graisse de cuisson, sauce, boisson) : l'estimation est refaite avec les réponses, on peut toujours passer ; le serveur borne le nombre, la longueur et ne repose aucune question après des réponses | 2 questions au plus | C |
+| N10 | Une valeur déclarée prime sur une valeur devinée : code-barres Open Food Facts (pour 100 g × quantité saisie) puis correction de l'utilisateur ; les corrections récentes et les repas identiques servent d'exemples aux estimations suivantes du même utilisateur (sans identité) ; le chiffre principal affiché est la moyenne des jours estimés de la semaine | 4 exemples au plus, 90 jours | C |
 
 ## G ter. Statistiques : écran de suivi des données
 
@@ -189,4 +191,5 @@ Issues des bases `data/evidence/*.yaml` (60 publications relues sur leurs résum
 - **N2** : en déficit avec musculation, les consensus vont jusqu'à 2,3-3,1 g/kg de masse maigre (Helms 2014, ISSN) ; 2,0 g/kg de poids total reste dans la plage prudente.
 - **N5** : aucune étude ne valide la moyenne glissante sur 7 jours ni le seuil de deux pesées par semaine ; le poids fluctue d'environ 0,35 % d'un jour à l'autre (Turicchi 2020) : règle de pratique.
 - **N6** : l'estimation de calories sur photo ou description sous-estime de façon systématique ; la fourchette « ±20 à 30 % » n'est pas démontrée.
+- **N9, N10** : règles de conception sans étude propre ; les valeurs d'Open Food Facts sont déclarées par des contributeurs et peuvent être fausses ou périmées : la correction de l'utilisateur prime.
 - **N3, N7, N8** : non vérifiées.

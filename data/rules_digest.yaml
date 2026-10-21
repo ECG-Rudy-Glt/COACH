@@ -61,3 +61,5 @@ ST2: "Statistiques repas : moyenne sur les jours estimés seulement, cible affic
 ST3: "Statistiques poids : pesées et moyenne glissante 7 jours ; rythme seulement avec 3 pesées sur 7 jours au moins."
 ST4: "Statistiques pas : relevés de la montre, jour en cours hors moyenne, total 0 non enregistré."
 ST5: "Statistiques activité : séance reliée à la montre comptée une fois ; allure seulement pour une course d'au moins 1 km."
+N9: "Estimation de repas peu sûre : 1 à 2 questions courtes au plus (quantité, graisse de cuisson, sauce, boisson), on peut toujours passer ; l'estimation est refaite avec les réponses."
+N10: "Valeur déclarée avant valeur devinée : code-barres puis correction de l'utilisateur, qui sert d'exemple aux estimations suivantes ; chiffre principal = moyenne hebdomadaire."
