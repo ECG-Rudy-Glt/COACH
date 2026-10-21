@@ -258,6 +258,7 @@
  "à reconsidérer": "worth reconsidering",
  "Volume projeté {projected_peak_km} km par semaine (repère : {needed_peak_km} km).": "Projected volume {projected_peak_km} km per week (benchmark: {needed_peak_km} km).",
  "Niveau actuel estimé : {time} ({source}).": "Estimated current level: {time} ({source}).",
+ "Point de départ : votre record, {time} ({source}). Votre niveau du moment est probablement plus lent : renseignez un temps récent dans Mes performances pour un plan plus juste.": "Starting point: your personal best, {time} ({source}). Your current level is probably slower: enter a recent time in My performance for a more accurate plan.",
  "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.": "Add a 5 km or 10 km record in My performances to place your level.",
  " Écart à combler : {gap_pct} % ({per_month_pct} % par mois), jugé {verdict}.": " Gap to close: {gap_pct} % ({per_month_pct} % per month), judged {verdict}.",
  " · {dayFr} → {dayFr2} · {weeks} sem.": " · {dayFr} → {dayFr2} · {weeks} wk",

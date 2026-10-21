@@ -1070,7 +1070,9 @@ function trajectoryCard(t) {
   if (!t) return null;
   const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { month: "long", year: "numeric" });
   const fullFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long", year: "numeric" });
-  const level = t.level ? __("Niveau actuel estimé : {time} ({source}).", { time: t.level.time, source: t.level.source }) : "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.";
+  const level = t.level ? (t.level.record_only
+    ? __("Point de départ : votre record, {time} ({source}). Votre niveau du moment est probablement plus lent : renseignez un temps récent dans Mes performances pour un plan plus juste.", { time: t.level.time, source: t.level.source })
+    : __("Niveau actuel estimé : {time} ({source}).", { time: t.level.time, source: t.level.source })) : "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.";
   const gap = t.level ? __(" Écart à combler : {gap_pct} % ({per_month_pct} % par mois), jugé {verdict}.", { gap_pct: t.gap_pct, per_month_pct: t.per_month_pct, verdict: t.verdict }) : "";
   const phases = h("ol", { class: "traj" }, t.phases.filter((p) => p.macro !== "race").map((p, i) =>
     h("li", { class: i === 0 ? "now" : "" }, h("strong", null, p.label), __(" · {dayFr} → {dayFr2} · {weeks} sem.", { dayFr: dayFr(p.start), dayFr2: dayFr(p.end), weeks: p.weeks }))));

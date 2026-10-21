@@ -183,3 +183,11 @@ def test_plan_endpoint_exposes_the_trajectory(api):
     assert r.status_code == 201
     t = c.get(f"/users/{uid}/plan").json()["trajectory"]
     assert t["target"]["time"] == "40:00" and t["verdict"] == "inconnu" and t["phases"][0]["macro"] == "base"
+
+
+def test_record_only_level_is_flagged_as_a_starting_point():  # C13
+    assert T.level_is_record_only({"bench.run_10k": {"pr": {"time": "45:30"}}}, 10.0) is True
+    assert T.level_is_record_only({"bench.run_10k": {"pr": {"time": "45:30"}, "now": {"time": "47:00"}}}, 10.0) is False
+    assert T.level_is_record_only({"sports.practiced": ["running"]}, 10.0) is False
+    out = T.describe(T.pick_target([SUB40], TODAY), {"bench.run_10k": {"pr": {"time": "45:30"}}}, [SUB40], TODAY)
+    assert out["level"]["record_only"] is True and out["level"]["time"] == "45:30"
