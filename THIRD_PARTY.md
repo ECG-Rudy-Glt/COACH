@@ -12,6 +12,8 @@ COACH is licensed AGPL-3.0-only. It uses the following; please respect their ter
 | psycopg 3 | LGPL-3.0 |
 | cryptography | Apache-2.0 / BSD |
 | pywebpush | MPL-2.0 |
+| fitdecode | MIT (reads FIT activity files; compatible with AGPL-3.0) |
+| defusedxml | PSF-2.0 (safe parsing of TCX/GPX: no external entities, no XML bombs) |
 | garminconnect | MIT — **unofficial** client for Garmin Connect; not affiliated with or endorsed by Garmin. Using it may be subject to Garmin's terms of service and can break without notice |
 
 Dev only: pytest (MIT), httpx (BSD-3), ruff (MIT).

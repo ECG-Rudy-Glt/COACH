@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app import evidence as evidence_mod
 from app import i18n
+from app.activity_import.api import build_router as build_import_router
 from app.auth import build_router as build_auth_router
 from app.benchmarks import Benchmark, load_catalog, to_fact, visible_sections
 from app.coach import notify as coach_notify
@@ -196,6 +197,7 @@ app.include_router(build_nutrition_router(get_repo, require_user))
 app.include_router(build_stats_router(get_repo, require_user))
 app.state.garmin = default_gateway()
 app.include_router(build_garmin_router(get_repo, require_user))
+app.include_router(build_import_router(get_repo, require_user))
 app.state.llm = make_llm()
 app.state.notifier = coach_notify.Notifier()
 app.include_router(build_coach_router(get_repo, require_user))

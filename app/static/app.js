@@ -698,9 +698,9 @@ async function profile() {
       h("div", { class: "stack" }, h("h3", null, "Thème"), themeToggle())]),
     fold("profile-sports", "Sports et objectifs", sports || "Sports non renseignés", goalsSummary, [
       goalsCard(goalsData), link("Mes performances", benchmarks)]),
-    fold("profile-prefs", "Préférences", "Statistiques, Garmin, bibliothèque", null, [
+    fold("profile-prefs", "Préférences", "Statistiques, Garmin, import, bibliothèque", null, [
       typeof statsPrefCard === "function" ? statsPrefCard() : null,
-      link("Garmin : importer mes activités", garminScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
+      link("Garmin : importer mes activités", garminScreen), link("Importer des fichiers FIT, TCX, GPX", importScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
     fold("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
       link("Changer mon mot de passe", passwordScreen),
       h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter")]),
@@ -844,6 +844,62 @@ function goalForm(g) {
         : h("button", { class: "btn sm", onclick: () => setStatus("active", "Objectif réactivé") }, "Réactiver"), del),
     actionBar(h("button", { class: "btn primary", onclick: save }, isNew ? "Ajouter" : "Enregistrer")),
   );
+}
+
+// ---------- Import de fichiers FIT / TCX / GPX ----------
+const IMPORT_MAX_FILES = 20, IMPORT_MAX_BYTES = 10 * 1024 * 1024;
+const readB64 = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result).split(",", 2)[1] || "");
+  r.onerror = () => reject(new Error("Fichier illisible."));
+  r.readAsDataURL(file);
+});
+
+function importScreen() {
+  const back = h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: profile }, icon("back"), "Profil"), h("span", { class: "grow" }));
+  const input = h("input", { type: "file", id: "imp-files", accept: ".fit,.tcx,.gpx", multiple: true, hidden: true, "aria-label": "Choisir des fichiers d'activité" });
+  const list = h("div", { class: "stack", "aria-live": "polite" });
+  const err = h("p", { class: "error", role: "alert" });
+  const planBtn = h("button", { class: "btn", hidden: true, onclick: () => planScreen() }, "Voir le plan");
+  const pick = h("button", { class: "btn primary", onclick: () => input.click() }, "Choisir des fichiers");
+  const LABEL = { imported: "Importée", duplicate: "Doublon", rejected: "Illisible" };
+  const line = (name) => {
+    const state = h("span", { class: "v" }, "…"), sub = h("span", { class: "sub" });
+    const el = h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, name), sub), state);
+    list.append(el);
+    return (status, msg, act) => {
+      state.textContent = __(LABEL[status] || status);
+      state.className = status === "rejected" ? "v error" : "v";
+      const bits = act ? [SPORT_FR[act.sport] || "Autre", act.day, act.duration_s ? __("{round} min", { round: Math.round(act.duration_s / 60) }) : null, act.distance_m ? `${(act.distance_m / 1000).toFixed(1)} km` : null] : [];
+      sub.textContent = [msg ? __(msg) : null, ...bits.map((b) => (b ? __(b) : null))].filter(Boolean).join(" · ");
+    };
+  };
+  input.addEventListener("change", async () => {
+    const chosen = [...input.files]; input.value = "";
+    if (!chosen.length) return;
+    err.textContent = ""; list.replaceChildren(); planBtn.hidden = true; pick.disabled = true;
+    if (chosen.length > IMPORT_MAX_FILES) err.textContent = __("{max} fichiers maximum par envoi : les suivants sont ignorés.", { max: IMPORT_MAX_FILES });
+    let imported = 0, completed = 0;
+    for (const f of chosen.slice(0, IMPORT_MAX_FILES)) {
+      const set = line(f.name);
+      if (f.size > IMPORT_MAX_BYTES) { set("rejected", "Fichier trop volumineux (10 Mo maximum)."); continue; }
+      try {
+        const data = await readB64(f);
+        const r = await api(`/users/${userId}/activities/import`, { method: "POST", body: { files: [{ name: f.name, data }], tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+        const x = r.results[0];
+        set(x.status, x.message, x.activity); imported += r.imported; completed += r.sessions_completed;
+      } catch (e) { set("rejected", e.message || "Fichier illisible."); }
+    }
+    pick.disabled = false;
+    if (imported) { toast(imported > 1 ? __("{n} activités importées", { n: imported }) : __("{n} activité importée", { n: imported })); planBtn.hidden = false; planView.matchedAt = 0; }
+    if (completed) list.append(h("p", { class: "muted" }, completed > 1 ? __("{n} séances du plan marquées comme faites.", { n: completed }) : __("{n} séance du plan marquée comme faite.", { n: completed })));
+  });
+  show(back, h("span", { class: "eyebrow" }, "Import"), h("h1", null, "Importer des activités"),
+    h("div", { class: "card stack" },
+      h("p", null, "Envoyez des fichiers FIT, TCX ou GPX exportés de votre montre ou de votre application (Coros, Suunto, Polar, Wahoo, Apple Santé, Garmin hors ligne…)."),
+      h("p", { class: "muted" }, "Jusqu'à 20 fichiers de 10 Mo. Les séances du plan du même jour et du même sport sont marquées comme faites ; un fichier déjà importé ou déjà reçu de Garmin n'est jamais compté deux fois."),
+      h("p", { class: "muted" }, "Vos fichiers restent sur votre serveur : seuls les totaux de la séance (durée, distance, dénivelé, fréquence cardiaque) sont conservés, la trace GPS ne l'est pas."),
+      input, pick, err, list, planBtn));
 }
 
 // ---------- Garmin (par utilisateur) ----------

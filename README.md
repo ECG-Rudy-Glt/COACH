@@ -23,6 +23,7 @@
 - Weekly plan generation with training cycles (3 build weeks + 1 deload), phases toward a target event, injury/pain handling
 - Strength sessions with a 1 700+ exercise library (wger + free-exercise-db, per-media author and license shown)
 - Nutrition: calorie/protein targets, weight-trend feedback, meal logging with optional photo → LLM estimate
+- FIT / TCX / GPX file import for any other brand (Coros, Suunto, Polar, Wahoo, Apple Watch…), see [docs/activity-import.md](docs/activity-import.md)
 - Garmin Connect sync (activities + resting HR, VO2max, race predictions, training load) and automatic matching with planned sessions
 - LLM coach: weekly review, chat with read-only history tools, notifications — with a hard monthly budget cap
 - Multi-user accounts (scrypt passwords, HttpOnly sessions, per-user data isolation)
