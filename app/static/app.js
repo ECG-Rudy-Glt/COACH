@@ -1436,6 +1436,8 @@ async function exerciseDetail(id) {
 // ---------- nutrition ----------
 const SLOTS = ["petit-déjeuner", "déjeuner", "dîner", "collation"];
 const nutDay = { value: null };
+const nutComp = new Set((() => { try { return JSON.parse(localStorage.getItem("nutComp") || "[]"); } catch { return []; } })());  // jours où « gamelle d'hier » est activée
+function setNutComp(day, on) { on ? nutComp.add(day) : nutComp.delete(day); try { localStorage.setItem("nutComp", JSON.stringify([...nutComp].slice(-14))); } catch { /* stockage indisponible */ } }
 
 function isoDay(d) { const x = new Date(d); return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
 function shiftDay(iso, n) { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return isoDay(d); }
@@ -1481,7 +1483,8 @@ function weightChart(w, targetKg) {
 async function nutritionScreen(day) {
   nutDay.value = day || nutDay.value;
   let d, prog;
-  try { d = await api(`/users/${userId}/nutrition/day${nutDay.value ? `?day=${nutDay.value}` : ""}`); prog = await api(`/users/${userId}/nutrition/progress`); }
+  const q = new URLSearchParams(); if (nutDay.value) q.set("day", nutDay.value); if (nutComp.has(nutDay.value)) q.set("compensate", "true");
+  try { d = await api(`/users/${userId}/nutrition/day${q.size ? `?${q}` : ""}`); prog = await api(`/users/${userId}/nutrition/progress`); }
   catch (e) { return fail(e); }
   nutDay.value = d.day;
   const t = d.targets, tot = d.totals;
@@ -1517,6 +1520,14 @@ async function nutritionScreen(day) {
     catch (e) { toast(e.message); }
   });
   const pr = prog.profile, tr = prog.trend;
+  const co = d.carryover;  // N9 : option « gamelle d'hier », jamais imposée
+  const carryCard = co ? h("div", { class: "card stack" },
+    h("h3", null, "Gamelle d'hier ?"),
+    h("p", { class: "muted" }, `${dayLabel(co.prev_day, d.today)}, environ ${co.prev_kcal} kcal pour une cible de ${co.prev_target}. ${co.applied
+      ? `Votre objectif du jour est allégé de ${t.carryover_kcal} kcal (la moitié de l'écart, jamais sous le plancher de sécurité).`
+      : `Vous pouvez alléger aujourd'hui de ${co.kcal} kcal, sans obligation : un repas copieux n'a pas d'effet durable sur la tendance de poids.`}`),
+    h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => { setNutComp(d.day, !co.applied); nutritionScreen(d.day); } },
+      co.applied ? "Annuler l'allègement" : `Alléger de ${co.kcal} kcal`)) : null;
   show(
     h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Nutrition"), themeToggle()),
     h("h1", null, "Nutrition"),
@@ -1528,6 +1539,7 @@ async function nutritionScreen(day) {
       tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, `${tot.meals - tot.estimated_meals} repas sans estimation : ils ne sont pas comptés.`) : null,
       t.notice ? h("p", { class: "muted" }, t.notice) : null,
       h("p", { class: "muted", style: "font-size:.8125rem" }, `Dépense estimée ${t.tdee} kcal, déficit ${t.deficit_kcal} kcal (${t.rate_pct_per_week} % du poids par semaine). Règles ${t.rules.join(", ")}.`)),
+    carryCard,
     h("button", { class: "btn primary", onclick: () => mealForm(d.day) }, "Ajouter un repas"),
     ...d.meals.map(mealCard),
     d.meals.length ? null : h("div", { class: "card" }, h("p", { class: "muted" }, "Aucun repas enregistré ce jour. Décrivez ce que vous avez mangé, avec ou sans photo : l'IA estime calories et macros (ordres de grandeur).")),
@@ -1567,6 +1579,12 @@ function mealForm(day) {
     previewBox.hidden = !file; photoBtns.hidden = !!file;
   };
   for (const input of [cam, lib]) input.addEventListener("change", () => { setPhoto(input.files[0]); input.value = ""; });
+  let portion = "normale";
+  const portionBox = h("div", { class: "chips", role: "group", "aria-label": "Taille de la portion" });
+  const drawPortion = () => portionBox.replaceChildren(...[["petite", "Petite portion"], ["normale", "Portion normale"], ["grosse", "Gros plat (gamelle)"]].map(([k, label]) =>
+    h("button", { type: "button", class: "chip", "aria-pressed": portion === k, style: `border:0;cursor:pointer;opacity:${portion === k ? 1 : 0.5};${portion === k ? "outline:2px solid var(--accent)" : ""}`,
+      onclick: () => { portion = k; drawPortion(); } }, label)));
+  drawPortion();
   const est = h("input", { type: "checkbox", id: "meal-est", checked: true });
   const go = h("button", { class: "btn primary" }, "Enregistrer");
   go.addEventListener("click", async () => {
@@ -1574,7 +1592,7 @@ function mealForm(day) {
     if (!desc.value.trim() && !file) { err.textContent = "Décrivez votre repas ou ajoutez une photo."; return; }
     go.disabled = true; go.textContent = est.checked ? "Estimation en cours…" : "Enregistrement…";
     try {
-      const body = { day, slot, description: desc.value.trim(), estimate: est.checked };
+      const body = { day, slot, description: desc.value.trim(), estimate: est.checked, portion };
       if (file) body.photo_b64 = await fileToJpegB64(file);
       const r = await api(`/users/${userId}/nutrition/meals`, { method: "POST", body });
       if (r.analysis_error) toast("Repas enregistré. Estimation indisponible : " + r.analysis_error);
@@ -1585,7 +1603,7 @@ function mealForm(day) {
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
     h("h1", null, "Ajouter un repas"),
-    h("div", { class: "card stack" }, slotsBox, desc, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
+    h("div", { class: "card stack" }, slotsBox, desc, portionBox, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
       h("p", { class: "muted", style: "font-size:.8125rem" }, "Pour une meilleure estimation : photo de dessus, bien éclairée, assiette entière visible ; précisez dans la description les quantités, l'huile et les sauces (ce qu'on ne voit pas).")),
       h("label", { class: "row", for: "meal-est" }, est, h("span", null, "Estimer calories et macros avec l'IA")),
       h("p", { class: "muted", style: "font-size:.8125rem" }, "La photo est redimensionnée sur votre téléphone, stockée sur votre serveur et envoyée à l'IA uniquement pour l'estimation. Les chiffres sont des ordres de grandeur, souvent sous-estimés : suivez la tendance de la semaine, pas un repas isolé."), err),

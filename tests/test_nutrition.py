@@ -62,7 +62,7 @@ def test_weight_trend_uses_a_moving_average_and_advises():
 def test_analysis_validation_clips_and_recomputes_inconsistent_energy():
     out = nut_analyze.validate({"totals": {"kcal_min": 100, "kcal_max": 120, "protein_g": 40, "carbs_g": 60, "fat_g": 20}, "confidence": "bizarre",
                                 "items": [{"name": "riz", "kcal": 99999}] * 20})
-    assert out["confidence"] == "faible" and out["note"] and 500 < out["kcal"] < 800 and len(out["items"]) == 12 and out["items"][0]["kcal"] == 2000
+    assert out["confidence"] == "faible" and out["note"] and 500 < out["kcal"] < 800 and len(out["items"]) == 12 and out["items"][0]["kcal"] == nut_analyze.MAX_KCAL_MEAL
     assert nut_analyze.validate({"totals": {"kcal_min": 900, "kcal_max": 300}})["kcal_min"] == 300
 
 
@@ -150,3 +150,46 @@ def test_weight_and_progress(ctx):
     p = c.get(f"/users/{uid}/nutrition/progress").json()
     assert p["profile"]["bmi"] > 20 and p["trend"]["rate_pct_per_week"] < 0 and len(p["weights"]) == 8 and p["advice"] and "disclaimer" in p
     assert p["profile"]["weight_kg"] == pytest.approx(68 - 0.25 * 7)  # le dernier poids saisi pilote les cibles
+
+
+BIG = {**FACTS, "body.weight_kg": 85, "body.height_cm": 180, "constraints.work_activity": "mixte", "goal.weight_direction": "maintenir"}
+
+
+def test_carryover_after_a_big_day_is_partial_capped_and_never_below_the_floor():  # N9
+    p = eng.build_profile(BIG, date(2026, 10, 18), None, [], None)
+    tg = eng.targets(p)["kcal"]
+    assert eng.carryover(p, tg + 150, tg) == 0  # dans la marge d'erreur
+    assert eng.carryover(p, tg + 600, tg) == 300  # la moitié de l'écart
+    assert eng.carryover(p, tg + 3000, tg) == eng.CARRY_MAX  # plafonné
+    assert eng.carryover(eng.build_profile({**BIG, "goal.weight_direction": "prendre"}, date(2026, 10, 18), None, [], None), tg + 900, tg) == 0
+    for cond in ("trouble alimentaire passé", "grossesse ou post-partum", "mineur"):
+        facts = {**BIG, "health.conditions": [cond]} if cond != "mineur" else {**BIG, "body.birth_year": 2015}
+        assert eng.carryover(eng.build_profile(facts, date(2026, 10, 18), None, [], None), tg + 900, tg) == 0
+    out = eng.targets(p, "mean", 300)
+    assert out["kcal"] <= tg - 290 and out["carryover_kcal"] == 300 and "N9" in out["rules"] and out["protein_g"] == eng.targets(p)["protein_g"]
+    low = eng.build_profile({**FACTS, "body.weight_kg": 45, "body.height_cm": 150}, date(2026, 10, 18), None, [], None)
+    assert eng.targets(low, "mean", 400)["kcal"] >= 1500 and eng.targets(low, "mean", 400)["carryover_kcal"] == 0  # plancher N1 prioritaire
+
+
+def test_next_day_correction_is_offered_then_applied_on_request(ctx):
+    c, uid, repo, llm = ctx
+    for q, v in [("body.weight", 85), ("body.height", 180), ("goal.weight_direction", "maintenir")]:
+        c.post(f"/users/{uid}/answers", json={"question_id": q, "value": v})
+    c.post(f"/users/{uid}/answers", json={"question_id": "constraints.work_activity", "value": "mixte"})
+    yesterday = TODAY - timedelta(days=1)
+    for slot in ("déjeuner", "dîner"):
+        m = repo.add_meal(uid, yesterday, slot, "gros plat", None)
+        repo.set_meal_analysis(uid, m["id"], {"kcal": 1500, "protein_g": 50, "carbs_g": 150, "fat_g": 60, "estimated": True})
+    base = c.get(f"/users/{uid}/nutrition/day").json()
+    offer = base["carryover"]
+    assert offer and offer["kcal"] > 0 and offer["applied"] is False and base["targets"]["carryover_kcal"] == 0
+    on = c.get(f"/users/{uid}/nutrition/day?compensate=true").json()
+    assert on["carryover"]["applied"] is True and abs(on["targets"]["kcal"] - (base["targets"]["kcal"] - offer["kcal"])) <= 10  # arrondi à 10 kcal
+    assert c.get(f"/users/{uid}/nutrition/day?day={yesterday.isoformat()}").json()["carryover"] is None  # rien la veille de la veille
+
+
+def test_big_portion_is_passed_to_the_estimator(ctx):
+    c, uid, repo, llm = ctx
+    r = c.post(f"/users/{uid}/nutrition/meals", json={"slot": "dîner", "description": "pâtes carbonara", "portion": "grosse"})
+    assert r.status_code == 201 and "grosse" in r.json()["meal"]["description"] and "grosse" in llm.calls[0][0]
+    assert "sous-évalue" in nut_analyze.SYSTEM and "gamelle" in nut_analyze.SYSTEM

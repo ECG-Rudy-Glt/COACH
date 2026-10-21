@@ -35,6 +35,7 @@ class MealIn(BaseModel):
     description: str = Field(default="", max_length=800)
     photo_b64: str | None = Field(default=None, max_length=5_000_000)
     estimate: bool = True
+    portion: Literal["petite", "normale", "grosse"] = "normale"
 
 
 class WeightIn(BaseModel):
@@ -79,6 +80,19 @@ def _profile(repo: Repo, user_id: int, today: date) -> tuple[eng.NutritionProfil
 def _day_load(repo: Repo, user_id: int, day: date) -> str:
     s = repo.list_sessions(user_id, day, day + timedelta(days=1))
     return "training" if any(x["duration_min"] >= 45 and x["status"] != "skipped" for x in s) else "rest"
+
+
+def _carry_offer(repo: Repo, user_id: int, p: eng.NutritionProfile, day: date) -> dict[str, Any] | None:
+    """Proposition de correction pour `day` d'après la veille (N9) : seulement si la veille a des repas estimés au-dessus de sa cible."""
+    prev_day = day - timedelta(days=1)
+    prev = _sum(repo.list_meals(user_id, prev_day, prev_day))
+    if not prev["estimated_meals"]:
+        return None
+    prev_target = eng.targets(p, _day_load(repo, user_id, prev_day))["kcal"]
+    kcal = eng.targets(p, _day_load(repo, user_id, day), eng.carryover(p, prev["kcal"], prev_target))["carryover_kcal"]  # bornée par le plancher N1
+    if not kcal:
+        return None
+    return {"kcal": kcal, "prev_day": prev_day.isoformat(), "prev_kcal": prev["kcal"], "prev_target": prev_target}
 
 
 def _sum(meals: list[dict[str, Any]]) -> dict[str, Any]:
@@ -134,15 +148,19 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     router = APIRouter(prefix="/users/{user_id}/nutrition", tags=["nutrition"])
 
     @router.get("/day")
-    def day_view(day: date | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+    def day_view(day: date | None = None, compensate: bool = False, user_id: int = Depends(require_user),
+                 repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """`compensate` : option « gamelle d'hier » — retranche une part de l'excès de la veille (N9) si elle est proposée."""
         today = date.today()
         d = day or today
         p, _ = _profile(repo, user_id, today)
-        tg = eng.targets(p, _day_load(repo, user_id, d))
+        prev = _carry_offer(repo, user_id, p, d)
+        tg = eng.targets(p, _day_load(repo, user_id, d), prev["kcal"] if prev and compensate else 0)
         meals = repo.list_meals(user_id, d, d)
         tot = _sum(meals)
         rem = {k: max(tg[k] - tot[k], 0) for k in ("kcal", "protein_g", "carbs_g", "fat_g")}
-        return {"day": d.isoformat(), "today": today.isoformat(), "targets": tg, "meals": [_public(m) for m in meals], "totals": tot, "remaining": rem}
+        return {"day": d.isoformat(), "today": today.isoformat(), "targets": tg, "meals": [_public(m) for m in meals], "totals": tot, "remaining": rem,
+                "carryover": {**prev, "applied": bool(compensate and tg["carryover_kcal"])} if prev else None}
 
     @router.post("/meals", status_code=201)
     def add_meal(body: MealIn, request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
@@ -154,10 +172,13 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
             raise HTTPException(422, "Décrivez votre repas ou ajoutez une photo.")
         if len(repo.list_meals(user_id, d, d)) >= MAX_MEALS_PER_DAY:
             raise HTTPException(422, "Trop de repas pour cette journée.")
+        description = body.description.strip()
+        if body.portion != "normale":  # transmis à l'IA par le texte : la réestimation garde l'indication
+            description = f"{description} (portion : {body.portion})".strip()
         path = None
         if body.photo_b64:
             path, _, _ = _save_photo(user_id, body.photo_b64)
-        meal = repo.add_meal(user_id, d, body.slot, body.description.strip(), path)
+        meal = repo.add_meal(user_id, d, body.slot, description, path)
         out: dict[str, Any] = {"meal": _public(meal), "analysis_error": None}
         if body.estimate:
             try:
