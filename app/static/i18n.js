@@ -33,9 +33,12 @@
     return null;
   }
 
-  /** Texte composé de plusieurs phrases ou segments (« a. b · c ») : chaque morceau connu est traduit, le reste reste tel quel. */
-  function bySentence(s) {
-    const parts = s.split(/([.!?;]\s+|\s·\s|\s—\s|\n+|,\s+|\s\+\s)/);
+  const STRONG = /([.!?;]\s+|\s·\s|\s—\s|\n+)/, WEAK = /(,\s+|\s\+\s)/;
+
+  /** Texte composé de plusieurs phrases ou segments : chaque morceau connu est traduit, le reste reste tel quel.
+      Séparateurs forts d'abord (point, « · », tiret long, retour à la ligne) ; un morceau inconnu est redécoupé aux virgules et aux « + » (listes d'exercices). */
+  function bySentence(s, rx = STRONG) {
+    const parts = s.split(rx);
     if (parts.length < 3) return s;
     let out = "", changed = false;
     for (let i = 0; i < parts.length; i += 2) {
@@ -43,6 +46,7 @@
       const punct = /^[.!?;]/.test(sep) ? sep[0] : "";
       let tr = state.exact.get(seg + punct) ?? pattern(seg + punct);
       if (tr == null) { tr = state.exact.get(seg) ?? pattern(seg); if (tr != null) tr += punct; }
+      if (tr == null && rx === STRONG) { const weak = bySentence(seg, WEAK); if (weak !== seg) tr = weak + punct; }
       if (tr != null) changed = true;
       out += (tr != null ? tr : seg + punct) + sep.slice(punct.length);
     }

@@ -1,6 +1,6 @@
 # Prompts: what goes in, what stays out
 
-COACH's LLM calls are small, bounded and audited. This page explains the design so that you (or your coding assistant) can change prompts or add new LLM features without weakening the guarantees. Current prompts are in **French** (the product language); the structure below is language-independent.
+COACH's LLM calls are small, bounded and audited. This page explains the design so that you (or your coding assistant) can change prompts or add new LLM features without weakening the guarantees. Prompts exist in **French** (in the code, the source language) and **English** (`data/prompts/en.yaml`, picked by the language of the request, see [i18n.md](i18n.md)); the structure below is language-independent. A prompt always states the answer language and never translates JSON keys, rule ids or action names.
 
 ## Where the prompts live
 

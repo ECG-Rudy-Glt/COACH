@@ -8,3 +8,4 @@ ignore = ["B008"]  # Depends() en argument par défaut : idiome FastAPI
 
 [lint.per-file-ignores]
 "app/plan/strength.py" = ["E501"]  # tables de données
+"scripts/i18n_check.py" = ["E702"]  # tokeniseur compact

@@ -20,6 +20,9 @@ LANG_NAMES = {"fr": "français", "en": "English"}
 _HOLE = re.compile(r"\{(\w+)\}")
 _GROUP = {"v": "(.*?)", "num": r"(\d+(?:[.,]\d+)?)"}  # {v} : suffixe facultatif (« s » du pluriel) ; {num}, {num2}… : un nombre seulement
 
+_STRONG = re.compile(r"([.!?;]\s+|\s·\s|\s—\s|\n+)")
+_WEAK = re.compile(r"(,\s+|\s\+\s)")
+
 _current: ContextVar[str | None] = ContextVar("lang", default=None)
 
 
@@ -98,9 +101,11 @@ class Dictionary:
         self._cache[text] = out
         return out
 
-    def _by_sentence(self, text: str) -> str:
-        """Texte composé de plusieurs phrases ou segments (« a. b · c ») : chaque morceau connu est traduit, le reste reste tel quel."""
-        parts = re.split(r"([.!?;]\s+|\s·\s|\s—\s|\n+|,\s+|\s\+\s)", text)
+    def _by_sentence(self, text: str, rx: re.Pattern[str] = _STRONG) -> str:
+        """Texte composé de plusieurs phrases ou segments : chaque morceau connu est traduit, le reste reste tel quel.
+
+        Séparateurs forts d'abord (point, « · », tiret long, retour à la ligne) ; un morceau inconnu est redécoupé aux virgules et aux « + » (listes d'exercices)."""
+        parts = rx.split(text)
         if len(parts) < 3:
             return text
         out, changed = [], False
@@ -111,8 +116,10 @@ class Dictionary:
             if tr is None:
                 tr = self.exact.get(seg) or self.lookup_pattern(seg)
                 tr = tr + punct if tr is not None else None
-            if tr is not None:
-                changed = True
+            if tr is None and rx is _STRONG:
+                weak = self._by_sentence(seg, _WEAK)
+                tr = weak + punct if weak != seg else None
+            changed = changed or tr is not None
             out += [tr if tr is not None else seg + punct, sep[len(punct):]]
         return "".join(out) if changed else text
 
