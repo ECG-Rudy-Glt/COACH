@@ -134,7 +134,9 @@ def test_plan_api_generate_read_log_and_regenerate_keeps_current_week():
         assert r["created"] > 0 and r["reason"] is None
         plan = c.get(f"/users/{uid}/plan").json()
         assert plan["sessions"] and all(s["rules"] for s in plan["sessions"])
-        lower = [s for s in plan["sessions"] if s["kind"] == "strength_lower"]
+        # le jour de la semaine change ce qu'il reste à planifier (le lundi de séance de jambes peut être passé) : on regarde la semaine suivante aussi
+        c.post(f"/users/{uid}/plan/generate", json={"weeks": 2})
+        lower = [s for s in repo.list_sessions(uid, date.today(), date.today() + timedelta(days=21)) if s["kind"] == "strength_lower"]
         names = [sl["exercise"]["name"] for s in lower for sl in s["details"]["slots"] if "exercise" in sl]
         assert names and not any(x in n.lower() for n in names for x in ("lunge", "split squat", "full squat"))  # S2 : genou déclaré
         sid = plan["sessions"][0]["id"]
