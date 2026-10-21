@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 from app import i18n
 from app.coach import prompts, service
-from app.coach.llm import LLMError, default_model, price_result
+from app.coach.llm import CachedSystem, LLMError, default_model, price_result
 from app.config import env
 from app.questionnaire.models import current_facts
 from app.repo import Repo
@@ -260,8 +260,9 @@ def checkin(repo: Repo, llm: Any, notifier: Notifier, user_id: int, today: date)
     found = signals(repo, user_id, today)
     if not found:
         return None
-    system = prompts.get("checkin", CHECKIN_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE)
-    out = _ask(repo, llm, user_id, "checkin", system, {**service.build_context(repo, user_id, today), "signaux": found}, 300, today)
+    references, rest = service.split_context({**service.build_context(repo, user_id, today), "signaux": found})
+    system = CachedSystem(prompts.get("checkin", CHECKIN_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + references)
+    out = _ask(repo, llm, user_id, "checkin", system, rest, 300, today)
     title, body = (i18n.tr(t) for t in FALLBACK[found[0]])
     if out and str(out.get("title") or "").strip() and str(out.get("body") or "").strip():
         title, body = str(out["title"]).strip()[:60], str(out["body"]).strip()[:240]
@@ -280,8 +281,8 @@ def weekly_digest(repo: Repo, llm: Any, notifier: Notifier, user_id: int, today:
         return False
     from app.nutrition.api import week_summary
 
-    payload = {**service.build_context(repo, user_id, today), "disciplines": disciplines, "nutrition": week_summary(repo, user_id, today)}
-    system = prompts.get("digest", DIGEST_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + prompts.get("digest_nutrition", DIGEST_NUTRITION)
+    references, payload = service.split_context({**service.build_context(repo, user_id, today), "disciplines": disciplines, "nutrition": week_summary(repo, user_id, today)})
+    system = CachedSystem(prompts.get("digest", DIGEST_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + prompts.get("digest_nutrition", DIGEST_NUTRITION) + references)
     out = _ask(repo, llm, user_id, "digest", system, payload, 1400, today)
     if not out or not isinstance(out.get("sections"), list):
         subject, text = fallback_digest(repo, user_id, today)  # le mail part toujours, même si l'IA échoue

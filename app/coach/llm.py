@@ -40,6 +40,29 @@ class LLMResult:
     cache_write_tokens: int = 0  # entrée écrite dans le cache (≈ 1,25 × le prix d'entrée)
 
 
+class CachedSystem(str):
+    """Consigne système en deux parties : `fixed` (identique d'un appel à l'autre : consigne, règles, sources) puis `variable` (données de l'utilisateur).
+
+    C'est une `str` (fixed + variable) : les fournisseurs qui n'ont pas de cache de prompt et les doubles de test la lisent comme avant.
+    Anthropic en fait deux blocs `system` et pose `cache_control` sur le premier seulement. Le préfixe ne doit contenir ni date, ni donnée de l'utilisateur.
+    """
+    fixed: str
+    variable: str
+
+    def __new__(cls, fixed: str, variable: str = "") -> "CachedSystem":
+        obj = super().__new__(cls, fixed + variable)
+        obj.fixed, obj.variable = fixed, variable
+        return obj
+
+    def __add__(self, other: str) -> "CachedSystem":  # un ajout (consigne de langue, nouvel essai JSON) suit toujours le préfixe fixe
+        return CachedSystem(self.fixed, self.variable + other)
+
+
+def prompt_cache_enabled() -> bool:
+    """Cache de prompt Anthropic actif par défaut ; `LLM_PROMPT_CACHE=off` renvoie la consigne en un seul bloc (passerelle qui refuse `cache_control`)."""
+    return env("LLM_PROMPT_CACHE").lower() not in FALSY
+
+
 @lru_cache(maxsize=1)
 def catalog() -> dict[str, dict[str, Any]]:
     data = yaml.safe_load(CATALOG_FILE.read_text(encoding="utf-8"))
@@ -214,6 +237,20 @@ class AnthropicLLM:
     def configured(self) -> bool:
         return bool(self._key())
 
+    @staticmethod
+    def _system_param(system: str) -> str | list[dict[str, Any]]:
+        """Blocs `system` : le préfixe fixe porte `cache_control` (il couvre aussi les outils, rendus avant lui), le reste varie à chaque appel.
+
+        Le cache ne s'active qu'au-delà d'un minimum de tokens du préfixe (4 096 pour Claude Haiku 4.5, moins pour les modèles récents) : en dessous,
+        le marqueur est ignoré sans erreur.
+        """
+        if isinstance(system, CachedSystem) and system.fixed.strip() and prompt_cache_enabled():
+            blocks: list[dict[str, Any]] = [{"type": "text", "text": system.fixed, "cache_control": {"type": "ephemeral"}}]
+            if system.variable.strip():
+                blocks.append({"type": "text", "text": system.variable})
+            return blocks
+        return str(system)
+
     def _post(self, body: dict[str, Any]) -> dict[str, Any]:
         key = self._key()
         if not key:
@@ -231,7 +268,7 @@ class AnthropicLLM:
         messages: list[dict[str, Any]] = [*(history or []), {"role": "user", "content": user}]
         tin = tout = tread = twrite = 0
         for rnd in range(max_rounds + 1):
-            d = self._post({"model": model, "max_tokens": max_tokens, "system": system, "messages": messages, **({"tools": tools} if rnd < max_rounds else {})})
+            d = self._post({"model": model, "max_tokens": max_tokens, "system": self._system_param(system), "messages": messages, **({"tools": tools} if rnd < max_rounds else {})})
             i, o, r, w = anthropic_usage(d.get("usage", {}))
             tin, tout, tread, twrite = tin + i, tout + o, tread + r, twrite + w
             blocks = d.get("content", [])
@@ -249,7 +286,7 @@ class AnthropicLLM:
         model = model or default_model()
         content: Any = user if not image else [
             {"type": "image", "source": {"type": "base64", "media_type": image[0], "data": image[1]}}, {"type": "text", "text": user}]
-        d = self._post({"model": model, "max_tokens": max_tokens, "system": system,
+        d = self._post({"model": model, "max_tokens": max_tokens, "system": self._system_param(system),
                         "messages": [*(history or []), {"role": "user", "content": content}]})
         text = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
         i, o, r, w = anthropic_usage(d.get("usage", {}))
