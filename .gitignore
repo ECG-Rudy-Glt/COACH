@@ -10,3 +10,8 @@ backups/
 dist-public/
 .lint-js.*/
 node_modules/
+
+# couverture de tests
+.coverage
+.coverage.*
+htmlcov/
