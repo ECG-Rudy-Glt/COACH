@@ -13,7 +13,7 @@ A wearable integration produces two kinds of rows for a user:
 
 Everything downstream (`app/garmin/match.py`, `app/coach/history.py`, `service.build_context`) only reads normalized rows through the `Repo` interface, so a new source only has to *produce the same rows*.
 
-> The tables carry the `garmin_` prefix for historical reasons. Generalising them to a `source` column is the recommended first step for a second brand — see the "Activity sources" issue on the board.
+> The tables carry the `garmin_` prefix for historical reasons. Activities now have a `source` column (`garmin` by default, `fit` | `tcx` | `gpx` for imported files; migration 0014); the full generalisation of tables and `Repo` methods is tracked in issue #19.
 
 ### Normalized activity row
 
@@ -41,6 +41,10 @@ Unknown values are `None`, never `0`. Map the brand's sport names to the six `sp
 5. Failures map to business errors (`GarminAuthError` → "reconnect", `GarminRateLimited` → 429, `GarminUnavailable` → 502); credentials never reach logs.
 
 **Caveats** — the library is unofficial and Garmin changed its authentication in 2026; use is at your own risk and subject to Garmin's terms. Keep sync intervals polite (`SYNC_PAUSE_S`, default 2 s between users).
+
+## FIT / TCX / GPX file import (built in)
+
+`app/activity_import/` — `parse.py` holds the pure functions (`parse_activity(raw, tz)`: bytes to an activity row; sport mapping; duplicate rule) and `api.py` the route `POST /users/{id}/activities/import` (JSON `{files: [{name, data: base64}], tz}`, 20 files, 10 MB each). The format is detected from the content (`.FIT` signature, XML root `TrainingCenterDatabase` or `gpx`), never from the extension. FIT is read with [`fitdecode`](https://github.com/polyvertex/fitdecode) (MIT, data CRC checked), TCX/GPX with `defusedxml` (DTD and entities forbidden). Corrupted or unusable files get a per-file message, never a 500. Row `garmin_id` is `<format>:<sha256 prefix of the file>`, `source` is the format; a file is a duplicate if that id exists or if an activity of any source starts within 2 minutes with a similar duration. Only the totals are stored (no GPS track). Afterwards the usual `_derive_facts` and `auto_link` run. User guide: [activity-import.md](activity-import.md).
 
 ## Coros and other brands
 

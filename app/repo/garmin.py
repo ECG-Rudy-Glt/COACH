@@ -28,7 +28,7 @@ class GarminMemory:
     def delete_garmin(self, user_id: int, purge: bool) -> None:
         self._g()[0].pop(user_id, None)
         if purge:
-            for k in [k for k in self._g()[1] if k[0] == user_id]:
+            for k in [k for k, a in self._g()[1].items() if k[0] == user_id and a["source"] == "garmin"]:  # les fichiers importés restent
                 del self._g()[1][k]
             for k in [k for k in self._metrics() if k[0] == user_id]:
                 del self._metrics()[k]
@@ -38,7 +38,7 @@ class GarminMemory:
         for r in rows:
             key = (user_id, r["garmin_id"])
             new += key not in self._g()[1]
-            self._g()[1][key] = {"user_id": user_id, **r}
+            self._g()[1][key] = {"user_id": user_id, "source": "garmin", **r}
         return new
 
     def list_activities(self, user_id: int, since: date, limit: int) -> list[dict[str, Any]]:
@@ -67,7 +67,7 @@ class GarminPostgres:
         with self._conn() as c:
             c.execute("DELETE FROM garmin_accounts WHERE user_id = %s", (user_id,))
             if purge:
-                c.execute("DELETE FROM garmin_activities WHERE user_id = %s", (user_id,))
+                c.execute("DELETE FROM garmin_activities WHERE user_id = %s AND source = 'garmin'", (user_id,))
                 c.execute("DELETE FROM garmin_metrics WHERE user_id = %s", (user_id,))
 
     def upsert_activities(self, user_id: int, rows: list[dict[str, Any]]) -> int:
@@ -75,8 +75,8 @@ class GarminPostgres:
         with self._conn() as c:
             for r in rows:
                 cur = c.execute(
-                    "INSERT INTO garmin_activities (user_id, garmin_id, day, started_at, sport, type_key, name, duration_s, "
-                    "distance_m, elevation_m, avg_hr, max_hr, calories, training_load) VALUES (%(u)s, %(garmin_id)s, "
+                    "INSERT INTO garmin_activities (user_id, source, garmin_id, day, started_at, sport, type_key, name, duration_s, "
+                    "distance_m, elevation_m, avg_hr, max_hr, calories, training_load) VALUES (%(u)s, %(source)s, %(garmin_id)s, "
                     "%(day)s, %(started_at)s, %(sport)s, "
                     "%(type_key)s, %(name)s, %(duration_s)s, %(distance_m)s, %(elevation_m)s, %(avg_hr)s, %(max_hr)s, %(calories)s, "
                     "%(training_load)s) ON CONFLICT (user_id, garmin_id) DO UPDATE SET day = EXCLUDED.day, "
@@ -84,7 +84,7 @@ class GarminPostgres:
                     "name = EXCLUDED.name, duration_s = EXCLUDED.duration_s, distance_m = EXCLUDED.distance_m, "
                     "elevation_m = EXCLUDED.elevation_m, avg_hr = EXCLUDED.avg_hr, max_hr = EXCLUDED.max_hr, "
                     "calories = EXCLUDED.calories, training_load = EXCLUDED.training_load RETURNING (xmax = 0) AS inserted",
-                    {**r, "u": user_id}).fetchone()
+                    {"source": "garmin", **r, "u": user_id}).fetchone()
                 new += bool(cur["inserted"])
         return new
 

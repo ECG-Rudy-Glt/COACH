@@ -45,7 +45,7 @@ def link_fields(s: dict[str, Any], a: dict[str, Any]) -> dict[str, Any]:
             merged[k] = v
     merged["garmin_id"] = a["garmin_id"]
     if s["status"] == "planned" and "source" not in merged:
-        merged["source"] = "garmin"
+        merged["source"] = a.get("source") or "garmin"
     return merged
 
 
@@ -57,7 +57,7 @@ SUGGEST_DAYS = 3  # une séance faite un autre jour : proposée si l'écart ne d
 def unlink_fields(logged: dict[str, Any] | None) -> dict[str, Any]:
     """Retour de séance sans les champs venus de la montre (ce que l'utilisateur a saisi reste)."""
     out = {k: v for k, v in (logged or {}).items() if k not in GARMIN_FIELDS}
-    if out.get("source") == "garmin":
+    if out.get("source") in ("garmin", "fit", "tcx", "gpx"):
         del out["source"]
     return out
 
