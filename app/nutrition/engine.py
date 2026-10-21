@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 KCAL_PER_KG = 7700  # repère classique, valable à court terme (voir docs/references.md)
@@ -107,13 +107,61 @@ def trend(entries: list[dict[str, Any]], today: date) -> dict[str, Any]:
     return {"series": series[-90:], "current": cur, "first": series[0]["avg"], "rate_pct_per_week": rate}
 
 
+PERIOD_DAYS = {1: 30, 3: 91, 6: 182, 12: 365}  # périodes proposées (mois) → jours
+DAYS_PER_MONTH = 30.44
+MIN_TREND_WEIGHINGS, TREND_RECENT_DAYS = 3, 14  # N5 : au moins 3 pesées sur 14 jours pour afficher une tendance
+
+
+def _regression(pts: list[tuple[int, float]]) -> tuple[float, float] | None:
+    """Droite des moindres carrés (jours, kg) : (pente en kg par jour, valeur ajustée au dernier jour), ou None si les jours sont identiques."""
+    n = len(pts)
+    mx, my = sum(x for x, _ in pts) / n, sum(y for _, y in pts) / n
+    sxx = sum((x - mx) ** 2 for x, _ in pts)
+    if sxx == 0:
+        return None
+    slope = sum((x - mx) * (y - my) for x, y in pts) / sxx
+    return slope, my + slope * (pts[-1][0] - mx)
+
+
+def weight_trend(entries: list[dict[str, Any]], today: date, months: int = 3, target_kg: float | None = None) -> dict[str, Any]:
+    """Tendance de poids sur plusieurs mois (N5) : courbe lissée (moyenne de 7 jours, interne), pente par régression linéaire des pesées de la période
+    en kg et % par mois, écart à l'objectif et date estimée d'atteinte. Aucune tendance sans 3 pesées sur les 14 derniers jours."""
+    months = months if months in PERIOD_DAYS else 3
+    since = today - timedelta(days=PERIOD_DAYS[months])
+    pts = sorted(((e["day"], float(e["kg"])) for e in entries), key=lambda x: x[0])
+    smooth = [{"day": d.isoformat(), "kg": round(kg, 1), "avg": round(sum(k for dd, k in pts[: i + 1] if (d - dd).days < 7) / sum(1 for dd, _ in pts[: i + 1] if (d - dd).days < 7), 2)}
+              for i, (d, kg) in enumerate(pts)]
+    series = [x for x in smooth if date.fromisoformat(x["day"]) >= since]
+    out: dict[str, Any] = {"months": months, "series": series, "current": smooth[-1]["avg"] if smooth else None, "target_kg": target_kg,
+                           "kg_per_month": None, "pct_per_month": None, "remaining_kg": None, "eta_date": None, "reason": None}
+    if not series:
+        out["reason"] = "none"
+        return out
+    recent = sum(1 for x in series if (today - date.fromisoformat(x["day"])).days < TREND_RECENT_DAYS)
+    fit = _regression([((date.fromisoformat(x["day"]) - since).days, x["kg"]) for x in series]) if recent >= MIN_TREND_WEIGHINGS else None
+    if fit is None:
+        out["reason"] = "few"
+    else:
+        slope, end = fit
+        out["kg_per_month"] = round(slope * DAYS_PER_MONTH, 2)
+        out["pct_per_month"] = round(slope * DAYS_PER_MONTH / end * 100, 2)
+        if target_kg:
+            out["remaining_kg"] = round(out["current"] - target_kg, 1)
+            days = (target_kg - end) / slope if slope else None
+            if days is not None and 0 < days <= 3 * 365:
+                out["eta_date"] = (today + timedelta(days=round(days))).isoformat()
+    if target_kg and out["remaining_kg"] is None:
+        out["remaining_kg"] = round(out["current"] - target_kg, 1)
+    return out
+
+
 def advice(p: NutritionProfile, tg: dict[str, Any], tr: dict[str, Any], adherence_days: int) -> list[str]:
     """Conseils d'ajustement (N4, N5) : jamais de baisse sous le plancher, jamais d'alarmisme sur un seul chiffre."""
     out = []
     rate = tr.get("rate_pct_per_week")
     if p.direction == "perdre" and not p.blocked_reason:
         if rate is None:
-            out.append("Pesez-vous au moins deux fois par semaine, le matin : la tendance sur 7 jours compte, pas le chiffre d'un jour (N5).")
+            out.append("Pesez-vous au moins deux fois par semaine, le matin : la tendance sur plusieurs semaines compte, pas le chiffre d'un jour (N5).")
         elif adherence_days >= 14 and rate > -0.25:
             out.append(f"Votre poids baisse d'environ {abs(rate):.2f} % par semaine, sous l'objectif ({tg['rate_pct_per_week']} %). "
                        "Vérifiez d'abord que vos repas sont bien tous renseignés ; sinon une baisse de 100 à 150 kcal par jour est raisonnable (N4).")

@@ -64,6 +64,12 @@ def test_lunchbox_lands_on_tomorrow(logged: Page):
 def test_nutrition_screen(logged: Page):
     tab(logged, "Nutrition")
     expect(logged.get_by_role("heading", name="Suivi du poids")).to_be_visible()
+    expect(logged.get_by_role("button", name="3 mois")).to_have_attribute("aria-pressed", "true")  # période par défaut
+    expect(logged.get_by_text("moyenne sur 7 jours")).to_have_count(0)
+    expect(logged.get_by_text(re.compile("^Tendance")).first).to_be_visible()  # chiffrée ou « non calculée » (démo : une pesée par semaine)
+    logged.get_by_role("button", name="12 mois").click()
+    expect(logged.get_by_role("button", name="12 mois")).to_have_attribute("aria-pressed", "true")
+    expect(logged.locator("svg[aria-label*='Courbe de poids sur 12 mois']")).to_be_visible()
     expect(logged.get_by_text("Poulet, riz, brocolis")).to_be_visible()  # repas du compte de démonstration
     expect(logged.get_by_role("button", name="Ajouter un repas")).to_be_visible()
 

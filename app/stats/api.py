@@ -18,7 +18,7 @@ PROFILE_FACTS = ("body.height_cm", "body.birth_year")  # sans eux, la cible éne
 
 def daily_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
     p, facts = _profile(repo, user_id, today)
-    weights = repo.list_weights(user_id, today - timedelta(days=60))
+    weights = repo.list_weights(user_id, today - timedelta(days=120))
     has_weight = bool(weights) or bool(facts.get("body.weight_kg"))
     targets = None
     if all(facts.get(k) for k in PROFILE_FACTS) and has_weight:
@@ -31,7 +31,7 @@ def daily_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
         "today": today.isoformat(),
         "steps": daily.steps_block(repo.list_metrics(user_id, "steps", today - timedelta(days=7)), today, connected),
         "nutrition": daily.nutrition_block(repo.list_meals(user_id, today - timedelta(days=6), today), today, targets),
-        "weight": daily.weight_block(eng.trend(weights, today), p.target_kg),
+        "weight": daily.weight_block(eng.trend(weights, today), p.target_kg, eng.weight_trend(weights, today, 3, p.target_kg)),
         "week": daily.week_block(sessions, activities, today),
         "recent": daily.recent_items(activities, sessions, today),
     }
