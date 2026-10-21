@@ -34,7 +34,7 @@ def test_current_level_keeps_the_slowest_equivalent_and_prefers_now():
     lvl = T.current_level(FACTS, 10.0)
     assert lvl and lvl[0] == 45.5  # 5 km 21:00 donne ≈ 43:44, le 10 km réel 45:30 est plus lent : on garde le prudent
     better = {**FACTS, "bench.run_10k": {"pr": {"time": "45:30"}, "now": {"time": "43:00"}}}
-    assert T.current_level(better, 10.0)[0] == pytest.approx(43.78, abs=0.05)  # « now » remplace le record
+    assert T.current_level(better, 10.0)[0] == pytest.approx(43.0, abs=0.01)  # C14 : le temps « actuel » saisi prime sur tout record, même d'une autre distance
     assert T.current_level({"sports.practiced": ["running"]}, 10.0) is None
 
 

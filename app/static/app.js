@@ -622,6 +622,11 @@ function questionView(q, { progress, prefill, onDone, onBack, editing, note, eye
 }
 
 // ---------- performances ----------
+function estimateLine(e) { // C15 : estimation tirée des séances saisies, jamais une saisie de l'utilisateur
+  const day = new Date(e.day + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long" });
+  return __("Niveau actuel estimé d'après vos séances : ≈ {e1rm} kg sur une répétition ({kg} kg × {reps}, {day}). Estimation : saisissez votre niveau actuel pour la remplacer.", { e1rm: e.e1rm, kg: e.kg, reps: e.reps, day });
+}
+
 async function benchmarks() {
   let page;
   try { page = await api(`/users/${userId}/benchmarks`); } catch (e) { return fail(e); }
@@ -652,7 +657,8 @@ async function benchmarks() {
   const sections = page.sections.map((s) => h("div", { class: "card" }, h("h3", null, s.title),
     h("div", { style: "margin-top:6px" }, s.items.map((it) =>
       h("div", { class: "bench" }, h("strong", null, it.label),
-        h("div", { class: "cols" }, cell(it, "pr", "Record"), cell(it, "now", "Actuel")))))));
+        h("div", { class: "cols" }, cell(it, "pr", "Record"), cell(it, "now", "Actuel")),
+        (page.estimates || {})[it.id] ? h("p", { class: "muted" }, estimateLine(page.estimates[it.id])) : null)))));
 
   save.addEventListener("click", async () => {
     const items = {};
@@ -1071,7 +1077,12 @@ function trajectoryCard(t) {
   if (!t) return null;
   const dayFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { month: "long", year: "numeric" });
   const fullFr = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long", year: "numeric" });
-  const level = t.level ? (t.level.record_only
+  const lv = t.level;
+  const level = lv && lv.source_kind === "garmin"
+    ? (lv.bound
+      ? __("Niveau actuel borné par votre montre : vous courez au moins aussi vite que {time} sur cette distance ({source}). Votre niveau réel est probablement plus rapide : renseignez un temps récent dans Mes performances pour un plan plus juste.", { time: lv.time, source: lv.source })
+      : __("Niveau actuel estimé d'après votre montre : {time} ({source}).", { time: lv.time, source: lv.source }))
+    : t.level ? (t.level.record_only
     ? __("Point de départ : votre record, {time} ({source}). Votre niveau du moment est probablement plus lent : renseignez un temps récent dans Mes performances pour un plan plus juste.", { time: t.level.time, source: t.level.source })
     : __("Niveau actuel estimé : {time} ({source}).", { time: t.level.time, source: t.level.source })) : "Ajoutez un record 5 km ou 10 km dans Mes performances pour situer votre niveau.";
   const gap = t.level ? __(" Écart à combler : {gap_pct} % ({per_month_pct} % par mois), jugé {verdict}.", { gap_pct: t.gap_pct, per_month_pct: t.per_month_pct, verdict: t.verdict }) : "";

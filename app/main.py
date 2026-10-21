@@ -2,6 +2,7 @@ import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -23,6 +24,7 @@ from app.garmin.api import default_gateway
 from app.goals import build_router as build_goals_router
 from app.nutrition.api import build_router as build_nutrition_router
 from app.plan.api import build_router as build_plan_router
+from app.plan.level import lift_estimates
 from app.questionnaire import i18n as q_i18n
 from app.questionnaire.answers import AnswerError, to_facts
 from app.questionnaire.bank import load_bank, validate_bank
@@ -271,7 +273,9 @@ def get_benchmarks(
     total = sum(len(s["items"]) for s in sections)
     years = cur.get("history.sport_years")
     novice = isinstance(years, int | float) and years < 1 and not values  # débutant déclaré : pas de records à saisir, ses premières séances servent de référence
-    return {"sections": sections, "values": values, "filled": filled, "total": total, "novice": bool(novice)}
+    today = date.today()
+    est = lift_estimates(repo.list_sessions(user_id, today - timedelta(days=84), today), today)  # C15 : « estimé », la saisie de l'utilisateur n'est jamais remplacée
+    return {"sections": sections, "values": values, "estimates": est, "filled": filled, "total": total, "novice": bool(novice)}
 
 
 @app.put("/users/{user_id}/benchmarks")
