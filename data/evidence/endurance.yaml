@@ -12,7 +12,7 @@
   design: revue narrative
   finding_fr: "Chez des athlètes d'endurance de haut niveau, les études descriptives convergent vers environ 80 % des séances à basse intensité et 20 % à haute intensité. Aucune preuve convaincante qu'intensifier davantage améliore la performance à long terme chez des athlètes déjà entraînés."
   limits_fr: "Revue narrative d'un expert, fondée surtout sur des études descriptives d'athlètes d'élite (10 à 13 séances par semaine). Décrit ce que font les champions, ne démontre pas que 80/20 est optimal pour un amateur."
-  applies_to: [C1]
+  applies_to: [C1, M17]
   confidence: moyenne
   verified_on: "2026-10-18"
 
@@ -250,7 +250,7 @@
   design: méta-analyse
   finding_fr: "43 études : l'ajout d'aérobie ne compromet ni l'hypertrophie ni la force maximale. La force explosive est un peu atténuée (écart -0,28), davantage quand les deux séances ont lieu le même jour que séparées d'au moins 3 h."
   limits_fr: "Compare à de la musculation seule, pas à de l'endurance seule ; la perte d'explosivité est modeste et ne vaut que pour la force explosive, à confirmer."
-  applies_to: [I1]
+  applies_to: [I1, I7]
   confidence: élevée
   verified_on: "2026-10-18"
 
@@ -281,3 +281,157 @@
   applies_to: [R1, R5]
   confidence: moyenne
   verified_on: "2026-10-18"
+
+- id: HYB-004
+  topic: hybrid
+  citation: "Rappelt L, Wiedenmann T, Held S, Heinke L, Micke F, Wicker P, Donath L (2026). Longitudinal performance development in PRO and ELITE HYROX competitions across the first seven competitive seasons. Front Physiol."
+  year: 2026
+  doi: "10.3389/fphys.2026.1847569"
+  pmid: "42524284"
+  url: "https://pubmed.ncbi.nlm.nih.gov/42524284/"
+  design: étude observationnelle
+  finding_fr: "Résultats publics PRO et ELITE sur 7 saisons (11 842 femmes, 27 854 hommes) : la course représente environ 50 % du temps total et reste la composante la plus liée à la performance globale ; les stations de force pèsent surtout chez les plus lents."
+  limits_fr: "Données publiques de résultats, athlètes PRO et ELITE seulement ; corrélations, aucun programme d'entraînement testé."
+  applies_to: [M18]
+  confidence: moyenne
+  verified_on: "2026-10-21"
+
+- id: HYB-005
+  topic: hybrid
+  citation: "Gutiérrez-Hellín J, Alonso-Domínguez S, Gil-Cabrera J, Arazola-López D, Sainz-Pérez M, Larnaudie-Faura C, Matias-López M, Martín-Gómez FJ, Franco-Andrés A, Del Coso J (2026). Relative Running Intensity and Pacing During an Official HYROX PRO MEN Competition: The HYScience Study. Int J Sports Physiol Perform."
+  year: 2026
+  doi: "10.1123/ijspp.2026-0098"
+  pmid: "42697540"
+  url: "https://pubmed.ncbi.nlm.nih.gov/42697540/"
+  design: étude observationnelle
+  finding_fr: "24 hommes PRO (≈ 70 min) : la vitesse de course passe de 16,1 km/h au 1er kilomètre à 13,6 au 8e (10,5 dans la zone de transition) ; intensité moyenne ≈ 84 % du seuil VT2 et 76 % de la vitesse aérobie maximale ; tenir une intensité relative plus haute va avec un temps de course plus court."
+  limits_fr: "24 hommes PRO, une seule épreuve ; ne dit rien des amateurs, des femmes ni de la façon de s'entraîner à cette allure."
+  applies_to: [M20, M21]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-006
+  topic: hybrid
+  citation: "Villarroel López P, Juárez Santos-García D (2025). High Intensity Functional Training in Hybrid Competitions: A Scoping Review of Performance Models and Physiological Adaptations. J Funct Morphol Kinesiol."
+  year: 2025
+  doi: "10.3390/jfmk10040365"
+  pmid: "41133555"
+  url: "https://pubmed.ncbi.nlm.nih.gov/41133555/"
+  design: revue exploratoire
+  finding_fr: "39 études (2015-2025) : l'entraînement fonctionnel à haute intensité améliore capacité aérobie, force, puissance anaérobie et tolérance à la fatigue ; hausses de VO2max de 8 à 15 % et de force de 10 à 20 % souvent rapportées, plus nettes chez les sujets entraînés."
+  limits_fr: "Revue exploratoire : qualité des études non évaluée, bénéfices non attribués à une épreuve précise, aucune comparaison de programmations."
+  applies_to: [M10, M18]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-007
+  topic: hybrid
+  citation: "Chittenden E, Bell A, Forbes G, Tooth P, Porter R, Van Der Vliet R, Shouman K, Williams S (2026). Prevalence, burden and risk markers of health problems in HYROX athletes: a 12-week prospective cohort study. Front Sports Act Living."
+  year: 2026
+  doi: "10.3389/fspor.2026.1937574"
+  pmid: "42780891"
+  url: "https://pubmed.ncbi.nlm.nih.gov/42780891/"
+  design: étude observationnelle
+  finding_fr: "89 athlètes suivis 12 semaines : 30 % ont un problème de santé chaque semaine ; 14,4 blessures pour 1 000 h, dont 73 % de surcharge ; le genou et la jambe portent la plus grande charge, l'épaule est presque épargnée."
+  limits_fr: "89 participants, réponse hebdomadaire de 62 %, exploratoire ; le lien avec une blessure antérieure (rapport 2,6) a un intervalle compatible avec l'absence d'effet."
+  applies_to: [S2, M20]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-008
+  topic: hybrid
+  citation: "Fernández-Navarrete I, Ruiz-Alias SA, García-Pinillos F (2026). Where am I struggling? Detailed benchmarks for every workout and category in Hyrox© competition. J Sports Med Phys Fitness."
+  year: 2026
+  doi: "10.23736/S0022-4707.26.17926-2"
+  pmid: "42189569"
+  url: "https://pubmed.ncbi.nlm.nih.gov/42189569/"
+  design: étude observationnelle
+  finding_fr: "186 411 résultats officiels jusqu'à la saison 2023/24 : tables de référence (moyenne et percentiles 10 à 90) par catégorie et par segment pour repérer ses points faibles."
+  limits_fr: "Tables descriptives de participants à des épreuves : pas de prescription d'entraînement ni de charges d'entraînement ; pratiquants non représentatifs de tous les amateurs."
+  applies_to: [M19]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-009
+  topic: hybrid
+  citation: "Ángel Rodríguez M, García-Calleja P, Terrados N, Crespo I, Del Valle M, Olmedillas H (2022). Injury in CrossFit®: A Systematic Review of Epidemiology and Risk Factors. Phys Sportsmed."
+  year: 2022
+  doi: "10.1080/00913847.2020.1864675"
+  pmid: "33322981"
+  url: "https://pubmed.ncbi.nlm.nih.gov/33322981/"
+  design: revue systématique
+  finding_fr: "25 études, 12 079 pratiquants : 35,3 % de blessés en moyenne, 0,2 à 18,9 blessures pour 1 000 h, proche de l'haltérophilie ; épaule (26 %), rachis (24 %), genou (18 %) ; facteurs cités : âge, antécédents, absence de supervision, expérience, compétition."
+  limits_fr: "Qualité limitée des études incluses : pas de conclusion solide sur les facteurs de risque."
+  applies_to: [M14, M16, S2]
+  confidence: moyenne
+  verified_on: "2026-10-21"
+
+- id: HYB-010
+  topic: hybrid
+  citation: "Mehrab M, Wagner RK, Vuurberg G, Gouttebarge V, de Vos RJ, Mathijssen NMC (2023). Risk Factors for Musculoskeletal Injury in CrossFit: A Systematic Review. Int J Sports Med."
+  year: 2023
+  doi: "10.1055/a-1953-6317"
+  pmid: "36174660"
+  url: "https://pubmed.ncbi.nlm.nih.gov/36174660/"
+  design: revue systématique
+  finding_fr: "3 cohortes prospectives (691 participants, 172 blessés) : preuve limitée qu'alterner charges prescrites et allégées augmente le risque de blessure, et qu'une pratique plus longue protège ; les débutants méritent un encadrement plus proche."
+  limits_fr: "Seulement trois cohortes dont une à risque de biais élevé ; associations, pas causalité ; ne propose aucune progression de charge."
+  applies_to: [M16]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-011
+  topic: hybrid
+  citation: "Smith JS, Bellissimo GF, Amorim FT (2024). The physiological responses to volume-matched high-intensity functional training protocols with varied time domains. Front Physiol."
+  year: 2024
+  doi: "10.3389/fphys.2024.1511961"
+  pmid: "40007896"
+  url: "https://pubmed.ncbi.nlm.nih.gov/40007896/"
+  design: étude croisée
+  finding_fr: "12 sujets entraînés, même volume de travail : un « rounds for time » (12 min) donne FC 171 contre 153 bpm, RPE 7 contre 4 et lactate 11,2 contre 6,5 mmol/L par rapport à un EMOM (20 min) : des repos prescrits changent la charge physiologique."
+  limits_fr: "12 sujets, un seul enchaînement de mouvements, effets aigus uniquement : ne dit rien des adaptations à long terme."
+  applies_to: [M15]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-012
+  topic: hybrid
+  citation: "Feito Y, Heinrich KM, Butcher SJ, Poston WSC (2018). High-Intensity Functional Training (HIFT): Definition and Research Implications for Improved Fitness. Sports (Basel)."
+  year: 2018
+  doi: "10.3390/sports6030076"
+  pmid: "30087252"
+  url: "https://pubmed.ncbi.nlm.nih.gov/30087252/"
+  design: revue narrative
+  finding_fr: "Définition de l'entraînement fonctionnel à haute intensité : mouvements fonctionnels polyarticulaires, variés, adaptables à tout niveau, distincts du HIIT par la variété des exercices et des durées, avec ou sans repos. Ses effets métaboliques et cardiorespiratoires sont moins connus que ceux du HIIT."
+  limits_fr: "Revue narrative qui propose une définition ; ne démontre l'efficacité d'aucune programmation."
+  applies_to: [M10, M15]
+  confidence: faible
+  verified_on: "2026-10-21"
+
+- id: HYB-013
+  topic: hybrid
+  citation: "Ramos-Campo DJ, Andreu-Caravaca L, Clemente-Suárez VJ, Rubio-Arias JÁ (2025). The Effect of Strength Training on Endurance Performance Determinants in Middle- and Long-Distance Endurance Athletes: An Umbrella Review of Systematic Reviews and Meta-Analysis. J Strength Cond Res."
+  year: 2025
+  doi: "10.1519/JSC.0000000000005056"
+  pmid: "40153564"
+  url: "https://pubmed.ncbi.nlm.nih.gov/40153564/"
+  design: revue systématique
+  finding_fr: "17 revues (12 méta-analyses) : la musculation améliore l'économie de course (effets moyens à grands) et aide à garder la VO2max ; aucune méta-analyse ne montre de gain de VO2max."
+  limits_fr: "Revue de revues, confiance faible ou critique pour la plupart des revues incluses ; athlètes d'endurance, pas pratiquants de fitness fonctionnel."
+  applies_to: [I4, M18]
+  confidence: moyenne
+  verified_on: "2026-10-21"
+
+- id: HYB-014
+  topic: hybrid
+  citation: "Claudino JG, Gabbett TJ, Bourgeois F, Souza HS, Miranda RC, Mezêncio B, Soncin R, Cardoso Filho CA, Bottaro M, Hernandez AJ, Amadio AC, Serrão JC (2018). CrossFit Overview: Systematic Review and Meta-analysis. Sports Med Open."
+  year: 2018
+  doi: "10.1186/s40798-018-0124-5"
+  pmid: "29484512"
+  url: "https://pubmed.ncbi.nlm.nih.gov/29484512/"
+  design: revue systématique
+  finding_fr: "31 articles, 4 en méta-analyse : aucun résultat significatif sur les variables étudiées ; seulement 2 études de haut niveau de preuve et à faible risque de biais ; la pratique va avec plus de satisfaction et de motivation."
+  limits_fr: "Littérature jeune et hétérogène : ne permet de conclure ni sur l'efficacité du CrossFit ni sur une dose ou un agencement de séances."
+  applies_to: [M10]
+  confidence: faible
+  verified_on: "2026-10-21"
