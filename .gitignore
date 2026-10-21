@@ -8,3 +8,5 @@ secrets/
 !secrets/.gitkeep
 backups/
 dist-public/
+.lint-js.*/
+node_modules/
