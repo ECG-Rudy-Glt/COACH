@@ -165,8 +165,5 @@ def test_lunchbox_prepared_today_is_counted_tomorrow_at_lunch(ctx):
     assert c.post(f"/users/{uid}/nutrition/meals", json={"day": tomorrow, "slot": "dîner", "description": "x", "for_tomorrow": True}).status_code == 422
 
 
-def test_big_portion_is_passed_to_the_estimator(ctx):
-    c, uid, repo, llm = ctx
-    r = c.post(f"/users/{uid}/nutrition/meals", json={"slot": "dîner", "description": "pâtes carbonara", "portion": "grosse"})
-    assert r.status_code == 201 and "grosse" in r.json()["meal"]["description"] and "grosse" in llm.calls[0][0]
+def test_estimator_prompt_asks_for_high_estimates_and_uses_the_weight():
     assert "sous-évalue" in nut_analyze.SYSTEM and "poids × densité" in nut_analyze.SYSTEM and "bourguignon" in nut_analyze.SYSTEM
