@@ -1664,6 +1664,8 @@ async function nutritionScreen(day) {
 
 function mealForm(day) {
   const sp = slotPicker();
+  let file = null;
+  const err = h("p", { class: "error", role: "alert" });
   const desc = h("textarea", { id: "meal-desc", placeholder: "Ex. : 150 g de poulet, riz (1 assiette), brocolis, un peu d'huile d'olive…", "aria-label": "Description du repas" });
   const preview = h("img", { alt: "Aperçu de la photo", style: "width:100%;max-height:260px;object-fit:cover;border-radius:14px;display:block" });
   const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Prendre une photo" });  // ouvre directement l'appareil photo (iPhone, Android)
@@ -1704,6 +1706,7 @@ function mealForm(day) {
     h("div", { class: "card stack" }, sp.el, desc, boxRow, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
       h("p", { class: "muted", style: "font-size:.8125rem" }, "Pour une meilleure estimation : photo de dessus, bien éclairée, assiette entière visible ; précisez dans la description les quantités, l'huile et les sauces (ce qu'on ne voit pas).")),
       h("label", { class: "row", for: "meal-est" }, est, h("span", null, "Estimer calories et macros avec l'IA")),
+      err,
       h("p", { class: "muted", style: "font-size:.8125rem" }, "La photo est redimensionnée sur votre téléphone, stockée sur votre serveur et envoyée à l'IA uniquement pour l'estimation. Les chiffres sont des ordres de grandeur, souvent sous-estimés : suivez la tendance de la semaine, pas un repas isolé."), err),
     actionBar(go),
   );
