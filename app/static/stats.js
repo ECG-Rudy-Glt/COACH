@@ -29,7 +29,7 @@ function valuesTable(caption, head, rows) {
 }
 
 // Barres par jour (7 jours) avec, si connue, la cible du jour en trait pointillé. Une valeur absente reste vide (« – »), jamais une barre à zéro.
-function barChart({ days, values, targets, today, format, label }) {
+function barChart({ days, values, targets, today, format, label, tick }) {
   const W = 320, H = 150, PX = 6, PT = 16, PB = 24;
   const known = values.filter((v) => v != null).concat((targets || []).filter((v) => v != null));
   const max = Math.max(...known, 1) * 1.08;
@@ -48,30 +48,33 @@ function barChart({ days, values, targets, today, format, label }) {
     }
     if (targets && targets[i] != null) svg.append(svgEl("line", { class: "st-target", x1: cx - slot / 2 + 3, x2: cx + slot / 2 - 3, y1: y(targets[i]), y2: y(targets[i]) }));
     svg.append(svgEl("text", { class: `st-text${days[i] === today ? " strong" : ""}`, x: cx, y: H - 7, "text-anchor": "middle" },
-      stDay(days[i], { weekday: "short" }).replace(".", "").slice(0, 3)));
+      tick ? tick(days[i]) : stDay(days[i], { weekday: "short" }).replace(".", "").slice(0, 3)));
   });
   return svg;
 }
 
-// Courbe dans le temps (axe horizontal proportionnel aux dates) : points = valeurs brutes, trait = moyenne glissante, pointillé = objectif.
-function lineChart({ series, target, label }) {
-  const W = 320, H = 150, PL = 34, PR = 8, PT = 12, PB = 22;
+// Courbe dans le temps (axe horizontal proportionnel aux dates) : points = valeurs brutes, trait = tendance ou repère, pointillé = objectif.
+// `invert` : les petites valeurs (temps, allure) sont en haut, car plus bas veut dire plus rapide. `snap` : bornes entières (poids).
+function plotChart({ dots = [], line = [], target, fmt = stFmt, snap = false, invert = false, label }) {
+  const W = 320, H = 150, PL = 40, PR = 8, PT = 12, PB = 22;
+  const all = [...dots, ...line];
   const t = (iso) => new Date(iso + "T12:00:00").getTime();
-  const t0 = t(series[0].day), t1 = t(series[series.length - 1].day);
-  const vals = series.flatMap((p) => [p.kg, p.avg]).concat(target ? [target] : []);
-  const lo = Math.floor(Math.min(...vals) - 0.5), hi = Math.ceil(Math.max(...vals) + 0.5);
+  const times = all.map((p) => t(p.day)), t0 = Math.min(...times), t1 = Math.max(...times);
+  const vals = all.map((p) => p.y).concat(target ? [target] : []);
+  const vmin = Math.min(...vals), vmax = Math.max(...vals), pad = Math.max((vmax - vmin) * 0.1, vmax * 0.01);
+  const lo = snap ? Math.floor(vmin - 0.5) : vmin - pad, hi = snap ? Math.ceil(vmax + 0.5) : vmax + pad;
   const x = (iso) => PL + (t1 === t0 ? (W - PL - PR) / 2 : ((t(iso) - t0) / (t1 - t0)) * (W - PL - PR));
-  const y = (v) => PT + (H - PT - PB) * (1 - (v - lo) / (hi - lo));
+  const y = (v) => PT + (H - PT - PB) * (invert ? (v - lo) / (hi - lo) : 1 - (v - lo) / (hi - lo));
   const svg = svgRoot(W, H, label);
   svg.append(svgEl("line", { class: "st-base", x1: PL, x2: W - PR, y1: H - PB, y2: H - PB }));
-  svg.append(svgEl("text", { class: "st-text", x: PL - 4, y: y(hi) + 3, "text-anchor": "end" }, stFmt(hi)));
-  svg.append(svgEl("text", { class: "st-text", x: PL - 4, y: y(lo) + 3, "text-anchor": "end" }, stFmt(lo)));
-  svg.append(svgEl("text", { class: "st-text", x: PL, y: H - 6 }, stDay(series[0].day, { day: "numeric", month: "short" })));
-  svg.append(svgEl("text", { class: "st-text", x: W - PR, y: H - 6, "text-anchor": "end" }, stDay(series[series.length - 1].day, { day: "numeric", month: "short" })));
+  svg.append(svgEl("text", { class: "st-text", x: PL - 4, y: y(hi) + 3, "text-anchor": "end" }, fmt(hi)));
+  svg.append(svgEl("text", { class: "st-text", x: PL - 4, y: y(lo) + 3, "text-anchor": "end" }, fmt(lo)));
+  svg.append(svgEl("text", { class: "st-text", x: PL, y: H - 6 }, stDay(new Date(t0).toISOString().slice(0, 10), { day: "numeric", month: "short", year: t1 - t0 > 300 * 864e5 ? "2-digit" : undefined })));
+  svg.append(svgEl("text", { class: "st-text", x: W - PR, y: H - 6, "text-anchor": "end" }, stDay(new Date(t1).toISOString().slice(0, 10), { day: "numeric", month: "short", year: t1 - t0 > 300 * 864e5 ? "2-digit" : undefined })));
   if (target) svg.append(svgEl("line", { class: "st-target", x1: PL, x2: W - PR, y1: y(target), y2: y(target) }));
-  svg.append(...series.map((p) => svgEl("circle", { class: "st-dot", cx: x(p.day), cy: y(p.kg), r: 2.4 })));
-  if (series.length > 1) svg.append(svgEl("polyline", { class: "st-line", points: series.map((p) => `${x(p.day)},${y(p.avg)}`).join(" ") }));
-  else svg.append(svgEl("circle", { class: "st-bar", cx: x(series[0].day), cy: y(series[0].avg), r: 4 }));
+  if (line.length > 1) svg.append(svgEl("polyline", { class: "st-line", points: line.map((p) => `${x(p.day)},${y(p.y)}`).join(" ") }));
+  svg.append(...dots.map((p) => svgEl("circle", { class: "st-dot", cx: x(p.day), cy: y(p.y), r: 2.6 })));
+  if (line.length === 1 && !dots.length) svg.append(svgEl("circle", { class: "st-bar", cx: x(line[0].day), cy: y(line[0].y), r: 4 }));
   return svg;
 }
 
@@ -124,7 +127,7 @@ function weightCard(w) {
   return stCard("Poids",
     h("p", null, h("span", { class: "st-big" }, stFmt(w.current, 1)), h("span", { class: "st-unit" }, "kg"), h("span", { class: "muted" }, "(tendance sur 7 jours)")),
     rate != null ? h("p", { class: "muted" }, __("Rythme : {rate} % par semaine.", { rate: `${rate > 0 ? "+" : ""}${stFmt(rate, 2)}` })) : h("p", { class: "muted" }, "Rythme non calculé : il faut au moins 3 pesées réparties sur 7 jours."),
-    lineChart({ series: w.series, target: w.target_kg, label }),
+    plotChart({ dots: w.series.map((p) => ({ day: p.day, y: p.kg })), line: w.series.map((p) => ({ day: p.day, y: p.avg })), target: w.target_kg, snap: true, label }),
     stLegend(["", "tendance 7 jours"], ["dot", "pesée"], ...(w.target_kg ? [["target", __("objectif {target} kg", { target: stFmt(w.target_kg, 1) })]] : [])),
     valuesTable("Pesées et tendance", ["Jour", "Pesée (kg)", "Tendance (kg)"], w.series.slice().reverse().map((p) => [stDay(p.day, { day: "numeric", month: "short", year: "2-digit" }), stFmt(p.kg, 1), stFmt(p.avg, 1)])));
 }
@@ -152,10 +155,125 @@ async function renderDaily(box) {
   box.replaceChildren(weekCard(d.week), stepsCard(d.steps), mealsCard(d.nutrition), weightCard(d.weight), recentCard(d.recent));
 }
 
+// ---------- section « Progression » ----------
+
+const stTime = (min) => { if (min == null) return "–"; const s = Math.round(min * 60); return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const stN = (n) => stFmt(n, Number.isInteger(n) ? 0 : 1); // 110 kg, 77,5 kg : pas de « ,0 » inutile
+const stShort = (iso) => stDay(iso, { day: "numeric", month: "short" });
+// Ligne « libellé, source / valeur » (même mise en page que les listes de l'application).
+const stItem = (title, sub, value) => h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, title), sub ? h("span", { class: "sub" }, sub) : null), h("span", { class: "v" }, value));
+
+function runRecordsCard(rows) {
+  const blocks = rows.map((r) => {
+    const items = [];
+    if (r.declared.pr) items.push(stItem("Record déclaré", r.declared.pr.year ? __("année {year}", { year: r.declared.pr.year }) : "", r.declared.pr.time));
+    if (r.declared.now) items.push(stItem("Niveau actuel déclaré", "", r.declared.now.time));
+    if (r.measured) items.push(stItem(__("Meilleure allure mesurée sur une sortie d'au moins {km} km", { km: r.distance_km }),
+      __("{km} km en {minutes} min, {day}", { km: stN(r.measured.km), minutes: r.measured.minutes, day: stShort(r.measured.day) }), `${r.measured.pace} /km`));
+    if (r.watch) items.push(stItem("Estimation de la montre", stShort(r.watch.day), r.watch.time));
+    return h("div", null, h("h4", null, r.label), items.length ? items : h("p", { class: "muted" }, "Aucun record ni sortie assez longue pour l'instant."));
+  });
+  return stCard("Records de course", ...blocks,
+    h("p", { class: "st-note" }, "Trois sources distinctes, jamais mélangées : ce que vous avez déclaré, la meilleure allure réellement mesurée sur une sortie assez longue (ce n'est pas un temps de course), et l'estimation de la montre."));
+}
+
+function liftRecordsCard(lifts, declared) {
+  if (!lifts.length && !declared.length) return stEmpty("Records de charges", "Saisissez vos charges et répétitions dans les séances de musculation, ou renseignez vos records dans Mes performances : ils apparaissent ici.");
+  const kg = (v) => `${stN(v)} kg`;
+  return stCard("Records de charges",
+    lifts.length ? h("div", null, h("h4", null, "Saisis dans les séances"), lifts.map((l) => stItem(l.name,
+      l.e1rm != null ? __("meilleur e1RM ≈ {e1rm} kg, {day}", { e1rm: stN(l.e1rm), day: stShort(l.e1rm_day) }) : stShort(l.day), `${kg(l.kg)} × ${stFmt(l.reps)}`))) : null,
+    declared.length ? h("div", null, h("h4", null, "Déclarés dans Mes performances"), declared.map((d) => stItem(d.label,
+      d.now ? __("niveau actuel {kg} kg × {reps}", { kg: stN(d.now.kg), reps: d.now.reps }) : "", d.pr ? `${kg(d.pr.kg)} × ${d.pr.reps}${d.pr.e1rm ? ` (≈ ${stN(d.pr.e1rm)})` : ""}` : "–"))) : null,
+    h("p", { class: "st-note" }, "e1RM : maximum théorique sur une répétition, estimé par la formule d'Epley (charge × (1 + répétitions / 30)). Calculé seulement pour 1 à 10 répétitions : c'est une estimation, pas un test."));
+}
+
+function stTrajectoryCard(t) {
+  if (!t) return stEmpty("Trajectoire vers l'objectif", "Pas d'objectif de performance daté. Ajoutez-en un dans Objectifs (par exemple « 10 km en moins de 40 min » dans deux ans) : les étapes et le repère de progression apparaissent ici.",
+    h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => goalsScreen() }, "Ouvrir Objectifs"));
+  const g = t.target;
+  const verdict = { atteint: "Objectif atteint", réaliste: "Rythme réaliste", ambitieux: "Rythme ambitieux", "très ambitieux": "Rythme très ambitieux", inconnu: "Niveau actuel inconnu" }[t.verdict] || t.verdict;
+  const hasChart = t.reference.length || t.measured.length;
+  const label = __("Trajectoire : objectif {time} sur {km} km le {date}.", { time: g.time, km: stN(g.distance_km), date: stDay(g.date, { day: "numeric", month: "long", year: "numeric" }) });
+  return stCard("Trajectoire vers l'objectif",
+    h("p", null, h("span", { class: "st-big" }, g.time), h("span", { class: "st-unit" }, __("sur {km} km, soit {pace} /km", { km: stN(g.distance_km), pace: g.pace }))),
+    h("p", { class: "muted" }, g.title, " · ", stDay(g.date, { day: "numeric", month: "long", year: "numeric" })),
+    t.level ? h("p", null, __("Niveau actuel équivalent : {time}", { time: t.level.time }), " ", h("span", { class: "muted" }, `(${t.level.source})`)) : h("p", { class: "muted" }, "Niveau actuel inconnu : renseignez un record de 5 km ou de 10 km dans Mes performances."),
+    t.level ? h("p", { class: "muted" }, `${verdict}. `, t.verdict === "atteint" ? "" : __("Écart à combler : {gap} % en {weeks} semaines.", { gap: stN(t.gap_pct), weeks: t.weeks_left })) : null,
+    hasChart ? plotChart({ dots: t.measured.map((m) => ({ day: m.day, y: m.minutes })), line: t.reference.map((r) => ({ day: r.day, y: r.minutes })), target: t.goal_minutes, fmt: stTime, invert: true, label }) : null,
+    hasChart ? stLegend(...(t.measured.length ? [["dot", "estimation de la montre"]] : []), ...(t.reference.length ? [["", "repère de progression"]] : []), ["target", "objectif"]) : null,
+    h("p", { class: "st-note" }, "Le repère relie votre niveau actuel à l'objectif en ligne droite : c'est une référence, pas une prévision. Plus haut sur le graphique = plus rapide."),
+    ...t.warnings.map((w) => h("p", { class: "muted" }, w)),
+    t.phases.length ? h("div", null, h("h4", null, "Phases"), t.phases.map((p) => stItem(p.label, p.text, __("{weeks} sem. · {start}", { weeks: p.weeks, start: stShort(p.start) })))) : null,
+    t.milestones.length ? valuesTable("Jalons : un test chronométré tous les trois mois", ["Date", "Épreuve", "Temps visé"], t.milestones.map((m) => [stDay(m.date, { day: "numeric", month: "long", year: "numeric" }), m.label, m.target_time])) : null,
+    h("p", { class: "st-note" }, __("Règles C10 à C12. Volume de course visé : {km} km par semaine.", { km: t.weekly_km_target })));
+}
+
+function curvesCard(curves) {
+  if (!curves.length) return stEmpty("Courbes par exercice", "Saisissez les charges et les répétitions dans vos séances de musculation : une courbe apparaît pour chaque exercice dès la deuxième séance.");
+  const body = h("div", { class: "stack" });
+  const pick = h("select", { "aria-label": "Exercice" }, curves.map((c, i) => h("option", { value: i }, c.name)));
+  const draw = () => {
+    const c = curves[Number(pick.value)], weighted = c.mode === "e1rm";
+    const unit = weighted ? "kg" : "";
+    const name = weighted ? "e1RM estimé (≈ kg)" : "meilleure série (répétitions)";
+    const pts = c.points.map((p) => ({ day: p.day, y: p.value }));
+    const label = __("{name} : {n} séances, de {first} à {last}.", { name: c.name, n: c.sessions, first: stN(pts[0].y), last: stN(pts[pts.length - 1].y) });
+    body.replaceChildren(
+      h("p", { class: "muted" }, name, c.change ? [" · ", __("{delta} depuis la première séance", { delta: `${c.change.abs > 0 ? "+" : ""}${stN(c.change.abs)} ${unit}`.trim() + (c.change.pct != null ? ` (${c.change.pct > 0 ? "+" : ""}${stN(c.change.pct)} %)` : "") })] : null),
+      pts.length > 1 ? plotChart({ dots: pts, line: pts, fmt: (v) => stFmt(v, weighted ? 0 : 0), label }) : h("p", { class: "muted" }, "Un seul point pour l'instant : la courbe apparaît à la prochaine séance."),
+      valuesTable(c.name, ["Jour", "Charge max (kg)", "Répétitions max", "Séries", weighted ? "e1RM (≈ kg)" : "Répétitions"],
+        c.points.slice().reverse().map((p) => [stDay(p.day, { day: "numeric", month: "short", year: "2-digit" }), p.kg == null ? "–" : stN(p.kg), stFmt(p.reps), p.sets, stN(p.value)])));
+  };
+  pick.addEventListener("change", draw);
+  draw();
+  return stCard("Courbes par exercice", pick, body, h("p", { class: "st-note" }, "Séances faites des 16 dernières semaines, un point par jour. Avec des charges : e1RM estimé (Epley, 1 à 10 répétitions) ; sans charge : meilleure série en répétitions."));
+}
+
+function volumeCard(v) {
+  const weeks = v.weeks, days = weeks.map((w) => w.monday), cur = weeks.find((w) => w.current);
+  if (weeks.every((w) => !w.minutes && !w.run_km && !w.strength_sets)) return stEmpty("Volume par semaine", "Aucune activité sur les 12 dernières semaines.");
+  const tick = (iso) => stDay(iso, { day: "numeric" });
+  const km = weeks.map((w) => w.run_km), mins = weeks.map((w) => w.minutes);
+  const kmLabel = __("Kilomètres de course par semaine sur 12 semaines, la semaine en cours est incomplète : {values}.", { values: weeks.map((w) => `${stShort(w.monday)} ${stN(w.run_km)}`).join(", ") });
+  const minLabel = __("Minutes d'activité par semaine sur 12 semaines, la semaine en cours est incomplète : {values}.", { values: weeks.map((w) => `${stShort(w.monday)} ${stFmt(w.minutes)}`).join(", ") });
+  return stCard("Volume par semaine",
+    h("strong", null, "Course (km)"),
+    barChart({ days, values: km.map((x) => (x || null)), targets: v.weekly_km_target ? km.map(() => v.weekly_km_target) : null, today: cur && cur.monday, tick, format: (x) => stN(x), label: kmLabel }),
+    h("strong", null, "Temps d'activité (min)"),
+    barChart({ days, values: mins.map((x) => (x || null)), today: cur && cur.monday, tick, format: (x) => stFmt(x), label: minLabel }),
+    stLegend(["", "semaine (lundi au dimanche)"], ...(v.weekly_km_target ? [["target", __("repère du plan : {km} km", { km: v.weekly_km_target })]] : [])),
+    h("p", { class: "st-note" }, "La semaine en cours (en clair) est incomplète. Les kilomètres viennent de la montre ; le temps inclut aussi les séances saisies à la main. Une semaine vide reste vide (« – »)."),
+    valuesTable("Volume par semaine", ["Semaine du", "Course (km)", "Minutes", "Séries de muscu", "Tonnage (kg)"],
+      weeks.slice().reverse().map((w) => [stDay(w.monday, { day: "numeric", month: "short" }) + (w.current ? " *" : ""), stN(w.run_km), stFmt(w.minutes), stFmt(w.strength_sets), stFmt(w.tonnage_kg)])));
+}
+
+function paceCard(p) {
+  if (!p.outings.length) return stEmpty("Allure par sortie", "Aucune sortie de course sur les 4 derniers mois. Elles apparaissent ici après la synchronisation de la montre.");
+  const dots = p.outings.map((o) => ({ day: o.day, y: o.pace }));
+  const rec = p.recent, bef = p.before;
+  const diff = p.change_s_per_km;
+  const label = __("Allure de {n} sorties de course sur 4 mois, de {first} à {last} par km.", { n: p.outings.length, first: p.outings[0].pace_label, last: p.outings[p.outings.length - 1].pace_label });
+  return stCard("Allure par sortie",
+    rec ? h("p", null, h("span", { class: "st-big" }, rec.pace_label), h("span", { class: "st-unit" }, __("/km sur les 28 derniers jours ({n} sorties d'au moins 3 km)", { n: rec.outings }))) : h("p", { class: "muted" }, "Pas assez de sorties d'au moins 3 km sur 28 jours pour une allure moyenne."),
+    diff != null ? h("p", { class: "muted" }, diff === 0 ? __("Identique aux 28 jours précédents ({pace} /km).", { pace: bef.pace_label })
+      : diff < 0 ? __("{s} s/km plus rapide que les 28 jours précédents ({pace} /km).", { s: Math.abs(diff), pace: bef.pace_label })
+        : __("{s} s/km plus lent que les 28 jours précédents ({pace} /km).", { s: diff, pace: bef.pace_label })) : null,
+    plotChart({ dots, fmt: stPace, invert: true, label }),
+    h("p", { class: "st-note" }, "Chaque point est une sortie, sans les relier : un footing, une sortie longue et une séance de vitesse n'ont pas la même allure. Plus haut = plus rapide."),
+    valuesTable("Sorties de course", ["Jour", "Distance (km)", "Durée (min)", "Allure (/km)", "FC moyenne"],
+      p.outings.slice().reverse().map((o) => [stDay(o.day, { day: "numeric", month: "short", year: "2-digit" }), stN(o.km), o.minutes, o.pace_label, o.avg_hr == null ? "–" : o.avg_hr])));
+}
+
+async function renderProgress(box) {
+  const d = await api(`/users/${userId}/stats/progress`);
+  box.replaceChildren(runRecordsCard(d.records.running), liftRecordsCard(d.records.lifts, d.records.declared_lifts), stTrajectoryCard(d.trajectory), curvesCard(d.curves), volumeCard(d.volume), paceCard(d.pace));
+}
+
 // ---------- écran ----------
 
 // Sections de l'écran : [id, libellé, rendu]. Chaque lot en ajoute une.
-const STATS_SECTIONS = [["daily", "Quotidien", renderDaily]];
+const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress]];
 
 async function statsScreen(section) {
   const cur = STATS_SECTIONS.find((s) => s[0] === (section || store.get("sc-stats-section"))) || STATS_SECTIONS[0];
