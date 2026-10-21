@@ -1,0 +1,17 @@
+{
+ "id": "msg_sample",
+ "type": "message",
+ "role": "assistant",
+ "model": "claude-sonnet-5-5",
+ "content": [
+  {
+   "type": "text",
+   "text": "Voici l'estimation :\n{\"items\": [{\"name\": \"pâtes à la crème\", \"quantity\": \"1 assiette\", \"kcal\": 700, \"protein_g\": 22, \"carbs_g\": 85, \"fat_g\": 28}], \"totals\": {\"kcal_min\": 600, \"kcal_max\": 900, \"protein_g\": 22, \"carbs_g\": 85, \"fat_g\": 28}, \"confidence\": \"faible\", \"assumptions\": \"portion standard, crème entière\", \"feedback\": \"Repas riche en glucides.\", \"tips\": [\"Ajoutez des légumes.\"], \"questions\": [{\"text\": \"Quel poids de pâtes cuites environ ?\", \"choices\": [\"moins de 250 g\", \"250 à 400 g\", \"plus de 400 g\"]}, {\"text\": \"Y a-t-il une sauce ou du fromage ajouté ?\", \"choices\": [\"oui\", \"non\"]}, {\"text\": \"Troisième question à ignorer\", \"choices\": []}]}"
+  }
+ ],
+ "stop_reason": "end_turn",
+ "usage": {
+  "input_tokens": 1450,
+  "output_tokens": 210
+ }
+}

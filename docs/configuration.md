@@ -35,6 +35,8 @@ scripts/init-secrets.sh --vapid    # also generate Web Push (VAPID) keys
 | `ALLOWED_HOSTS` | – | comma list of accepted `Host` headers (`coach.example.org,localhost`); recommended once exposed |
 | `ENABLE_DOCS` | `0` | `1` serves `/docs` and `/openapi.json` (development only) |
 | `LOG_LEVEL` | `info` | |
+| `OFF_ENABLED` | `1` | `0` disables the barcode lookup (Open Food Facts). Only the barcode is sent, with a `COACH-selfhosted` user agent and a 6 s timeout; nothing else leaves your server |
+| `OFF_BASE_URL` | `https://world.openfoodfacts.org` | alternative Open Food Facts address (mirror) |
 | `APP_BIND`, `APP_PORT` | `127.0.0.1`, `8000` | host port mapping (compose) |
 
 ### AI coach — providers and models

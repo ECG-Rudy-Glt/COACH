@@ -1477,6 +1477,17 @@ async function fileToJpegB64(file, max = 1280, q = 0.72) {
   return c.toDataURL("image/jpeg", q).split(",")[1];
 }
 
+// Le chiffre principal est la moyenne des jours estimés (N6, N10) : un repas ou un jour isolé n'est qu'un repère.
+function weekCard(w) {
+  if (!w) return h("div", { class: "card stack" }, h("h3", null, "Moyenne des 7 derniers jours"), h("p", { class: "muted" }, "Estimez quelques repas : la moyenne de la semaine apparaît ici. C'est elle qu'il faut suivre, pas un repas isolé."));
+  const gap = w.kcal - w.target_kcal;
+  return h("div", { class: "card stack" }, h("h3", null, "Moyenne des 7 derniers jours"),
+    h("p", { class: "num", style: "font-size:1.9rem" }, __("≈ {kcal} kcal par jour", { kcal: w.kcal })),
+    bar("Énergie", w.kcal, w.target_kcal, "kcal"), bar("Protéines", w.protein_g, w.target_protein_g, "g"),
+    h("p", { class: "muted", style: "font-size:.8125rem" }, __(w.days > 1 ? "Sur {days} jours estimés : {sign}{gap} kcal par rapport à l'objectif." : "Sur {days} jour estimé : {sign}{gap} kcal par rapport à l'objectif.",
+      { days: w.days, sign: gap >= 0 ? "+" : "−", gap: Math.abs(gap) }), " ", __("Les estimations sont souvent sous-évaluées : regardez surtout la tendance de poids.")));
+}
+
 function bar(label, val, target, unit) {
   const pct = target ? Math.min(100, Math.round((val / target) * 100)) : 0;
   return h("div", { class: "stack", style: "gap:4px" },
@@ -1499,6 +1510,73 @@ function weightChart(w, targetKg) {
     + `<polyline fill="none" stroke="var(--accent)" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>`
     + w.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.kg)}" r="2.5" fill="var(--muted)" stroke="none"/>`).join("");
   return svg;
+}
+
+const chipStyle = (on) => `border:0;cursor:pointer;opacity:${on ? 1 : 0.55};${on ? "outline:2px solid var(--accent)" : ""}`;
+
+function slotPicker() {
+  const hr = new Date().getHours();
+  let slot = hr < 10 ? "petit-déjeuner" : hr < 15 ? "déjeuner" : hr < 18 ? "collation" : "dîner";
+  const box = h("div", { class: "chips" });
+  const draw = () => box.replaceChildren(...SLOTS.map((x) => h("button", { type: "button", class: "chip", "aria-pressed": slot === x, style: chipStyle(slot === x), onclick: () => { slot = x; draw(); } }, x)));
+  draw();
+  return { el: box, get: () => slot };
+}
+
+// Questions de clarification (N9) : réponses rapides ou libres, toujours possible de passer.
+function clarifyBlock(m, reload) {
+  const qs = m.analysis.questions;
+  const picked = qs.map(() => "");
+  const inputs = qs.map((q, i) => h("input", { type: "text", maxlength: "200", id: `q-${m.id}-${i}`, placeholder: "Ou précisez en quelques mots", "aria-label": q.text }));
+  const rows = qs.map((q, i) => {
+    const chips = h("div", { class: "chips" });
+    const draw = () => chips.replaceChildren(...(q.choices || []).map((c) => h("button", { type: "button", class: "chip", "aria-pressed": picked[i] === c, style: chipStyle(picked[i] === c),
+      onclick: () => { picked[i] = picked[i] === c ? "" : c; inputs[i].value = ""; draw(); } }, c)));
+    inputs[i].addEventListener("input", () => { picked[i] = ""; draw(); });
+    draw();
+    return h("fieldset", { class: "stack", style: "gap:6px;border:0;padding:0;margin:0" }, h("legend", { style: "font-weight:600;padding:0" }, q.text), chips, inputs[i]);
+  });
+  const send = async (body, btns) => {
+    btns.forEach((b) => { b.disabled = true; });
+    try { await api(`/users/${userId}/nutrition/meals/${m.id}/estimate`, { method: "POST", body }); reload(); } catch (e) { toast(e.message); btns.forEach((b) => { b.disabled = false; }); }
+  };
+  const ok = h("button", { class: "btn sm primary" }, "Affiner l'estimation");
+  const skip = h("button", { class: "btn sm" }, "Passer");
+  ok.addEventListener("click", () => {
+    const answers = qs.map((q, i) => ({ question: q.text, answer: inputs[i].value.trim() || picked[i] })).filter((a) => a.answer);
+    if (!answers.length) { toast("Répondez à au moins une question, ou passez."); return; }
+    ok.textContent = __("Estimation en cours…"); send({ answers }, [ok, skip]);
+  });
+  skip.addEventListener("click", () => send({ skip: true }, [ok, skip]));
+  return h("div", { class: "stack", role: "group", "aria-label": "Questions pour affiner l'estimation", style: "gap:10px;border-top:.5px solid var(--line);padding-top:10px" },
+    h("p", { class: "muted" }, "Pour affiner (facultatif) :"), ...rows, h("div", { class: "row", style: "gap:8px" }, ok, skip));
+}
+
+// Correction de l'utilisateur : son chiffre fait foi et sert d'exemple aux estimations suivantes (N10).
+function correctionBlock(m, reload) {
+  const a = m.analysis || {};
+  const field = (id, label, val) => h("label", { class: "stack", for: id, style: "gap:4px" }, h("span", { class: "muted", style: "font-size:.8125rem" }, label),
+    h("input", { id, type: "number", inputmode: "decimal", min: "0", step: "1", value: val ?? "" }));
+  const k = field(`c-k-${m.id}`, "Calories (kcal)", a.kcal), p = field(`c-p-${m.id}`, "Protéines (g)", a.protein_g), g = field(`c-g-${m.id}`, "Glucides (g)", a.carbs_g), l = field(`c-l-${m.id}`, "Lipides (g)", a.fat_g);
+  let touched = false;
+  for (const f of [p, g, l]) f.querySelector("input").addEventListener("input", () => { touched = true; });
+  const save = h("button", { class: "btn sm primary" }, "Enregistrer la correction");
+  const err = h("p", { class: "error", role: "alert" });
+  save.addEventListener("click", async () => {
+    err.textContent = "";
+    const raw = k.querySelector("input").value;
+    const kcal = Math.round(Number(raw));
+    if (!raw || !Number.isFinite(kcal) || kcal < 0) { err.textContent = __("Indiquez les calories."); return; }
+    const body = { kcal };
+    if (touched) { const n = (f) => Number(f.querySelector("input").value) || 0; body.protein_g = n(p); body.carbs_g = n(g); body.fat_g = n(l); }
+    save.disabled = true;
+    try { await api(`/users/${userId}/nutrition/meals/${m.id}/correction`, { method: "PUT", body }); toast("Correction enregistrée"); reload(); } catch (e) { err.textContent = e.message; save.disabled = false; }
+  });
+  const form = h("div", { class: "stack", hidden: true, style: "gap:8px" }, h("div", { class: "grid2" }, k, p, g, l),
+    h("p", { class: "muted", style: "font-size:.8125rem" }, "Vos chiffres remplacent l'estimation et servent d'exemple aux prochaines estimations de repas semblables."), err, save);
+  const open = h("button", { class: "link", "aria-expanded": "false" }, "Corriger les chiffres");
+  open.addEventListener("click", () => { form.hidden = !form.hidden; open.setAttribute("aria-expanded", String(!form.hidden)); });
+  return h("div", { class: "stack", style: "gap:8px" }, open, form);
 }
 
 async function nutritionScreen(day) {
@@ -1524,7 +1602,10 @@ async function nutritionScreen(day) {
       a ? h("div", { class: "stack", style: "gap:6px" },
         h("div", { class: "chips" }, h("span", { class: "chip" }, __("≈ {kcal} kcal ({kcal_min}-{kcal_max})", { kcal: a.kcal, kcal_min: a.kcal_min, kcal_max: a.kcal_max })), h("span", { class: "chip" }, `P ${a.protein_g} g`), h("span", { class: "chip" }, `G ${a.carbs_g} g`), h("span", { class: "chip" }, `L ${a.fat_g} g`)),
         a.feedback ? h("p", { class: "muted" }, a.feedback) : null, ...(a.tips || []).map((x) => h("p", { class: "muted" }, "• " + x)),
-        h("p", { class: "muted", style: "font-size:.8125rem" }, __("Estimation (confiance {confidence}). {v}", { confidence: a.confidence, v: a.assumptions || "" })))
+        h("p", { class: "muted", style: "font-size:.8125rem" }, a.corrected ? (a.original ? __("Chiffres corrigés par vous (estimation initiale : {kcal} kcal).", { kcal: a.original.kcal }) : "Chiffres corrigés par vous.")
+          : a.source === "openfoodfacts" ? __("Valeurs de l'emballage (Open Food Facts). {v}", { v: a.assumptions || "" }) : __("Estimation (confiance {confidence}). {v}", { confidence: a.confidence, v: a.assumptions || "" })),
+        (a.questions || []).length ? clarifyBlock(m, () => nutritionScreen(d.day)) : null,
+        correctionBlock(m, () => nutritionScreen(d.day)))
         : est);
   };
   const dayNav = h("div", { class: "row between" },
@@ -1544,14 +1625,16 @@ async function nutritionScreen(day) {
     h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Nutrition"), themeToggle()),
     h("h1", null, "Nutrition"),
     dayNav,
+    weekCard(prog.week_average),
     h("div", { class: "card stack" },
-      h("div", { class: "row between" }, h("h3", null, "Objectif du jour"), h("span", { class: "chip" }, t.day_load === "training" ? "Jour d'entraînement" : "Jour de repos")),
-      h("p", null, h("span", { class: "num", style: "font-size:1.9rem" }, `≈ ${t.kcal}`), " kcal"),
+      h("div", { class: "row between" }, h("h3", null, "Ce jour"), h("span", { class: "chip" }, t.day_load === "training" ? "Jour d'entraînement" : "Jour de repos")),
+      h("p", { class: "num", style: "font-size:1.25rem" }, __("≈ {kcal} / {target} kcal (objectif du jour)", { kcal: tot.kcal, target: t.kcal })),
       bar("Énergie", tot.kcal, t.kcal, "kcal"), bar("Protéines", tot.protein_g, t.protein_g, "g"), bar("Glucides", tot.carbs_g, t.carbs_g, "g"), bar("Lipides", tot.fat_g, t.fat_g, "g"),
       tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, __("{v} repas sans estimation : ils ne sont pas comptés.", { v: tot.meals - tot.estimated_meals })) : null,
       t.notice ? h("p", { class: "muted" }, t.notice) : null,
       h("p", { class: "muted", style: "font-size:.8125rem" }, __("Dépense estimée {tdee} kcal, déficit {deficit_kcal} kcal ({rate_pct_per_week} % du poids par semaine). Règles {join}.", { tdee: t.tdee, deficit_kcal: t.deficit_kcal, rate_pct_per_week: t.rate_pct_per_week, join: t.rules.join(", ") }))),
-    h("button", { class: "btn primary", onclick: () => mealForm(d.day) }, "Ajouter un repas"),
+    h("div", { class: "grid2" }, h("button", { class: "btn primary", onclick: () => mealForm(d.day) }, "Ajouter un repas"),
+      d.barcode ? h("button", { class: "btn", onclick: () => barcodeForm(d.day) }, "Produit emballé") : null),
     ...d.meals.map(mealCard),
     d.meals.length ? null : h("div", { class: "card" }, h("p", { class: "muted" }, "Aucun repas enregistré ce jour. Décrivez ce que vous avez mangé, avec ou sans photo : l'IA estime calories et macros (ordres de grandeur).")),
     h("div", { class: "card stack" }, h("h3", null, "Suivi du poids"),
@@ -1566,14 +1649,7 @@ async function nutritionScreen(day) {
 }
 
 function mealForm(day) {
-  const hr = new Date().getHours();
-  let slot = hr < 10 ? "petit-déjeuner" : hr < 15 ? "déjeuner" : hr < 18 ? "collation" : "dîner";
-  let file = null;
-  const err = h("p", { class: "error", role: "alert" });
-  const slotsBox = h("div", { class: "chips" });
-  const drawSlots = () => slotsBox.replaceChildren(...SLOTS.map((s) => h("button", { type: "button", class: "chip", "aria-pressed": slot === s,
-    style: `border:0;cursor:pointer;opacity:${slot === s ? 1 : 0.5};${slot === s ? "outline:2px solid var(--accent)" : ""}`, onclick: () => { slot = s; drawSlots(); } }, s)));
-  drawSlots();
+  const sp = slotPicker();
   const desc = h("textarea", { id: "meal-desc", placeholder: "Ex. : 150 g de poulet, riz (1 assiette), brocolis, un peu d'huile d'olive…", "aria-label": "Description du repas" });
   const preview = h("img", { alt: "Aperçu de la photo", style: "width:100%;max-height:260px;object-fit:cover;border-radius:14px;display:block" });
   const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Prendre une photo" });  // ouvre directement l'appareil photo (iPhone, Android)
@@ -1600,7 +1676,7 @@ function mealForm(day) {
     if (!desc.value.trim() && !file) { err.textContent = __("Décrivez votre repas ou ajoutez une photo."); return; }
     go.disabled = true; go.textContent = est.checked ? "Estimation en cours…" : "Enregistrement…";
     try {
-      const body = { day, slot, description: desc.value.trim(), estimate: est.checked, for_tomorrow: canTomorrow && box.checked };
+      const body = { day, slot: sp.get(), description: desc.value.trim(), estimate: est.checked, for_tomorrow: canTomorrow && box.checked };
       if (file) body.photo_b64 = await fileToJpegB64(file);
       const r = await api(`/users/${userId}/nutrition/meals`, { method: "POST", body });
       if (r.analysis_error) toast(__("Repas enregistré. Estimation indisponible : {analysis_error}", { analysis_error: r.analysis_error }));
@@ -1611,10 +1687,80 @@ function mealForm(day) {
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
     h("h1", null, "Ajouter un repas"),
-    h("div", { class: "card stack" }, slotsBox, desc, boxRow, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
+    h("div", { class: "card stack" }, sp.el, desc, boxRow, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
       h("p", { class: "muted", style: "font-size:.8125rem" }, "Pour une meilleure estimation : photo de dessus, bien éclairée, assiette entière visible ; précisez dans la description les quantités, l'huile et les sauces (ce qu'on ne voit pas).")),
       h("label", { class: "row", for: "meal-est" }, est, h("span", null, "Estimer calories et macros avec l'IA")),
       h("p", { class: "muted", style: "font-size:.8125rem" }, "La photo est redimensionnée sur votre téléphone, stockée sur votre serveur et envoyée à l'IA uniquement pour l'estimation. Les chiffres sont des ordres de grandeur, souvent sous-estimés : suivez la tendance de la semaine, pas un repas isolé."), err),
+    actionBar(go),
+  );
+}
+
+// Produit emballé (N10) : code saisi ou lu sur une photo (BarcodeDetector si le navigateur l'a), valeurs pour 100 g × quantité, sans IA.
+async function readBarcode(file) {
+  const det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
+  const bmp = await createImageBitmap(file);
+  const found = await det.detect(bmp);
+  return found.length ? found[0].rawValue : null;
+}
+
+function barcodeForm(day) {
+  const sp = slotPicker();
+  let product = null;
+  const err = h("p", { class: "error", role: "alert" });
+  const code = h("input", { id: "bc-code", type: "text", inputmode: "numeric", maxlength: "14", autocomplete: "off", placeholder: "Code-barres (8 à 14 chiffres)", "aria-label": "Code-barres" });
+  const grams = h("input", { id: "bc-grams", type: "number", inputmode: "decimal", min: "1", max: "5000", step: "1", placeholder: "Quantité mangée (g)", "aria-label": "Quantité mangée en grammes" });
+  const info = h("div", { class: "stack", hidden: true, "aria-live": "polite" });
+  const go = h("button", { class: "btn primary", disabled: true }, "Enregistrer");
+  const find = h("button", { class: "btn sm" }, "Chercher");
+  const per = (g) => (product ? Math.round((product.kcal_100g * g) / 100) : 0);
+  const refresh = () => {
+    const g = Number(grams.value);
+    go.disabled = !product || !(g > 0);
+    const out = info.querySelector("[data-out]");
+    if (out) out.textContent = g > 0 ? __("≈ {kcal} kcal pour {g} g", { kcal: per(g), g }) : __("Indiquez la quantité mangée.");
+  };
+  const lookup = async () => {
+    err.textContent = ""; product = null; info.hidden = true; go.disabled = true;
+    const c = code.value.replace(/\s/g, "");
+    if (!c) { err.textContent = __("Saisissez ou scannez un code-barres."); return; }
+    find.disabled = true; find.textContent = __("Recherche…");
+    try {
+      product = await api(`/users/${userId}/nutrition/barcode/${encodeURIComponent(c)}`);
+      if (product.serving_g && !grams.value) grams.value = product.serving_g;
+      info.replaceChildren(h("strong", null, product.name + (product.brand ? ` · ${product.brand}` : "")),
+        h("p", { class: "muted" }, __("Pour 100 g : {kcal} kcal · P {p} g · G {c} g · L {f} g", { kcal: product.kcal_100g, p: product.protein_100g, c: product.carbs_100g, f: product.fat_100g })),
+        h("p", { "data-out": "" }));
+      info.hidden = false; refresh();
+    } catch (e) { err.textContent = e.message; }
+    find.disabled = false; find.textContent = __("Chercher");
+  };
+  find.addEventListener("click", lookup);
+  code.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); lookup(); } });
+  grams.addEventListener("input", refresh);
+  let scan = null;
+  if (window.BarcodeDetector) {
+    const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Photographier le code-barres" });
+    cam.addEventListener("change", async () => {
+      const f = cam.files[0]; cam.value = ""; err.textContent = "";
+      if (!f) return;
+      try { const v = await readBarcode(f); if (v) { code.value = v; lookup(); } else err.textContent = __("Code non lu : cadrez-le de près, bien éclairé, ou saisissez les chiffres."); }
+      catch { err.textContent = __("Lecture impossible sur cet appareil : saisissez les chiffres."); }
+    });
+    scan = h("div", null, cam, h("button", { type: "button", class: "photo-btn primary", onclick: () => cam.click() }, icon("camera"), h("span", null, "Scanner le code-barres")));
+  }
+  go.addEventListener("click", async () => {
+    go.disabled = true; go.textContent = "Enregistrement…";
+    try {
+      await api(`/users/${userId}/nutrition/meals`, { method: "POST", body: { day, slot: sp.get(), barcode: product.code, grams: Number(grams.value) } });
+      nutritionScreen(day);
+    } catch (e) { err.textContent = e.message; go.disabled = false; go.textContent = "Enregistrer"; }
+  });
+  show(
+    h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
+    h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
+    h("h1", null, "Produit emballé"),
+    h("div", { class: "card stack" }, sp.el, scan, h("div", { class: "row", style: "gap:8px" }, code, find), info, grams,
+      h("p", { class: "muted", style: "font-size:.8125rem" }, "Valeurs de l'emballage (Open Food Facts, base collaborative : elles peuvent être inexactes, corrigez-les au besoin). Seul le code-barres est envoyé ; aucune IA n'intervient."), err),
     actionBar(go),
   );
 }

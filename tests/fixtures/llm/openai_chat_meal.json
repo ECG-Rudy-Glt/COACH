@@ -1,0 +1,20 @@
+{
+ "id": "chatcmpl-sample",
+ "object": "chat.completion",
+ "model": "gpt-4o-mini",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"items\": [{\"name\": \"pâtes à la crème\", \"quantity\": \"1 assiette\", \"kcal\": 700, \"protein_g\": 22, \"carbs_g\": 85, \"fat_g\": 28}], \"totals\": {\"kcal_min\": 600, \"kcal_max\": 900, \"protein_g\": 22, \"carbs_g\": 85, \"fat_g\": 28}, \"confidence\": \"faible\", \"assumptions\": \"portion standard, crème entière\", \"feedback\": \"Repas riche en glucides.\", \"tips\": [\"Ajoutez des légumes.\"], \"questions\": [{\"text\": \"Quel poids de pâtes cuites environ ?\", \"choices\": [\"moins de 250 g\", \"250 à 400 g\", \"plus de 400 g\"]}, {\"text\": \"Y a-t-il une sauce ou du fromage ajouté ?\", \"choices\": [\"oui\", \"non\"]}, {\"text\": \"Troisième question à ignorer\", \"choices\": []}]}"
+   },
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1450,
+  "completion_tokens": 210,
+  "total_tokens": 1660
+ }
+}
