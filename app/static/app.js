@@ -1568,12 +1568,6 @@ function mealForm(day) {
     previewBox.hidden = !file; photoBtns.hidden = !!file;
   };
   for (const input of [cam, lib]) input.addEventListener("change", () => { setPhoto(input.files[0]); input.value = ""; });
-  let portion = "normale";
-  const portionBox = h("div", { class: "chips", role: "group", "aria-label": "Taille de la portion" });
-  const drawPortion = () => portionBox.replaceChildren(...[["petite", "Petite portion"], ["normale", "Portion normale"], ["grosse", "Gros plat"]].map(([k, label]) =>
-    h("button", { type: "button", class: "chip", "aria-pressed": portion === k, style: `border:0;cursor:pointer;opacity:${portion === k ? 1 : 0.5};${portion === k ? "outline:2px solid var(--accent)" : ""}`,
-      onclick: () => { portion = k; drawPortion(); } }, label)));
-  drawPortion();
   const canTomorrow = day <= isoDay(new Date());  // la gamelle se compte le lendemain : impossible au-delà de demain
   const box = h("input", { type: "checkbox", id: "meal-box" });
   const boxRow = canTomorrow ? h("label", { class: "row", for: "meal-box" }, box, h("span", null, "Gamelle pour demain midi (comptée demain)")) : null;
@@ -1584,7 +1578,7 @@ function mealForm(day) {
     if (!desc.value.trim() && !file) { err.textContent = "Décrivez votre repas ou ajoutez une photo."; return; }
     go.disabled = true; go.textContent = est.checked ? "Estimation en cours…" : "Enregistrement…";
     try {
-      const body = { day, slot, description: desc.value.trim(), estimate: est.checked, portion, for_tomorrow: canTomorrow && box.checked };
+      const body = { day, slot, description: desc.value.trim(), estimate: est.checked, for_tomorrow: canTomorrow && box.checked };
       if (file) body.photo_b64 = await fileToJpegB64(file);
       const r = await api(`/users/${userId}/nutrition/meals`, { method: "POST", body });
       if (r.analysis_error) toast("Repas enregistré. Estimation indisponible : " + r.analysis_error);
@@ -1595,7 +1589,7 @@ function mealForm(day) {
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
     h("h1", null, "Ajouter un repas"),
-    h("div", { class: "card stack" }, slotsBox, desc, portionBox, boxRow, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
+    h("div", { class: "card stack" }, slotsBox, desc, boxRow, h("div", { class: "stack", style: "gap:8px" }, h("strong", null, "Photo (facultatif)"), cam, lib, photoBtns, previewBox,
       h("p", { class: "muted", style: "font-size:.8125rem" }, "Pour une meilleure estimation : photo de dessus, bien éclairée, assiette entière visible ; précisez dans la description les quantités, l'huile et les sauces (ce qu'on ne voit pas).")),
       h("label", { class: "row", for: "meal-est" }, est, h("span", null, "Estimer calories et macros avec l'IA")),
       h("p", { class: "muted", style: "font-size:.8125rem" }, "La photo est redimensionnée sur votre téléphone, stockée sur votre serveur et envoyée à l'IA uniquement pour l'estimation. Les chiffres sont des ordres de grandeur, souvent sous-estimés : suivez la tendance de la semaine, pas un repas isolé."), err),

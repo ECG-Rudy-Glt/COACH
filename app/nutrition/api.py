@@ -35,7 +35,6 @@ class MealIn(BaseModel):
     description: str = Field(default="", max_length=800)
     photo_b64: str | None = Field(default=None, max_length=5_000_000)
     estimate: bool = True
-    portion: Literal["petite", "normale", "grosse"] = "normale"
     for_tomorrow: bool = False  # gamelle préparée aujourd'hui, mangée demain midi : comptée le lendemain
 
 
@@ -160,8 +159,6 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         if len(repo.list_meals(user_id, d, d)) >= MAX_MEALS_PER_DAY:
             raise HTTPException(422, "Trop de repas pour cette journée.")
         description = body.description.strip()
-        if body.portion != "normale":  # transmis à l'IA par le texte : la réestimation garde l'indication
-            description = f"{description} (portion : {body.portion})".strip()
         path = None
         if body.photo_b64:
             path, _, _ = _save_photo(user_id, body.photo_b64)
