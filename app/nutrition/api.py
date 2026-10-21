@@ -185,6 +185,29 @@ def week_summary(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
             "avertissement": "estimations de repas souvent sous-évaluées : on suit la tendance, pas un jour isolé"}
 
 
+def coach_context(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
+    """Nutrition vue par le coach (discussion) : cibles du jour, repas du jour, 7 derniers jours, poids. Chiffres du moteur, estimations signalées."""
+    p, _ = _profile(repo, user_id, today)
+    tg = eng.targets(p, _day_load(repo, user_id, today))
+    meals = repo.list_meals(user_id, today - timedelta(days=6), today)
+    days: dict[date, list[dict[str, Any]]] = {}
+    for m in meals:
+        days.setdefault(m["day"], []).append(m)
+    week = []
+    for d in sorted(days, reverse=True):
+        t = _sum(days[d])
+        week.append({"jour": d.isoformat(), "kcal_estimees": t["kcal"], "proteines_g": t["protein_g"], "repas_estimes": t["estimated_meals"], "repas": t["meals"]})
+    today_meals = [{"moment": m["slot"], "description": m["description"][:120], "kcal": (m["analysis"] or {}).get("kcal"),
+                    "proteines_g": (m["analysis"] or {}).get("protein_g")} for m in days.get(today, [])]
+    tr = eng.trend(repo.list_weights(user_id, today - timedelta(days=60)), today)
+    return {"cibles_jour": {k: tg[k] for k in ("kcal", "protein_g", "carbs_g", "fat_g", "tdee", "deficit_kcal", "rate_pct_per_week")},
+            "objectif_poids": {"sens": p.direction, "cible_kg": p.target_kg, "poids_kg": p.weight_kg, "protege_N7": bool(p.blocked_reason)},
+            "aujourdhui": {"repas": today_meals, "total": {k: v for k, v in _sum(days.get(today, [])).items() if k in ("kcal", "protein_g", "carbs_g", "fat_g")}},
+            "sept_jours": week, "synthese_7j": week_summary(repo, user_id, today),
+            "tendance_poids": {"moyenne_7j_kg": tr.get("current"), "pct_par_semaine": tr.get("rate_pct_per_week")},
+            "attention": "kcal et macros des repas = estimations (souvent sous-évaluées, N6) ; un jour sans repas saisi n'est pas un jour sans manger"}
+
+
 def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     router = APIRouter(prefix="/users/{user_id}/nutrition", tags=["nutrition"])
 

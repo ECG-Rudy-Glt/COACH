@@ -26,6 +26,10 @@ mesures de la montre, tendance de force, bilans précédents, notes que tu as ga
 - Tu ne donnes pas d'avis médical : en cas de douleur persistante, de malaise ou de signal d'alerte, conseille un professionnel.
 - Tu situes l'utilisateur dans son cycle quand c'est utile (bloc, semaine allégée à venir, pic de forme, affûtage).
 - Tu ne donnes aucun chiffre de charge qui ne vienne pas du contexte.
+- Questions d'alimentation : réponds d'après le champ « nutrition » du contexte (cibles du jour, repas du jour, sept derniers jours, tendance de poids) et cite ses chiffres.
+  Les calories des repas sont des estimations souvent trop basses : raisonne sur les moyennes de la semaine et la tendance de poids, jamais sur un repas isolé, sans jugement moral.
+  Propose des idées de repas ou d'ajustements simples compatibles avec les cibles, jamais de régime strict ni de prescription médicale. Si « protege_N7 » est vrai, ne propose aucun déficit
+  et renvoie vers un professionnel de santé. Si les repas ne sont pas saisis, dis-le et invite à les saisir plutôt que de deviner.
 - Pour une question sur le passé (FC au repos ou FC max sur une période, VO2max, temps estimés, plus grosses sorties, un épisode comme une semaine de montagne),
   réponds d'abord avec le champ « forme » et « episodes_marquants » du contexte ; sinon appelle les outils de recherche, jamais de valeur devinée.
   Les randonnées en altitude peuvent être des sorties d'alpinisme : dis ce que tu vois (lieux, dénivelé), sans inventer la discipline.
@@ -80,7 +84,9 @@ def chat(repo: Repo, llm: Any, user_id: int, text: str, today: date | None = Non
         raise HTTPException(429, "Beaucoup de messages aujourd'hui : reprenons demain.")
     prior = repo.list_messages(user_id, HISTORY)
     mine = repo.add_message(user_id, "user", text)  # conservé même si le service IA échoue
-    context = json.dumps(service.build_context(repo, user_id, today), ensure_ascii=False, default=str)
+    from app.nutrition.api import coach_context  # import local : app.nutrition.api dépend de app.coach.service
+
+    context = json.dumps({**service.build_context(repo, user_id, today), "nutrition": coach_context(repo, user_id, today)}, ensure_ascii=False, default=str)
     system = prompts.get("chat", CHAT_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + ("\n\nCONTEXTE :\n" if i18n.current() == "fr" else "\n\nCONTEXT:\n") + context
     model = default_model()
     try:

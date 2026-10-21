@@ -363,3 +363,16 @@ def test_digest_uses_the_model_text_when_json_is_valid(ctx):
     llm.out = {"subject": "Votre semaine", "intro": "Bravo.", "sections": [{"discipline": "Nutrition", "tips": ["Ajoutez des protéines."]}], "closing": "À dimanche."}
     assert notify.weekly_digest(repo, llm, stub, uid, TODAY) is True
     assert "Ajoutez des protéines." in stub.mails[0][2] and len(llm.prompts) == 1
+
+
+def test_chat_context_carries_the_nutrition_data_for_food_questions(ctx):
+    from datetime import date, timedelta
+
+    c, uid, repo, llm = ctx
+    m = repo.add_meal(uid, date.today() - timedelta(days=1), "dîner", "bourguignon 430 g", None)
+    repo.set_meal_analysis(uid, m["id"], {"kcal": 720, "protein_g": 45, "carbs_g": 30, "fat_g": 40, "estimated": True})
+    llm.out = {"reply": "Votre moyenne est correcte.", "motivation": "ok", "remember": ""}
+    assert c.post(f"/users/{uid}/coach/chat", json={"message": "Est-ce que je mange assez de protéines ?"}).status_code == 200
+    assert '"nutrition"' in llm.system and "bourguignon" not in llm.system.split('"nutrition"')[0]
+    assert "cibles_jour" in llm.system and "sept_jours" in llm.system and "720" in llm.system
+    assert "Questions d'alimentation" in llm.system
