@@ -360,3 +360,11 @@ def test_week_average_is_the_main_figure_and_ignores_unestimated_days(ctx):
     c.post(f"{url}/meals", json={"slot": "dîner", "description": "sans estimation", "day": str(TODAY - timedelta(days=2)), "estimate": False})
     avg = c.get(f"{url}/progress").json()["week_average"]
     assert avg["kcal"] == 2200 and avg["days"] == 2 and avg["target_kcal"] > 1500
+
+
+def test_estimator_prompts_carry_densities_questions_and_examples_in_both_languages():
+    from app.coach import prompts
+
+    for text in (nut_analyze.SYSTEM, prompts.get("meal", nut_analyze.SYSTEM, "en")):
+        assert "bourguignon" in text and "poser_des_questions" in text and "reponses" in text and "exemples" in text and '"questions"' in text
+    assert "kcal = weight × dish density" in prompts.get("meal", nut_analyze.SYSTEM, "en") and prompts.MARKER in prompts.get("meal", nut_analyze.SYSTEM, "en")

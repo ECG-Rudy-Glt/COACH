@@ -2,6 +2,7 @@
 import json
 from typing import Any
 
+from app.coach import prompts
 from app.coach.llm import LLMError, price_eur
 from app.coach.service import parse_json
 
@@ -18,6 +19,11 @@ viande ou poisson cuit 150 à 250 ; purée avec beurre 120 à 150 ; soupe 40 à 
 Vérifie toujours que les kcal sont cohérents avec le poids multiplié par la densité.
 Si tu hésites entre deux valeurs, retiens la plus haute et élargis la fourchette vers le haut.
 Pas de jugement moral, pas de culpabilisation, pas d'avis médical, aucune étude citée. Tu vouvoies l'utilisateur.
+Si "poser_des_questions" est vrai ET que ta confiance est faible parce qu'une information déterminante manque (poids ou quantité, matière grasse de cuisson, sauce, boisson),
+pose 1 à 2 questions courtes
+dans "questions", avec 2 à 4 réponses rapides dans "choices" ; ne demande rien de ce qui est déjà indiqué ou visible, et n'en pose aucune si tu es assez sûr. Fais quand même une première estimation.
+Si "reponses" est fourni, ce sont les réponses de l'utilisateur à tes questions : utilise-les, ne repose aucune question.
+"exemples" liste des repas passés du même utilisateur avec leurs valeurs (« corrige » = chiffres corrigés par lui, à privilégier) : sers-t'en comme repères pour un repas semblable ou identique.
 Réponds UNIQUEMENT par un objet JSON :
 {"items":[{"name":"","quantity":"","kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0}],
  "totals":{"kcal_min":0,"kcal_max":0,"protein_g":0,"carbs_g":0,"fat_g":0},
@@ -91,7 +97,8 @@ def analyze(llm: Any, description: str, image: tuple[str, str] | None, model: st
     if examples:
         payload["exemples"] = examples[:MAX_EXAMPLES]
     prompt = json.dumps(payload, ensure_ascii=False)
-    res = llm.complete(SYSTEM, prompt, 900, model, image=image, json_mode=True) if image else llm.complete(SYSTEM, prompt, 900, model, json_mode=True)
+    system = prompts.get("meal", SYSTEM)  # anglais : data/prompts/en.yaml (mêmes densités, mêmes clés JSON)
+    res = llm.complete(system, prompt, 900, model, image=image, json_mode=True) if image else llm.complete(system, prompt, 900, model, json_mode=True)
     try:
         out = validate(parse_json(res.text), asking)
     except (ValueError, json.JSONDecodeError) as e:

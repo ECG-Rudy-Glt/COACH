@@ -1482,10 +1482,10 @@ function weekCard(w) {
   if (!w) return h("div", { class: "card stack" }, h("h3", null, "Moyenne des 7 derniers jours"), h("p", { class: "muted" }, "Estimez quelques repas : la moyenne de la semaine apparaît ici. C'est elle qu'il faut suivre, pas un repas isolé."));
   const gap = w.kcal - w.target_kcal;
   return h("div", { class: "card stack" }, h("h3", null, "Moyenne des 7 derniers jours"),
-    h("p", null, h("span", { class: "num", style: "font-size:1.9rem" }, `≈ ${w.kcal}`), " kcal par jour"),
+    h("p", { class: "num", style: "font-size:1.9rem" }, __("≈ {kcal} kcal par jour", { kcal: w.kcal })),
     bar("Énergie", w.kcal, w.target_kcal, "kcal"), bar("Protéines", w.protein_g, w.target_protein_g, "g"),
-    h("p", { class: "muted", style: "font-size:.8125rem" }, __("Sur {days} jour{v} estimé{v} ({sign}{gap} kcal par rapport à l'objectif). Les estimations sont souvent sous-évaluées : regardez surtout la tendance de poids.",
-      { days: w.days, v: w.days > 1 ? "s" : "", sign: gap >= 0 ? "+" : "−", gap: Math.abs(gap) })));
+    h("p", { class: "muted", style: "font-size:.8125rem" }, __(w.days > 1 ? "Sur {days} jours estimés : {sign}{gap} kcal par rapport à l'objectif." : "Sur {days} jour estimé : {sign}{gap} kcal par rapport à l'objectif.",
+      { days: w.days, sign: gap >= 0 ? "+" : "−", gap: Math.abs(gap) }), " ", __("Les estimations sont souvent sous-évaluées : regardez surtout la tendance de poids.")));
 }
 
 function bar(label, val, target, unit) {
@@ -1628,7 +1628,7 @@ async function nutritionScreen(day) {
     weekCard(prog.week_average),
     h("div", { class: "card stack" },
       h("div", { class: "row between" }, h("h3", null, "Ce jour"), h("span", { class: "chip" }, t.day_load === "training" ? "Jour d'entraînement" : "Jour de repos")),
-      h("p", null, h("span", { class: "num", style: "font-size:1.25rem" }, `≈ ${tot.kcal} / ${t.kcal}`), " kcal (objectif du jour)"),
+      h("p", { class: "num", style: "font-size:1.25rem" }, __("≈ {kcal} / {target} kcal (objectif du jour)", { kcal: tot.kcal, target: t.kcal })),
       bar("Énergie", tot.kcal, t.kcal, "kcal"), bar("Protéines", tot.protein_g, t.protein_g, "g"), bar("Glucides", tot.carbs_g, t.carbs_g, "g"), bar("Lipides", tot.fat_g, t.fat_g, "g"),
       tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, __("{v} repas sans estimation : ils ne sont pas comptés.", { v: tot.meals - tot.estimated_meals })) : null,
       t.notice ? h("p", { class: "muted" }, t.notice) : null,
@@ -1717,34 +1717,34 @@ function barcodeForm(day) {
     const g = Number(grams.value);
     go.disabled = !product || !(g > 0);
     const out = info.querySelector("[data-out]");
-    if (out) out.textContent = g > 0 ? `≈ ${per(g)} kcal pour ${g} g` : "Indiquez la quantité mangée.";
+    if (out) out.textContent = g > 0 ? __("≈ {kcal} kcal pour {g} g", { kcal: per(g), g }) : __("Indiquez la quantité mangée.");
   };
   const lookup = async () => {
     err.textContent = ""; product = null; info.hidden = true; go.disabled = true;
     const c = code.value.replace(/\s/g, "");
-    if (!c) { err.textContent = "Saisissez ou scannez un code-barres."; return; }
-    find.disabled = true; find.textContent = "Recherche…";
+    if (!c) { err.textContent = __("Saisissez ou scannez un code-barres."); return; }
+    find.disabled = true; find.textContent = __("Recherche…");
     try {
       product = await api(`/users/${userId}/nutrition/barcode/${encodeURIComponent(c)}`);
       if (product.serving_g && !grams.value) grams.value = product.serving_g;
       info.replaceChildren(h("strong", null, product.name + (product.brand ? ` · ${product.brand}` : "")),
-        h("p", { class: "muted" }, `Pour 100 g : ${product.kcal_100g} kcal · P ${product.protein_100g} g · G ${product.carbs_100g} g · L ${product.fat_100g} g`),
+        h("p", { class: "muted" }, __("Pour 100 g : {kcal} kcal · P {p} g · G {c} g · L {f} g", { kcal: product.kcal_100g, p: product.protein_100g, c: product.carbs_100g, f: product.fat_100g })),
         h("p", { "data-out": "" }));
       info.hidden = false; refresh();
     } catch (e) { err.textContent = e.message; }
-    find.disabled = false; find.textContent = "Chercher";
+    find.disabled = false; find.textContent = __("Chercher");
   };
   find.addEventListener("click", lookup);
   code.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); lookup(); } });
   grams.addEventListener("input", refresh);
   let scan = null;
-  if ("BarcodeDetector" in window) {
+  if (window.BarcodeDetector) {
     const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Photographier le code-barres" });
     cam.addEventListener("change", async () => {
       const f = cam.files[0]; cam.value = ""; err.textContent = "";
       if (!f) return;
-      try { const v = await readBarcode(f); if (v) { code.value = v; lookup(); } else err.textContent = "Code non lu : cadrez-le de près, bien éclairé, ou saisissez les chiffres."; }
-      catch { err.textContent = "Lecture impossible sur cet appareil : saisissez les chiffres."; }
+      try { const v = await readBarcode(f); if (v) { code.value = v; lookup(); } else err.textContent = __("Code non lu : cadrez-le de près, bien éclairé, ou saisissez les chiffres."); }
+      catch { err.textContent = __("Lecture impossible sur cet appareil : saisissez les chiffres."); }
     });
     scan = h("div", null, cam, h("button", { type: "button", class: "photo-btn primary", onclick: () => cam.click() }, icon("camera"), h("span", null, "Scanner le code-barres")));
   }

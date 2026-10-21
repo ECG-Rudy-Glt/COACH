@@ -104,6 +104,6 @@ def analysis_for(product: dict[str, Any], grams: float) -> dict[str, Any]:
     kcal = round(product["kcal_100g"] * k)
     return {"estimated": False, "source": "openfoodfacts", "kcal_min": round(kcal * 0.95), "kcal_max": round(kcal * 1.05), "kcal": kcal,
             "protein_g": round(product["protein_100g"] * k), "carbs_g": round(product["carbs_100g"] * k), "fat_g": round(product["fat_100g"] * k),
-            "confidence": "élevée", "assumptions": f"{product['name']} : valeurs de l'emballage pour 100 g × {grams:g} g (Open Food Facts).", "feedback": "", "tips": [],
+            "confidence": "élevée", "assumptions": "Valeurs de l'emballage pour 100 g × la quantité saisie.", "feedback": "", "tips": [],
             "items": [{"name": product["name"], "quantity": f"{grams:g} g", "kcal": kcal, "protein_g": round(product["protein_100g"] * k),
                        "carbs_g": round(product["carbs_100g"] * k), "fat_g": round(product["fat_100g"] * k)}], "note": None}
