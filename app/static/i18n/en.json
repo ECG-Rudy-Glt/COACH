@@ -1418,7 +1418,6 @@
  "Référence": "Reference",
  "Forme": "Shape",
  "Chaque axe compare une mesure à votre propre référence : 100 % veut dire référence atteinte ou dépassée. Aucune comparaison avec d'autres personnes, aucun score global.": "Each axis compares a measurement to your own reference: 100 % means reference reached or exceeded. No comparison with other people, no overall score.",
- "Il faut au moins 3 axes mesurés pour tracer la forme ; {n} pour l'instant. Les axes sont détaillés ci-dessous.": "At least 3 measured axes are needed to draw the shape; {n} for now. The axes are detailed below.",
  "maintenant": "now",
  "il y a {n} semaines": "{n} weeks ago",
  "La forme d'il y a {n} semaines n'est pas tracée : tous les axes n'ont pas de valeur à cette date. Les écarts sont donnés axe par axe.": "The shape from {n} weeks ago is not drawn: not every axis has a value at that date. Differences are given axis by axis.",
@@ -1454,5 +1453,11 @@
  "Vos jours bloqués laissent moins de 3 séances possibles par semaine : le plan garde l'essentiel (sortie longue, séance clé, musculation) dans cet ordre (G9). Libérez un jour pour un plan plus complet.": "Your blocked days leave fewer than 3 possible sessions a week: the plan keeps the essentials (long run, key session, strength) in that order (G9). Free up a day for a fuller plan.",
  "Vous avez indiqué 0 jour d'entraînement par semaine : indiquez au moins 2 jours dans vos réponses (Contraintes).": "You entered 0 training days a week: enter at least 2 days in your answers (Constraints).",
  "Vos jours bloqués ne laissent aucun jour d'entraînement : au moins 2 jours libres sont nécessaires pour garder un jour de repos (G5). Libérez un jour dans vos réponses (Multisport).": "Your blocked days leave no training day: at least 2 free days are needed to keep a rest day (G5). Free up a day in your answers (Multisport).",
- "Aucune séance ne tient dans les jours restants : vérifiez vos jours bloqués et vos durées maximales (Contraintes, Multisport).": "No session fits in the remaining days: check your blocked days and your maximum durations (Constraints, Multisport)."
+ "Aucune séance ne tient dans les jours restants : vérifiez vos jours bloqués et vos durées maximales (Contraintes, Multisport).": "No session fits in the remaining days: check your blocked days and your maximum durations (Constraints, Multisport).",
+ "Il faut au moins 3 axes mesurés pour tracer la forme ; {n} pour l'instant.": "At least 3 measured axes are needed to draw the shape; {n} for now.",
+ "Pour faire apparaître l'araignée, complétez :": "To make the radar chart appear, complete:",
+ "Volume : synchronisez votre montre Garmin ou saisissez vos sorties pendant au moins 3 semaines, ou ajoutez un objectif de course daté.": "Volume: sync your Garmin watch or log your outings for at least 3 weeks, or add a dated race goal.",
+ "Régularité : générez un plan et marquez vos séances comme faites (8 séances prévues sur 4 semaines au minimum).": "Consistency: generate a plan and mark your sessions as done (at least 8 planned sessions over 4 weeks).",
+ "Endurance : une sortie de course d'au moins 3 km mesurée par la montre, et un objectif de performance daté comme référence.": "Endurance: a run of at least 3 km recorded by the watch, and a dated performance goal as reference.",
+ "Force : saisissez les charges et répétitions (1 à 10) d'au moins 2 exercices dans vos séances de musculation, sur deux périodes de 12 semaines.": "Strength: log the loads and reps (1 to 10) of at least 2 exercises in your strength sessions, over two 12-week periods."
 }

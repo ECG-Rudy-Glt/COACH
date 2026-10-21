@@ -380,6 +380,22 @@ function radarFacts(a, n) {
     reference: n.lifts.map((x) => __("{label} : ≈ {ref} kg ({score} %)", { label: x.label, ref: stN(x.reference), score: x.score })).join(" ; "), period: "Période : les 12 dernières semaines contre les 12 précédentes." };
 }
 
+// Ce qu'il faut saisir, axe par axe, pour que l'araignée apparaisse (moins de 3 axes mesurés).
+const RADAR_TODO = {
+  volume: "Volume : synchronisez votre montre Garmin ou saisissez vos sorties pendant au moins 3 semaines, ou ajoutez un objectif de course daté.",
+  regularity: "Régularité : générez un plan et marquez vos séances comme faites (8 séances prévues sur 4 semaines au minimum).",
+  endurance: "Endurance : une sortie de course d'au moins 3 km mesurée par la montre, et un objectif de performance daté comme référence.",
+  strength: "Force : saisissez les charges et répétitions (1 à 10) d'au moins 2 exercices dans vos séances de musculation, sur deux périodes de 12 semaines.",
+};
+
+function radarHowTo(axes, n) {
+  const todo = axes.filter((a) => a.status !== "ok" && RADAR_TODO[a.id]);
+  return h("div", { class: "stack" },
+    h("p", null, __("Il faut au moins 3 axes mesurés pour tracer la forme ; {n} pour l'instant.", { n })),
+    h("p", { class: "st-note" }, "Pour faire apparaître l'araignée, complétez :"),
+    h("ul", { class: "st-note" }, todo.map((a) => h("li", null, __(RADAR_TODO[a.id])))));
+}
+
 function radarChart(drawn, compare, label) {
   const W = 320, H = 290, cx = 160, cy = 145, R = 80, n = drawn.length;
   const ang = (i) => -Math.PI / 2 + (2 * Math.PI * i) / n;
@@ -433,7 +449,7 @@ async function renderRadar(box) {
   const head = ["Axe", "Maintenant", __("Il y a {n} semaines", { n: weeks }), "Valeur", "Référence"];
   const intro = stCard("Forme",
     h("p", { class: "muted" }, "Chaque axe compare une mesure à votre propre référence : 100 % veut dire référence atteinte ou dépassée. Aucune comparaison avec d'autres personnes, aucun score global."),
-    d.chart ? radarChart(drawn, d.compare, label) : h("p", null, __("Il faut au moins 3 axes mesurés pour tracer la forme ; {n} pour l'instant. Les axes sont détaillés ci-dessous.", { n: drawn.length })),
+    d.chart ? radarChart(drawn, d.compare, label) : radarHowTo(d.axes, drawn.length),
     d.chart ? stLegend(["", "maintenant"], ...(d.compare ? [["before", __("il y a {n} semaines", { n: weeks })]] : [])) : null,
     d.chart && !d.compare ? h("p", { class: "st-note" }, __("La forme d'il y a {n} semaines n'est pas tracée : tous les axes n'ont pas de valeur à cette date. Les écarts sont donnés axe par axe.", { n: weeks })) : null,
     valuesTable("Axes de la forme", head, radarTableRows(d.axes, weeks)));
