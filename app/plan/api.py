@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
-from app.plan.engine import KEY, advice, build_profile, outlook, plan_weeks
+from app.plan.engine import KEY, advice, build_profile, empty_reason, outlook, plan_weeks, warnings
 from app.plan.level import with_estimates
 from app.plan.pain import pain_zones
 from app.plan.strength import annotate_history, resolve
@@ -118,13 +118,22 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         goals = repo.list_goals(user_id, None)
         facts = estimated_facts(repo, user_id, facts, goals, today)  # C14/C15 : niveau récent estimé, sans toucher aux saisies
         profile = build_profile(facts, goals, today)
+        facts = {**facts, "history.injuries": sorted(profile.injuries)}  # zones normalisées (S2, S7) pour le choix des exercices
         existing = repo.list_sessions(user_id, today - timedelta(days=today.weekday()), None)
+        next_monday = today + timedelta(days=7 - today.weekday())
         # la semaine en cours n'est jamais bouleversée : on ne remplace qu'à partir de lundi prochain
-        cutoff = today + timedelta(days=7 - today.weekday()) if (existing or today.weekday() >= 5) else today  # le week-end, on prépare la semaine suivante
-        monday0 = cutoff - timedelta(days=cutoff.weekday())
-        recent = repo.list_sessions(user_id, monday0 - timedelta(days=84), monday0)
-        anchor = None if (body and body.restart_cycle) else continue_anchor(recent, profile.deload_cycle, monday0)
-        sessions = plan_weeks(profile, today, (body.weeks if body else 1), start=cutoff, anchor=anchor)
+        cutoff = next_monday if (existing or today.weekday() >= 5) else today  # le week-end, on prépare la semaine suivante
+
+        def build(start: date) -> list[Any]:
+            monday0 = start - timedelta(days=start.weekday())
+            recent = repo.list_sessions(user_id, monday0 - timedelta(days=84), monday0)
+            anchor = None if (body and body.restart_cycle) else continue_anchor(recent, profile.deload_cycle, monday0)
+            return plan_weeks(profile, today, (body.weeks if body else 1), start=start, anchor=anchor)
+
+        sessions = build(cutoff)
+        if not sessions and cutoff < next_monday and not (profile.red_flags or profile.no_days):  # G10 : le reste de la semaine est vide (jours passés ou bloqués) : on prépare la suivante
+            cutoff = next_monday
+            sessions = build(cutoff)
         repo.delete_planned_from(user_id, cutoff)
         rows = []
         for s in sessions:
@@ -134,11 +143,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
             rows.append({"day": s.date, "kind": s.kind, "title": s.title, "duration_min": s.duration_min,
                          "details": details, "rules": s.rules, "notes": s.notes})
         repo.add_sessions(user_id, rows)
-        reason = None
-        if not rows:
-            reason = ("Un signal d'alerte à l'effort doit d'abord être discuté avec un médecin." if profile.red_flags
-                      else "Choisissez au moins la course ou la musculation dans vos sports pour obtenir un plan.")
-        return {"created": len(rows), "from": cutoff.isoformat(), "reason": reason}
+        return {"created": len(rows), "from": cutoff.isoformat(), "reason": None if rows else empty_reason(profile), "warnings": warnings(profile)}
 
     @router.get("")
     def get_plan(weeks: int = 4, week: date | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

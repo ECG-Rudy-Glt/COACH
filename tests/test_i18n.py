@@ -123,6 +123,18 @@ def test_engine_texts_are_translated():
         ({**RUDY, "sports.practiced": ["running", "hyrox"], "constraints.training_days": 5}, [{**EVENT, "title": "Hyrox Lyon", "target_date": date(2026, 12, 6)}]),
         ({**RUDY, "sports.practiced": ["running", "cycling", "strength"]}, [{"status": "active", "kind": "performance", "target_date": date(2028, 9, 30), "priority": "principal",
                                                                              "title": "10 km sub 40", "details": {"distance_km": 10, "target_time": "39:59"}}]),
+        # cas limites (ticket #26) : séances qui sautent, entrées corrigées, blessure non reconnue, échéance passée, deux objectifs le même jour
+        ({**RUDY, "sports.practiced": ["running", "strength", "hyrox"], "constraints.training_days": 4, "multisport.blocked_days": ["vendredi"]}, []),
+        ({**RUDY, "sports.practiced": ["running", "strength", "crossfit"], "constraints.training_days": 3, "multisport.blocked_days": ["samedi", "dimanche"]}, []),
+        ({**RUDY, "sports.practiced": ["crossfit"], "constraints.training_days": 6, "multisport.blocked_days": ["mardi", "jeudi", "samedi"]}, []),
+        ({**RUDY, "sports.practiced": ["running", "strength"], "multisport.blocked_days": ["lundi", "mardi", "mercredi", "jeudi", "vendredi"], "constraints.weekday_session_max_min": 30}, []),
+        ({**RUDY, "sports.practiced": ["running", "strength", "hyrox"], "constraints.weekday_session_max_min": 30, "constraints.weekend_session_max_min": 30}, []),
+        ({**RUDY, "constraints.training_days": 9, "constraints.weekday_session_max_min": 5, "constraints.weekend_session_max_min": 0, "running.best_10k_min": 5,
+          "history.injuries": ["autre"], "history.injuries.other": "élongation du quadriceps"}, [{**EVENT, "target_date": TODAY - timedelta(days=3), "title": "Semi passé"}]),
+        ({**RUDY, "constraints.training_days": 0}, []),
+        ({**RUDY, "constraints.training_days": 1, "constraints.weekday_session_max_min": -3, "multisport.blocked_days": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"]}, []),
+        ({**RUDY, "constraints.training_days": -2}, [{**EVENT, "title": "A"}, {**EVENT, "title": "B"}]),
+        ({**RUDY, "sports.practiced": ["running"], "running.weeks_since_last_run": 12, "running.weekly_km_8w": 0}, []),
     ]
     found: set[str] = set()
     for facts, goals in profiles:
