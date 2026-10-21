@@ -1,0 +1,19 @@
+pj.vision:
+  text: "In your own words: what do you want to achieve, and what would success look like in a year?"
+  help: "Write the way you talk. The more concrete it is, the better the plan will adapt."
+pj.horizon:
+  text: "Over what horizon do you want to be coached?"
+  options: { 3 mois: "3 months", 6 mois: "6 months", 1 an: "1 year", "plus d'un an": "More than a year" }
+pj.why:
+  text: "Why now? What is motivating you at the moment?"
+pj.upcoming:
+  text: "Any changes planned in the coming months that will affect your training? (moving house, travel, work, family…)"
+  fields:
+    what: { label: "Change" }
+    when: { label: "When" }
+    impact: { label: "Impact on training", options: { moins de temps: "Less time", plus de temps: "More time", moins de matériel: "Less equipment", déplacements: "Travel", fatigue: "Fatigue", autre: "Other" } }
+pj.style:
+  text: "How do you like to be coached?"
+  options: { directif et cadré: "Directive and structured", souple et adaptable: "Flexible and adaptable", avec des explications: "With explanations", avec des chiffres: "With numbers", avec des encouragements: "With encouragement", sobre et rapide: "Short and to the point" }
+pj.freeform:
+  text: "Anything else the coach should know?"

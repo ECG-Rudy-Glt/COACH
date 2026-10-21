@@ -9,7 +9,7 @@ import logging
 from datetime import date
 from typing import Any
 
-from app.coach import service
+from app.coach import prompts, service
 from app.coach.llm import LLMError, default_model, is_configured, price_eur
 from app.questionnaire.engine import pending
 from app.questionnaire.models import Fact, Question, current_facts
@@ -88,7 +88,7 @@ def analyze(repo: Repo, llm: Any, bank: list[Question], user_id: int, today: dat
         model = default_model()
         ctx = _context(facts, cands, repo.list_goals(user_id, "active"))
         try:
-            res = llm.complete(SYSTEM, json.dumps(ctx, ensure_ascii=False, default=str), 700, model, json_mode=True)
+            res = llm.complete(prompts.get("intake", SYSTEM), json.dumps(ctx, ensure_ascii=False, default=str), 700, model, json_mode=True)
         except LLMError as e:  # l'accueil ne dépend jamais de l'IA : on retombe sur la règle
             repo.log_llm_call(user_id, KIND, model, (0, 0), 0.0, False, str(e)[:200])
             log.info("analyse d'accueil sans IA : %s", type(e).__name__)
@@ -101,7 +101,7 @@ def analyze(repo: Repo, llm: Any, bank: list[Question], user_id: int, today: dat
     if not cands:
         result = {"ask": [], "clarifications": [], "message": ""}
     message = result["message"] or ("Votre coach a tout ce qu'il lui faut pour commencer." if not (result["ask"] or result["clarifications"])
-                                    else "Quelques précisions pour un plan vraiment adapté à vous.")
+                                    else "Quelques précisions pour un plan vraiment adapté à vous.")  # texte d'origine en français : l'interface le traduit à l'affichage
     mem = repo.add_memory(user_id, KIND, (today, today), message, {"ask": result["ask"], "clarifications": result["clarifications"], "source": source})
     return render(bank, facts, mem)
 

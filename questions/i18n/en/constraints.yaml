@@ -1,0 +1,17 @@
+con.days:
+  text: "How many days a week can you train?"
+  unit: "days"
+con.session_length:
+  text: "What is the longest session you can do on a weekday?"
+con.weekend_long:
+  text: "Can you do a long session at the weekend? (maximum duration)"
+con.equipment:
+  text: "What strength equipment do you have?"
+  options: { salle complète: "Full gym", haltères: "Dumbbells", barre et rack: "Barbell and rack", kettlebells: "Kettlebells", poids de corps: "Bodyweight", élastiques: "Resistance bands" }
+con.work:
+  text: "Is your job mostly sedentary or physical?"
+  options: { sédentaire: "Sedentary", mixte: "Mixed", physique: "Physical" }
+con.sleep:
+  text: "How many hours do you sleep on average per night?"
+con.stress:
+  text: "How would you rate your usual stress level? (1 low, 5 high)"

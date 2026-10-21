@@ -1,0 +1,16 @@
+str.frequency:
+  text: "How many strength sessions do you do per week?"
+  unit: "sessions"
+str.level:
+  text: "How would you rate your strength training level?"
+  options: { débutant: "Beginner", intermédiaire: "Intermediate", avancé: "Advanced" }
+str.lifts:
+  text: "What weights do you lift on the basic movements? (bench press, squat, deadlift, pull-ups)"
+str.split:
+  text: "What kinds of programmes do you currently follow?"
+  options: { aucun: "None", full body: "Full body", haut/bas: "Upper/lower", push/pull/legs: "Push/pull/legs" }
+str.pullups:
+  text: "How many strict pull-ups can you do in a row?"
+str.history_years:
+  text: "For how many years have you been strength training, with or without breaks?"
+  unit: "years"

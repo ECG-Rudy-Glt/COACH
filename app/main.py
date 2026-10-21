@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app import evidence as evidence_mod
+from app import i18n
 from app.auth import build_router as build_auth_router
 from app.benchmarks import Benchmark, load_catalog, to_fact, visible_sections
 from app.coach import notify as coach_notify
@@ -22,6 +23,7 @@ from app.garmin.api import default_gateway
 from app.goals import build_router as build_goals_router
 from app.nutrition.api import build_router as build_nutrition_router
 from app.plan.api import build_router as build_plan_router
+from app.questionnaire import i18n as q_i18n
 from app.questionnaire.answers import AnswerError, to_facts
 from app.questionnaire.bank import load_bank, validate_bank
 from app.questionnaire.engine import next_questions, progress
@@ -64,6 +66,8 @@ app.state.bank, app.state.repo = build_state()
 app.state.bench_sections, app.state.bench_index = load_catalog(
     Path(os.environ.get("QUESTIONS_DIR", ROOT / "questions")) / "benchmarks.yaml"
 )
+app.state.banks = {lang: q_i18n.localize(app.state.bank, q_i18n.load_overlay(Path(os.environ.get("QUESTIONS_DIR", ROOT / "questions")), lang)) for lang in i18n.SUPPORTED if lang != "fr"}
+app.state.bench_i18n = {lang: q_i18n.load_benchmark_overlay(Path(os.environ.get("QUESTIONS_DIR", ROOT / "questions")), lang) for lang in i18n.SUPPORTED if lang != "fr"}
 
 
 def get_repo(request: Request) -> Repo:
@@ -71,7 +75,8 @@ def get_repo(request: Request) -> Repo:
 
 
 def get_bank(request: Request) -> list[Question]:
-    return request.app.state.bank
+    """Banque dans la langue de la requête (le français est la banque d'origine)."""
+    return q_i18n.bank_for(request.app.state, i18n.current())
 
 
 auth_router, current_user = build_auth_router(get_repo)
@@ -86,6 +91,19 @@ for _e in app.state.evidence:
     for _r in _e["applies_to"]:
         _by_rule.setdefault(_r, []).append(_e["id"])  # liste déjà triée : preuves solides d'abord
 _coach_service.set_evidence(evidence_mod.digest(app.state.evidence), {e["id"] for e in app.state.evidence}, _by_rule)
+
+
+@app.middleware("http")
+async def request_language(request: Request, call_next):
+    """Langue de la requête : `?lang=` ou en-tête `X-Lang` (choix de l'interface), puis `Accept-Language`, puis `LOCALE`. Lue par `i18n.current()`."""
+    lang = i18n.resolve(request.query_params.get("lang"), request.headers.get("x-lang"), request.headers.get("accept-language"))
+    token = i18n.set_current(lang)
+    try:
+        response = await call_next(request)
+    finally:
+        i18n.reset_current(token)
+    response.headers.setdefault("Content-Language", lang)
+    return response
 
 
 @app.middleware("http")
@@ -245,7 +263,7 @@ def get_benchmarks(
 ) -> dict:
     cur = current_facts(repo.list_facts(user_id))
     sports = cur.get("sports.practiced") or []
-    sections = visible_sections(request.app.state.bench_sections, sports)
+    sections = q_i18n.localize_benchmarks(visible_sections(request.app.state.bench_sections, sports), request.app.state.bench_i18n.get(i18n.current(), {}))
     values = {k.removeprefix("bench."): v for k, v in cur.items() if k.startswith("bench.") and v}
     filled = sum(1 for s in sections for it in s["items"] if it["id"] in values)
     total = sum(len(s["items"]) for s in sections)

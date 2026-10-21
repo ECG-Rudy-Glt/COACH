@@ -6,10 +6,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from app import i18n
 from app.coach import chat as chat_service
 from app.coach import intake, notify, service
 from app.coach.llm import is_configured
 from app.config import env
+from app.questionnaire import i18n as q_i18n
 from app.repo import Repo
 
 
@@ -72,7 +74,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         force = bool(body and body.force)
         if force and repo.llm_calls_since(user_id, intake.KIND, datetime.now(UTC) - timedelta(days=1)) >= 3:
             raise HTTPException(429, "Analyse déjà refaite plusieurs fois aujourd'hui.")
-        return intake.analyze(repo, request.app.state.llm, request.app.state.bank, user_id, force=force)
+        return intake.analyze(repo, request.app.state.llm, q_i18n.bank_for(request.app.state, i18n.current()), user_id, force=force)
 
     @router.post("/intake/clarification", status_code=201)
     def intake_clarification(body: Clarification, request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
@@ -80,7 +82,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
             intake.answer_clarification(repo, user_id, body.index, body.answer)
         except IndexError as e:
             raise HTTPException(404, "Précision inconnue.") from e
-        return intake.render(request.app.state.bank, repo.list_facts(user_id), repo.list_memory(user_id, intake.KIND, 1)[0])
+        return intake.render(q_i18n.bank_for(request.app.state, i18n.current()), repo.list_facts(user_id), repo.list_memory(user_id, intake.KIND, 1)[0])
 
     @router.get("/chat")
     def chat_thread(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
@@ -120,9 +122,9 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         p, n = repo.get_prefs(user_id), request.app.state.notifier
         try:
             if channel == "push":
-                notify.send_push(repo, n, user_id, "Sport Coach", "Test : vous recevrez ici les alertes de votre coach.", p)
+                notify.send_push(repo, n, user_id, "Sport Coach", i18n.tr("Test : vous recevrez ici les alertes de votre coach."), p)
             elif channel == "email" and p["email"]:
-                n.email(p["email"], "Sport Coach : test", "Test : vous recevrez ici les conseils de votre coach.")
+                n.email(p["email"], "Sport Coach : test", i18n.tr("Test : vous recevrez ici les conseils de votre coach."))
             else:
                 raise HTTPException(422, "Canal inconnu ou non renseigné.")
         except notify.NotifyError as e:

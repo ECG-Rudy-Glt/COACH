@@ -1,0 +1,71 @@
+his.years:
+  text: "For how many years have you been exercising regularly?"
+  unit: "years"
+his.break:
+  text: "Have you had a break of more than a month in the last 12 months?"
+  options: { non: "No", oui blessure: "Yes, an injury", oui autre raison: "Yes, another reason" }
+his.injuries:
+  text: "Do you have any current or recurring injuries?"
+  options: { aucune: "None", genou: "Knee", cheville: "Ankle", hanche: "Hip", dos: "Back", épaule: "Shoulder", "tendon d'Achille": "Achilles tendon", tibia: "Shin" }
+his.injury_detail:
+  text: "Describe them (since when, which activity bothers you)."
+his.activity_now:
+  text: "How many sessions a week do you currently do, on average over the last 8 weeks?"
+  unit: "sessions"
+his.start_age:
+  text: "At what age did you start exercising regularly?"
+  unit: "years old"
+his.sports_past:
+  text: "Which sports have you practised over the years? Add one line per sport and per period."
+  help: "Even the ones you have stopped. Leave “Until” empty if you still do them."
+  fields:
+    sport: { label: "Sport", options: { course à pied: "Running", trail: "Trail running", musculation: "Strength training", vélo: "Cycling", natation: "Swimming", CrossFit: "CrossFit", Hyrox: "Hyrox", sports collectifs: "Team sports", arts martiaux: "Martial arts", escalade: "Climbing", yoga ou Pilates: "Yoga or Pilates", danse: "Dance", autre: "Other" } }
+    from: { label: "From" }
+    to: { label: "Until" }
+    level: { label: "Level", options: { loisir: "Recreational", régulier: "Regular", compétition: "Competitive" } }
+    volume: { label: "Pace (e.g. 3 sessions a week)" }
+his.peaks:
+  text: "What are your best performances, in any sport?"
+  fields:
+    discipline: { label: "Discipline", options: { course à pied: "Running", trail: "Trail running", musculation: "Strength training", vélo: "Cycling", natation: "Swimming", CrossFit: "CrossFit", Hyrox: "Hyrox", autre: "Other" } }
+    performance: { label: "Performance (e.g. 10 km in 41:30)" }
+    year: { label: "Year" }
+    context: { label: "Context" }
+his.competitions:
+  text: "Have you taken part in competitions or events?"
+  fields:
+    event: { label: "Event" }
+    year: { label: "Year" }
+    result: { label: "Result or time" }
+his.injury_timeline:
+  text: "What injuries have you had in the past, even healed ones?"
+  fields:
+    zone: { label: "Area", options: { genou: "Knee", cheville: "Ankle", hanche: "Hip", dos: "Back", épaule: "Shoulder", "tendon d'Achille": "Achilles tendon", tibia: "Shin", pied: "Foot", poignet ou coude: "Wrist or elbow", muscle: "Muscle", autre: "Other" } }
+    year: { label: "Year" }
+    severity: { label: "Severity", options: { légère: "Mild", modérée: "Moderate", grave: "Severe" } }
+    weeks_off: { label: "Time off (weeks)" }
+    sequelae: { label: "After-effects", options: { aucune: "None", gêne occasionnelle: "Occasional discomfort", gêne permanente: "Permanent discomfort" } }
+his.surgeries:
+  text: "Have you had surgery or major treatment related to sport?"
+his.weight_history:
+  text: "How has your weight changed? Give a few reference points (best shape, maximum, minimum)."
+  fields:
+    year: { label: "Year" }
+    weight: { label: "Weight (kg)" }
+    context: { label: "Context", options: { en forme: "In good shape", après une prise: "After a gain", après une perte: "After a loss", stable: "Stable", après une blessure: "After an injury", autre: "Other" } }
+his.inactive:
+  text: "What periods of stopping or reduced activity have you had?"
+  fields:
+    from: { label: "From" }
+    to: { label: "To" }
+    reason: { label: "Reason", options: { blessure: "Injury", maladie: "Illness", travail: "Work", famille: "Family", motivation: "Motivation", déménagement: "Moving house", autre: "Other" } }
+his.stop_reasons:
+  text: "What made you stop or slow down in the past?"
+  options: { manque de temps: "Lack of time", blessure: "Injury", lassitude: "Boredom", perte de motivation: "Loss of motivation", déménagement: "Moving house", travail: "Work", budget: "Budget", résultats décevants: "Disappointing results" }
+his.worked:
+  text: "What has worked best for you in the past?"
+his.failed:
+  text: "And what has not worked?"
+his.coached:
+  text: "Have you ever been coached or trained by someone?"
+  options: { jamais: "Never", ponctuellement: "Occasionally", pendant longtemps: "For a long time" }

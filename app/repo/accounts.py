@@ -18,8 +18,19 @@ class AccountsMemory:
     def get_account(self, email: str) -> dict[str, Any] | None:
         for uid, a in self._acct().items():
             if a["email"] == email:
-                return {"id": uid, "name": self._users[uid], "password_hash": a["password_hash"]}
+                return {"id": uid, "name": self._users[uid], "password_hash": a["password_hash"], "lang": self._langs().get(uid)}
         return None
+
+    def _langs(self) -> dict[int, str]:
+        if not hasattr(self, "_lang_by_user"):
+            self._lang_by_user: dict[int, str] = {}
+        return self._lang_by_user
+
+    def set_language(self, user_id: int, lang: str) -> None:
+        self._langs()[user_id] = lang
+
+    def get_language(self, user_id: int) -> str | None:
+        return self._langs().get(user_id)
 
     def has_accounts(self) -> bool:
         return bool(self._acct())
@@ -45,7 +56,7 @@ class AccountsMemory:
         if not row or row[1] < datetime.now(UTC):
             return None
         uid = row[0]
-        return {"id": uid, "name": self._users[uid], "email": self._accounts[uid]["email"]}
+        return {"id": uid, "name": self._users[uid], "email": self._accounts[uid]["email"], "lang": self._langs().get(uid)}
 
     def delete_session(self, token_hash: str) -> None:
         self._acct()
@@ -65,7 +76,16 @@ class AccountsPostgres:
 
     def get_account(self, email: str) -> dict[str, Any] | None:
         with self._conn() as c:
-            return c.execute("SELECT id, name, password_hash FROM users WHERE email = %s", (email,)).fetchone()
+            return c.execute("SELECT id, name, password_hash, lang FROM users WHERE email = %s", (email,)).fetchone()
+
+    def set_language(self, user_id: int, lang: str) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE users SET lang = %s WHERE id = %s", (lang, user_id))
+
+    def get_language(self, user_id: int) -> str | None:
+        with self._conn() as c:
+            row = c.execute("SELECT lang FROM users WHERE id = %s", (user_id,)).fetchone()
+            return row["lang"] if row else None
 
     def has_accounts(self) -> bool:
         with self._conn() as c:
@@ -92,7 +112,7 @@ class AccountsPostgres:
     def get_session_user(self, token_hash: str) -> dict[str, Any] | None:
         with self._conn() as c:
             return c.execute(
-                "SELECT u.id, u.name, u.email FROM sessions s JOIN users u ON u.id = s.user_id "
+                "SELECT u.id, u.name, u.email, u.lang FROM sessions s JOIN users u ON u.id = s.user_id "
                 "WHERE s.token_hash = %s AND s.expires_at > now()", (token_hash,)).fetchone()
 
     def delete_session(self, token_hash: str) -> None:

@@ -1,28 +1,31 @@
 ---
 name: add-language
-description: Translate COACH (UI strings, questionnaire, engine texts, LLM prompts) into another language without breaking identifiers, rules or tests. Use for an English UI or any new locale.
+description: Translate COACH (UI strings, questionnaire, engine texts, notifications, LLM prompts) into another language without breaking identifiers, rules or tests. Use to add a locale or to translate a new text.
 ---
 
 # Add a language
 
-State today: the code and docs are English; **user-facing text is French** and lives in four places.
+French is the source language and English is shipped. Read [docs/i18n.md](../../docs/i18n.md) first: the **French text is the key** of one dictionary shared by the browser and the server.
 
 | Layer | Where | Notes |
 |---|---|---|
-| UI | `app/static/app.js`, `index.html` | strings are inline literals; step 1 is extracting them into a `t("key")` table (`app/static/i18n/<lang>.json`) loaded before `app.js` |
-| Questionnaire | `questions/*.yaml` (`label`, `help`, option labels) | keep `id`, option **values** and `show_if` untouched; translate labels only |
-| Engine texts | `app/plan/*.py`, `app/nutrition/engine.py`, `app/exercises/labels.py` | session titles, notes, advice, muscle/equipment labels |
-| LLM prompts | `app/coach/*.py`, `app/nutrition/analyze.py` | translate system prompts and the answer language instruction |
-| Evidence | `data/evidence/*.yaml` (`finding_fr`, `limits_fr`) | add `finding_en`/`limits_en`; fall back to the other language when missing |
+| UI, engine texts, errors | `app/static/i18n/<lang>.json` | exact text or template with holes (`{name}`, `{v}` optional suffix, `{num}` number); applied by `app/static/i18n.js` and `app/i18n.py` |
+| Questionnaire | `questions/i18n/<lang>/*.yaml` | `text`, `help`, `unit`, `options` (stored value → label), `fields`; keep ids, values and `show_if` untouched |
+| Notifications, e-mails | `i18n.tr()` in `app/coach/notify.py` | uses the same dictionary, in the user's language |
+| LLM prompts | `data/prompts/<lang>.yaml` | one prompt per feature, with an explicit `LANGUAGE:` line; JSON keys, rule ids and action names stay in French/English as in the code |
+| Evidence | `data/evidence/*.yaml` (`finding_fr`, `limits_fr`) | not translated yet: add `finding_en`/`limits_en` and fall back to French |
 
 ## Steps
-1. Introduce a locale setting (`LOCALE` env + per-user preference) and a tiny `t()` helper on server and client. Do not scatter `if lang ==` in logic.
-2. Extract strings **mechanically first** (no wording changes) and make the French output byte-identical — the existing tests are your safety net.
-3. Add the new locale file; translate with care for tone (formal/informal address differs by language) and units (kg/lb, km/mi — conversion must happen at display, storage stays metric).
-4. Translate prompts together with the “answer language” instruction; keep JSON keys, rule IDs and action names in English.
-5. Tests: a locale smoke test that renders every question and every session kind without missing keys; keep the French suite green.
+1. Register the code in `app/i18n.py` (`SUPPORTED`, `LANG_NAMES`) and `app/static/i18n.js` (`LOCALES`); add the dictionary to `SHELL` in `sw.js` and bump the cache name.
+2. Copy `en.json` and translate the values (keep every `{hole}`); `python scripts/i18n_check.py <lang>` lists what is missing.
+3. Translate the questionnaire files and the prompts; mind tone (formal/informal address) and units (storage stays metric).
+4. `pytest tests/test_i18n.py` must pass: it renders every question, session kind and notification without a missing translation.
+
+## Adding a text in the code
+Write it in French, then add its translation to `en.json` (same holes). Prefer `__("Dans {days} jours", { days })` in `app.js` over string concatenation so that word order can change.
 
 ## Pitfalls
-- Don’t translate identifiers, enum values or CSS class names.
-- Pluralisation and date formats: use `Intl` on the client.
+- Don't translate identifiers, enum values or CSS class names. Option values are stored in French; only labels change.
+- A template hole captures anything: keep the fixed part distinctive, use `{num}` for numbers.
+- Pluralisation and dates: `Intl` on the client (`I18N.tag()`), `{v}` for a trailing "s".
 - Health wording is safety-relevant: have a native speaker review the disclaimers and red-flag messages.

@@ -1,0 +1,8 @@
+cy.hours:
+  text: "How many hours of cycling do you do per week?"
+cy.type:
+  text: "What kind of cycling do you do?"
+  options: { route: "Road", VTT: "Mountain bike", gravel: "Gravel", home trainer: "Indoor trainer", vélo utilitaire: "Commuting" }
+cy.power:
+  text: "Do you have a power meter?"
+  options: { oui: "Yes", non: "No" }
