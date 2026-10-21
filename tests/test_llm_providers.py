@@ -256,3 +256,79 @@ def test_background_calls_ask_for_json():
     for module in (service, notify, analyze):
         assert "json_mode=True" in inspect.getsource(module), module.__name__
     assert "json_mode" not in inspect.getsource(chat)
+
+
+# --- coût estimé : tarif par modèle, conversion USD→EUR, tokens de cache ---
+
+def _clean_price_env(monkeypatch, provider="anthropic"):
+    for k in ("LLM_PRICE_IN_EUR_PER_MTOK", "LLM_PRICE_OUT_EUR_PER_MTOK", "LLM_USD_TO_EUR", "LLM_MODEL"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+
+
+def test_known_model_priced_in_usd_converted_to_eur(monkeypatch):
+    _clean_price_env(monkeypatch)
+    # Haiku 4.5 : 1 $ en entrée, 5 $ en sortie par million (le suffixe daté de l'identifiant est ignoré)
+    assert mod.price_eur(1_000_000, 0, "claude-haiku-4-5-20251001") == pytest.approx(1 * mod.DEFAULT_USD_TO_EUR)
+    assert mod.price_eur(0, 1_000_000, "claude-haiku-4-5") == pytest.approx(5 * mod.DEFAULT_USD_TO_EUR)
+    assert mod.price_eur(1_000_000, 1_000_000, "claude-sonnet-5-5") == pytest.approx(12 * mod.DEFAULT_USD_TO_EUR)
+    monkeypatch.setenv("LLM_USD_TO_EUR", "0.5")
+    assert mod.price_eur(1_000_000, 1_000_000, "claude-haiku-4-5-20251001") == pytest.approx(3.0)
+    monkeypatch.setenv("LLM_USD_TO_EUR", "pas un nombre")  # valeur illisible : taux par défaut, pas d'erreur
+    assert mod.price_eur(1_000_000, 0, "claude-haiku-4-5") == pytest.approx(mod.DEFAULT_USD_TO_EUR)
+
+
+def test_unknown_model_falls_back_to_legacy_default_never_zero(monkeypatch):
+    _clean_price_env(monkeypatch)
+    assert mod.price_eur(1_000_000, 1_000_000, "un-modele-inconnu") == pytest.approx(18.0)
+    assert mod.price_eur(1_000_000, 1_000_000, None) > 0  # LLM_MODEL absent : modèle par défaut du fournisseur, jamais 0
+
+
+def test_env_prices_stay_prioritary_each_side_independently(monkeypatch):
+    _clean_price_env(monkeypatch)
+    monkeypatch.setenv("LLM_PRICE_IN_EUR_PER_MTOK", "2")
+    assert mod.price_eur(1_000_000, 1_000_000, "claude-haiku-4-5") == pytest.approx(2 + 5 * mod.DEFAULT_USD_TO_EUR)  # seule l'entrée est forcée
+    monkeypatch.setenv("LLM_PRICE_OUT_EUR_PER_MTOK", "7")
+    assert mod.price_eur(1_000_000, 1_000_000, "claude-haiku-4-5") == pytest.approx(9.0)
+    monkeypatch.setenv("LLM_PRICE_IN_EUR_PER_MTOK", "")  # variable vide (docker compose `${VAR:-}`) = non définie
+    assert mod.price_eur(1_000_000, 0, "claude-haiku-4-5") == pytest.approx(mod.DEFAULT_USD_TO_EUR)
+
+
+def test_local_model_stays_free_even_with_known_name(monkeypatch):
+    _clean_price_env(monkeypatch, "ollama")
+    assert mod.price_eur(1_000_000, 1_000_000, "claude-haiku-4-5") == 0
+
+
+def test_cache_tokens_priced_at_cache_rates(monkeypatch):
+    _clean_price_env(monkeypatch)
+    rate = mod.DEFAULT_USD_TO_EUR
+    # 1 M de tokens d'entrée : 300 k au tarif plein, 600 k lus (0,1 ×), 100 k écrits (1,25 ×)
+    got = mod.price_eur(1_000_000, 0, "claude-haiku-4-5", cache_read=600_000, cache_write=100_000)
+    assert got == pytest.approx((0.3 + 0.6 * 0.1 + 0.1 * 1.25) * rate)
+    # Fable 5.1 : lecture à 0,25 $ pour 10 $ (0,025 ×), Opus 5.5 : 0,20 $ pour 4 $ (0,05 ×)
+    assert mod.price_eur(1_000_000, 0, "claude-fable-5-1", cache_read=1_000_000) == pytest.approx(0.25 * rate)
+    assert mod.price_eur(1_000_000, 0, "claude-opus-5-5", cache_read=1_000_000) == pytest.approx(0.20 * rate)
+    # le cache suit aussi le prix d'entrée forcé par l'environnement ; modèle inconnu : 0,1 ×
+    monkeypatch.setenv("LLM_PRICE_IN_EUR_PER_MTOK", "10")
+    assert mod.price_eur(1_000_000, 0, "inconnu", cache_read=1_000_000) == pytest.approx(1.0)
+    assert mod.price_eur(100, 0, "inconnu", cache_read=10_000_000) >= 0  # sous-ensemble incohérent : borné, jamais négatif
+
+
+def test_anthropic_usage_counts_cache_and_result_is_priced(monkeypatch):
+    _clean_price_env(monkeypatch)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    usage = {"input_tokens": 100, "cache_read_input_tokens": 9000, "cache_creation_input_tokens": 500, "output_tokens": 200}
+    assert mod.anthropic_usage(usage) == (9600, 200, 9000, 500)
+    seen = []
+
+    def fake_post(self, body):
+        seen.append(body)
+        return {"content": [{"type": "text", "text": "ok"}], "usage": usage}
+
+    monkeypatch.setattr(AnthropicLLM, "_post", fake_post)
+    res = AnthropicLLM().complete("s", "u", 10, "claude-haiku-4-5-20251001")
+    assert (res.input_tokens, res.output_tokens, res.cache_read_tokens, res.cache_write_tokens) == (9600, 200, 9000, 500)
+    expected = ((100 + 9000 * 0.1 + 500 * 1.25) * 1 + 200 * 5) / 1_000_000 * mod.DEFAULT_USD_TO_EUR
+    assert mod.price_result(res) == pytest.approx(expected)
+    plain = mod.LLMResult("x", 1_000_000, 0, "claude-haiku-4-5")  # fournisseur sans cache : champs à 0
+    assert mod.price_result(plain) == pytest.approx(mod.DEFAULT_USD_TO_EUR)

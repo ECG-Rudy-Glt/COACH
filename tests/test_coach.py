@@ -75,7 +75,8 @@ def test_review_stores_memory_and_prompt_has_no_identity(ctx):
     assert p["action"] == "reduce" and p["new_duration_min"] == 72 and p["status"] == "proposed"
     prompt = llm.prompts[0]
     assert "Prénom-secret" not in prompt and "secret@example.org" not in prompt  # aucune identité envoyée
-    assert "G2" in prompt and "seances_a_venir" in prompt
+    assert "seances_a_venir" in prompt and "regles" not in prompt  # les règles et les sources font partie du préfixe fixe, dans le message système
+    assert "G2" in llm.system and "Prénom-secret" not in llm.system and "secret@example.org" not in llm.system
     # le bilan précédent est transmis au suivant (le coach connaît son historique)
     llm.out = {"summary": "Suite.", "proposals": []}
     c.post(f"/users/{uid}/coach/review")
@@ -120,6 +121,8 @@ def test_budget_cap_blocks_calls_and_failures_are_logged(ctx, monkeypatch):
     c, uid, repo, llm = ctx
     llm.out = {"summary": "x", "proposals": []}
     monkeypatch.setenv("LLM_MONTHLY_BUDGET_EUR", "0.015")
+    monkeypatch.setenv("LLM_PRICE_IN_EUR_PER_MTOK", "3")  # tarifs forcés : le plafond se teste sans dépendre de la table des modèles
+    monkeypatch.setenv("LLM_PRICE_OUT_EUR_PER_MTOK", "15")
     assert c.post(f"/users/{uid}/coach/review").status_code == 200  # coût estimé 4000×3€/M + 500×15€/M ≈ 0,0195 €
     assert c.get(f"/users/{uid}/coach").json()["budget"]["spent_eur"] >= 0.019
     r = c.post(f"/users/{uid}/coach/review")

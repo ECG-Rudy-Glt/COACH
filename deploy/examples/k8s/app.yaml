@@ -22,7 +22,7 @@ spec:
             - { name: GARMIN_SYNC_HOURS, value: "6" }
             - { name: LLM_MONTHLY_BUDGET_EUR, value: "5" }  # hard monthly cap on AI spend
             - { name: LLM_MODEL, value: claude-haiku-4-5-20251001 }  # cheaper model; use a larger one for richer reviews
-            - { name: LLM_PRICE_IN_EUR_PER_MTOK, value: "1" }  # price estimate used for the cap
+            - { name: LLM_PRICE_IN_EUR_PER_MTOK, value: "1" }  # optional: Claude models are priced automatically; this forces the price used for the cap
             - { name: LLM_PRICE_OUT_EUR_PER_MTOK, value: "5" }
             - { name: AUTO_NOTIFY, value: "1" }     # push/e-mail reminders; each user must also enable a channel in the app
             - { name: NOTIFY_HOUR, value: "18" }

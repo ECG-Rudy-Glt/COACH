@@ -20,7 +20,7 @@ All calls go through `llm.complete(system, user, max_tokens, model, history=None
 2. **What the model must NOT do** — the hard prohibitions come early and are explicit: no new numbers, no load increase, no medical advice (redirect to a professional on pain or red flags), no invented studies, no internal IDs in user-facing text.
 3. **What it MAY do** — a closed list of actions ("reduce", "swap_easy", "move") with parameters and bounds. Closed vocabularies are validated in code.
 4. **Output contract** — strict JSON with named fields. Say what to do when there is nothing to say (`[]`, empty string), not "be creative".
-5. **Grounding data** — passed as JSON in the *user* message (or after a `CONTEXT:` marker), never paraphrased by hand. Contains only what the task needs.
+5. **Grounding data** — passed as JSON in the *user* message (or after a `CONTEXT:` marker), never paraphrased by hand. Contains only what the task needs. The fixed fields `regles` and `sources` are the exception: `service.split_context()` moves them to the end of the system prompt so that Anthropic can cache the whole fixed prefix (instruction + citation rule + `regles` + `sources`, see [configuration](configuration.md#prompt-cache)). Nothing that changes between calls (date, user data) may enter that prefix.
 6. **Citation rule** — the model may cite rule IDs and source IDs **only from the lists provided**; the server rejects anything else.
 
 Skeleton:
