@@ -27,7 +27,7 @@ MOVES: dict[str, tuple[str, frozenset[str], str]] = {
     "carry": ("Marche chargée (farmer)", frozenset(), "Marche chargée (farmer)"),
     "run": ("Course 200 m", frozenset(), "Rameur (calories)"),
 }
-AVOID = {"genou": {"knee", "jump"}, "épaule": {"overhead"}, "dos": {"hinge"}, "cheville": {"jump"}, "tendon d'Achille": {"jump"}, "hanche": {"knee"}}
+AVOID = {"genou": {"knee", "jump"}, "épaule": {"overhead"}, "dos": {"hinge"}, "cheville": {"jump"}, "tendon d'Achille": {"jump"}, "hanche": {"knee"}, "tibia": {"jump"}}
 SCALE = {"débutant": 0.7, "intermédiaire": 1.0, "avancé": 1.2, "expert": 1.2}
 
 # circuits : (mouvement, répétitions de base)
@@ -70,18 +70,18 @@ def build(cyc: Cycle, level: str, injuries: set[str], variant_offset: int = 0) -
     long_wod = min(12 + 2 * (cyc.block_no - 1), 18)
     if cyc.deload:
         fmt, wod_min, effort = f"AMRAP {8} min, allure confortable", 8, "6 sur 10 : vous pourriez parler entre les tours"
-        wod_text = [f"AMRAP 8 min : {' + '.join(items)}"]
+        wod_text = [f"AMRAP 8 min : {' · '.join(items)}"]
     elif wib == 0:
         fmt, wod_min, effort = f"AMRAP {long_wod} min", long_wod, "7 sur 10, allure tenable sur toute la durée"
-        wod_text = [f"AMRAP {long_wod} min — tours de : " + ", ".join(items)]
+        wod_text = [f"AMRAP {long_wod} min — tours de : " + " · ".join(items)]
     elif wib == 1:
         rounds = 4 + min(cyc.block_no - 1, 2)
         fmt, wod_min, effort = f"{rounds} tours chronométrés", 6 + rounds * 3, "8 sur 10 sur les derniers tours, jamais d'échec technique"
-        wod_text = [f"{rounds} tours, le plus vite possible avec une bonne exécution : " + ", ".join(items)]
+        wod_text = [f"{rounds} tours, le plus vite possible avec une bonne exécution : " + " · ".join(items)]
     else:
         emom = min(12 + 2 * (cyc.block_no - 1), 18)
         fmt, wod_min, effort = f"EMOM {emom} min", emom, "7 à 8 sur 10, 10 à 15 s de repos par minute"
-        stations = ", ".join(f"minute {i + 1} : {it}" for i, it in enumerate(items))
+        stations = " · ".join(f"minute {i + 1} : {it}" for i, it in enumerate(items))
         wod_text = [f"EMOM {emom} min, en boucle — {stations}"]
     blocks = [
         {"title": "Échauffement", "minutes": 8, "items": ["3 min de rameur ou vélo facile", "Mobilité épaules, hanches et chevilles", "2 tours : 8 squats, 6 pompes, 10 balancements de jambe"]},

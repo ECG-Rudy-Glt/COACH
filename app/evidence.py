@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 log = logging.getLogger("sport-coach.evidence")
 ID_RE = re.compile(r"^[A-Z]{3}-\d{3}$")
-DESIGNS = {"méta-analyse", "essai contrôlé randomisé", "revue systématique", "revue narrative", "position stand", "étude observationnelle"}
+DESIGNS = {"méta-analyse", "essai contrôlé randomisé", "revue systématique", "revue narrative", "position stand", "étude observationnelle", "étude croisée", "revue exploratoire"}
 CONFIDENCE = {"élevée": 0, "moyenne": 1, "faible": 2}
 TOPICS = {"running": "Course à pied", "trail": "Trail", "cycling": "Vélo", "hybrid": "Hyrox et CrossFit", "recovery": "Récupération", "strength": "Force",
           "hypertrophy": "Hypertrophie", "injury": "Blessures", "sleep": "Sommeil", "nutrition": "Nutrition", "body_composition": "Composition corporelle",

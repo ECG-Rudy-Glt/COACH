@@ -7,9 +7,9 @@ from typing import Any
 
 KCAL_PER_KG = 7700  # repère classique, valable à court terme (voir docs/references.md)
 PAL = {"sédentaire": 1.25, "mixte": 1.40, "physique": 1.60}  # activité quotidienne hors séances
-MET = {"run": 8.0, "bike": 7.0, "strength": 4.0, "swim": 6.0, "walk": 3.5, "other": 4.0}
+MET = {"run": 8.0, "bike": 7.0, "strength": 4.0, "swim": 6.0, "walk": 3.5, "other": 4.0, "hybrid": 6.0}  # hybride (CrossFit, Hyrox) : valeur moyenne entre aérobie (≈ 6) et metcons (≈ 8+)
 KIND_SPORT = {"run_easy": "run", "run_long": "run", "run_quality": "run", "strength_upper": "strength", "strength_lower": "strength",
-              "strength_full": "strength"}
+              "strength_full": "strength", "strength_crossfit": "hybrid"}
 MIN_KCAL = {"homme": 1500, "femme": 1200}
 
 
