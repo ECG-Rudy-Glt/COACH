@@ -705,6 +705,7 @@ async function profile() {
       h("button", { class: "btn sm", onclick: () => evidenceScreen() }, "Consulter")),
     h("div", { class: "card stack" }, h("h3", null, "Langue"), langSwitch(),
       h("p", { class: "muted" }, "Langue de l'application, du coach IA et des mails.")),
+    typeof statsPrefCard === "function" ? statsPrefCard() : null,
     h("div", { class: "card stack" }, h("h3", null, "Compte"),
       h("button", { class: "link", style: "text-align:left", onclick: passwordScreen }, "Changer mon mot de passe"),
       h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter")),

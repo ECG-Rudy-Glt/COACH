@@ -3,13 +3,14 @@ from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 
 from app.nutrition import engine as eng
 from app.nutrition.api import _day_load, _profile
 from app.plan import trajectory
-from app.questionnaire.models import current_facts
+from app.questionnaire.models import Fact, current_facts
 from app.repo import Repo
-from app.stats import daily, progress
+from app.stats import daily, progress, regularity
 
 PROFILE_FACTS = ("body.height_cm", "body.birth_year")  # sans eux, la cible énergétique serait celle d'un profil par défaut : on ne l'affiche pas (ST1)
 
@@ -61,6 +62,24 @@ def _weekly_km_target(goals: list[dict[str, Any]], today: date) -> int | None:
     return trajectory.volume_target_km(target["time_min"], target["distance_km"]) if target else None
 
 
+PREF_FACTS = {"regularity": "ui.stats_regularity"}  # préférences d'affichage : un fait « manual » par clé, sans migration (ST13)
+
+
+class Prefs(BaseModel):
+    regularity: bool
+
+
+def read_prefs(repo: Repo, user_id: int) -> dict[str, bool]:
+    facts = current_facts(repo.list_facts(user_id))
+    return {name: facts.get(key) is not False for name, key in PREF_FACTS.items()}  # activé tant que l'utilisateur ne l'a pas désactivé
+
+
+def regularity_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
+    if not read_prefs(repo, user_id)["regularity"]:
+        return {"enabled": False}  # désactivé : rien n'est calculé
+    return regularity.regularity_view(repo.list_sessions(user_id, today - timedelta(weeks=regularity.HISTORY_WEEKS), today + timedelta(days=7)), today)
+
+
 def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     router = APIRouter(prefix="/users/{user_id}/stats", tags=["stats"])
 
@@ -71,5 +90,18 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     @router.get("/progress")
     def progress_stats(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         return progress_view(repo, user_id, date.today(), request.app.state.bench_index)
+
+    @router.get("/regularity")
+    def regularity_stats(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        return regularity_view(repo, user_id, date.today())
+
+    @router.get("/preferences")
+    def get_prefs(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, bool]:
+        return read_prefs(repo, user_id)
+
+    @router.put("/preferences")
+    def set_prefs(body: Prefs, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, bool]:
+        repo.add_facts(user_id, [Fact(key=PREF_FACTS[name], value=value, source="manual") for name, value in body.model_dump().items()])
+        return read_prefs(repo, user_id)
 
     return router

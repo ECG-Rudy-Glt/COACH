@@ -270,16 +270,78 @@ async function renderProgress(box) {
   box.replaceChildren(runRecordsCard(d.records.running), liftRecordsCard(d.records.lifts, d.records.declared_lifts), stTrajectoryCard(d.trajectory), curvesCard(d.curves), volumeCard(d.volume), paceCard(d.pace));
 }
 
+// ---------- section « Régularité » ----------
+// Sans pression : pas de badge, pas de rappel, une séance passée volontairement n'est pas un échec, une semaine vide garde la série. Désactivable (Profil).
+
+function goalCard(g) {
+  if (!g.planned) return stCard("Objectif de la semaine", h("p", { class: "muted" }, "Pas de séance prévue cette semaine."));
+  const pct = Math.min(100, Math.round((g.done / g.planned) * 100));
+  return stCard("Objectif de la semaine",
+    h("p", null, h("span", { class: "st-big" }, `${g.done} / ${g.planned}`), " ", g.planned > 1 ? "séances faites" : "séance faite"),
+    h("div", { class: "st-meter", role: "img", "aria-label": __("{done} séances faites sur {planned} prévues", { done: g.done, planned: g.planned }) }, h("i", { style: `width:${pct}%` })),
+    h("p", { class: "muted" }, g.met ? "Semaine tenue : la suite est un bonus." : __("La semaine compte comme tenue à partir de {needed} séances faites sur {planned}.", { needed: g.needed, planned: g.planned })),
+    h("p", { class: "st-note" }, g.skipped > 1 ? __("{n} séances passées volontairement : elles ne comptent pas contre vous.", { n: g.skipped }) : g.skipped ? "1 séance passée volontairement : elle ne compte pas contre vous." : "Les séances prévues sont celles du plan : rien n'est ajouté ici."));
+}
+
+function streakCard(st, summary) {
+  return stCard("Série de semaines",
+    st.current ? h("p", null, h("span", { class: "st-big" }, st.current), h("span", { class: "st-unit" }, st.current > 1 ? "semaines tenues de suite" : "semaine tenue"))
+      : h("p", { class: "muted" }, "Pas de série en cours : une prochaine semaine tenue en démarre une. Rien n'est perdu, vos semaines passées restent comptées ci-dessous."),
+    st.best ? h("p", { class: "muted" }, st.best > 1 ? __("Meilleure série sur un an : {n} semaines.", { n: st.best }) : "Meilleure série sur un an : 1 semaine.") : null,
+    summary.weeks_judged ? h("p", null, __("{met} semaines tenues sur {judged} terminées (12 dernières semaines).", { met: summary.weeks_met, judged: summary.weeks_judged })) : null,
+    h("p", { class: "st-note" }, "Une semaine est tenue quand au moins 75 % des séances prévues sont faites. Une semaine sans séance prévue, ou une séance passée volontairement, ne casse jamais la série ; la semaine en cours non plus."));
+}
+
+function weeksCard(weeks, summary) {
+  const cur = weeks.find((w) => w.current);
+  const label = __("Séances faites par semaine sur 12 semaines : {values}.", { values: weeks.map((w) => `${stShort(w.monday)} ${w.done} / ${w.planned}`).join(", ") });
+  return stCard("12 dernières semaines",
+    barChart({ days: weeks.map((w) => w.monday), values: weeks.map((w) => (w.planned || w.done ? w.done : null)), targets: weeks.map((w) => (w.planned ? w.planned : null)), today: cur && cur.monday,
+      tick: (iso) => stDay(iso, { day: "numeric" }), format: (v) => stFmt(v), label }),
+    stLegend(["", "séances faites"], ["target", "séances prévues"]),
+    h("p", { class: "st-note" }, __("{done} séances faites sur {planned} prévues en 12 semaines. La semaine en cours (en clair) n'est pas terminée.", { done: summary.sessions_done, planned: summary.sessions_planned })),
+    valuesTable("Séances par semaine", ["Semaine du", "Faites", "Prévues", "Passées volontairement", "Semaine"],
+      weeks.slice().reverse().map((w) => [stDay(w.monday, { day: "numeric", month: "short" }), w.done, w.planned, w.skipped,
+        w.current ? "en cours" : w.met === true ? "tenue" : w.met === false ? "non tenue" : "sans séance prévue"])));
+}
+
+async function renderRegularity(box) {
+  const d = await api(`/users/${userId}/stats/regularity`);
+  if (!d.enabled) return box.replaceChildren(stEmpty("Régularité", "Cette section est masquée. Vous pouvez la réactiver dans Profil, rubrique Statistiques."));
+  const off = h("button", { class: "link", style: "text-align:left", onclick: async () => {
+    try { await api(`/users/${userId}/stats/preferences`, { method: "PUT", body: { regularity: false } }); statsScreen("daily"); } catch (e) { toast(e.message); } } }, "Masquer cette section");
+  box.replaceChildren(goalCard(d.goal), streakCard(d.streak, d.summary), weeksCard(d.weeks, d.summary),
+    h("div", { class: "card stack" }, h("p", { class: "muted" }, "Pas de badge, pas de rappel : cette page ne vous écrit jamais et ne sert qu'à vous situer. Vous pouvez la masquer quand vous voulez."), off));
+}
+
+// Réglage du profil : afficher ou non la régularité.
+function statsPrefCard() {
+  const body = h("div", { class: "stack" }, h("p", { class: "muted" }, "Chargement…"));
+  api(`/users/${userId}/stats/preferences`).then((p) => {
+    const box = h("input", { type: "checkbox", id: "st-pref-reg", checked: p.regularity });
+    box.addEventListener("change", async () => {
+      try { await api(`/users/${userId}/stats/preferences`, { method: "PUT", body: { regularity: box.checked } }); toast(box.checked ? "Régularité affichée" : "Régularité masquée"); }
+      catch (e) { box.checked = !box.checked; toast(e.message); }
+    });
+    body.replaceChildren(h("label", { class: "row", for: "st-pref-reg" }, box, h("span", { class: "grow" }, "Afficher la régularité (séries de semaines, objectif de la semaine)")),
+      h("p", { class: "muted" }, "Sans badge ni rappel. Décochée, la section disparaît de l'écran Statistiques et n'est plus calculée."));
+  }).catch(() => body.replaceChildren(h("p", { class: "muted" }, "Réglage indisponible pour l'instant.")));
+  return h("div", { class: "card stack" }, h("h3", null, "Statistiques"), body);
+}
+
 // ---------- écran ----------
 
-// Sections de l'écran : [id, libellé, rendu]. Chaque lot en ajoute une.
-const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress]];
+// Sections de l'écran : [id, libellé, rendu, préférence]. Chaque lot en ajoute une ; une section à préférence disparaît quand l'utilisateur la désactive.
+const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress], ["regularity", "Régularité", renderRegularity, "regularity"]];
 
 async function statsScreen(section) {
-  const cur = STATS_SECTIONS.find((s) => s[0] === (section || store.get("sc-stats-section"))) || STATS_SECTIONS[0];
+  let prefs = {};
+  try { prefs = await api(`/users/${userId}/stats/preferences`); } catch (e) { if (e.handled) return; }  // sans réponse : tout reste affiché
+  const sections = STATS_SECTIONS.filter((s) => !s[3] || prefs[s[3]] !== false);
+  const cur = sections.find((s) => s[0] === (section || store.get("sc-stats-section"))) || sections[0];
   store.set("sc-stats-section", cur[0]);
   const box = h("div", { class: "stack", "aria-live": "polite" }, h("p", { class: "muted" }, "Chargement…"));
-  const nav = STATS_SECTIONS.length > 1 ? h("div", { class: "st-seg", role: "group", "aria-label": "Section" }, STATS_SECTIONS.map(([id, name]) =>
+  const nav = sections.length > 1 ? h("div", { class: "st-seg", role: "group", "aria-label": "Section" }, sections.map(([id, name]) =>
     h("button", { type: "button", class: "chip", style: `border:0;cursor:pointer;opacity:${id === cur[0] ? 1 : 0.6};${id === cur[0] ? "outline:2px solid var(--accent)" : ""}`,
       "aria-pressed": id === cur[0], onclick: () => statsScreen(id) }, name))) : null;
   show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Statistiques"), themeToggle()), h("h1", null, "Statistiques"), nav, box,
