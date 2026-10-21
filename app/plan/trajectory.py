@@ -69,6 +69,20 @@ def current_level(facts: dict[str, Any], to_km: float) -> tuple[float, str] | No
     return max(found) if found else None
 
 
+def level_is_record_only(facts: dict[str, Any], to_km: float) -> bool:
+    """C13 : vrai si le niveau retenu par C10 vient d'un record seul. Un record est le meilleur temps jamais couru, pas le niveau du moment."""
+    best: tuple[float, bool] | None = None
+    for key, km in BENCH_KM.items():
+        raw = facts.get(key)
+        if not isinstance(raw, dict):
+            continue
+        now = parse_time((raw.get("now") or {}).get("time")) if isinstance(raw.get("now"), dict) else None
+        rec = now or (parse_time((raw.get("pr") or {}).get("time")) if isinstance(raw.get("pr"), dict) else None)
+        if rec and (best is None or riegel(rec, km, to_km) > best[0]):
+            best = (riegel(rec, km, to_km), not now)
+    return bool(best and best[1])
+
+
 def volume_target_km(goal_minutes: float, goal_km: float) -> int:
     """Volume hebdomadaire visé (C12), d'après le temps de l'objectif ramené au 10 km."""
     t10 = riegel(goal_minutes, goal_km, 10.0)
@@ -193,7 +207,7 @@ def describe(target: dict[str, Any] | None, facts: dict[str, Any], goals: list[d
                            else "c'est très ambitieux, mieux vaut repousser la date ou viser un temps plus lent."))
     return {
         "target": {"title": target["title"], "date": target["date"].isoformat(), "distance_km": km, "time": fmt_time(goal), "pace": fmt_pace(pace_goal)},
-        "level": {"time": fmt_time(level_min), "source": level[1]} if level else None,
+        "level": {"time": fmt_time(level_min), "source": level[1], "record_only": level_is_record_only(facts, km)} if level else None,
         "gap_pct": round(gap * 100, 1), "per_month_pct": round(per_month, 2), "verdict": verdict,
         "weekly_km_target": ceiling, "weeks_left": weeks_left, "phases": phases, "milestones": milestones, "warnings": warnings,
         "current_phase": phases[0]["macro"] if phases else None,

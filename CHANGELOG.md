@@ -29,6 +29,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - CI reports test coverage (job summary) and fails below a minimum threshold (`.coveragerc`, currently 83 %).
 - Background jobs start from a FastAPI lifespan handler instead of the deprecated `on_event` hook (no behaviour change).
 ### Fixed
+- Performance goal: when the level comes only from a personal best (no current time entered), the screen and the coach call it a starting point, likely faster than your current level, instead of "estimated current level" (rule C13).
 - The plan no longer schedules sessions on the day of the event (whatever the weekday), keeps the day before short and easy, and leaves 2 days without running after it (rule C6).
 - A declared pain on a zone that carries running (knee, ankle, hip, shin, Achilles, calf, foot, hamstring) now freezes running volume, long run and intensity (rule S2); calf, foot and hamstring pain are recognised in session notes.
 - Individual exercises can be excluded with the `history.avoid_exercises` fact (name fragments) without treating the whole body zone as injured.
