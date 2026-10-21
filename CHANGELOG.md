@@ -29,6 +29,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Evidence base: 11 publications on Hyrox, CrossFit and high-intensity functional training (HYB-004 to HYB-014), with their limits and the gaps (no trial of a complete programme, nothing on compromised running or simulation frequency).
 - English translations of the new session titles, notes and instructions.
 ### Changed
+- Statistics: the section switcher (Daily, Progress, Regularity, Shape) stays pinned at the top while you scroll.
 - Hybrid sessions count 6 MET in the energy target (instead of the 4 MET default); a Hyrox goal title containing "Hyrox" no longer reads its 8 km as a running goal; a declared tibia injury now also removes jumping moves.
 - Meal estimates: a weight given in the description is multiplied by typical cooked-dish densities (a 430 g stew is ~700 kcal, not 380); the prompt now asks for the high end of the range for big plates (sauces, cooking fat, restaurant portions) and the per-meal ceiling is raised from 2,500 to 3,500 kcal; estimates were clipped and too low.
 - Meal photo: two large buttons (*Take a photo* opens the camera directly on iPhone and Android, *Photo library*), preview with a remove button, and tips for a better estimate. `[hidden]` now always hides an element (the chat suggestion chips did not disappear while typing).
