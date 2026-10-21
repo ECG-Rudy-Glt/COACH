@@ -97,6 +97,31 @@ def test_stats_sections_all_visible_without_scroll(logged: Page):
     expect(logged.get_by_text("Pour faire apparaître l'araignée")).to_be_visible()  # moins de 3 axes : on explique quoi saisir
 
 
+def test_profile_overview(logged: Page):
+    tab(logged, "Profil")
+    expect(logged.get_by_role("heading", name="Profil", level=1)).to_be_visible()
+    expect(logged.get_by_text("Ma forme")).to_be_visible()  # l'araignée (ou, faute de 3 axes, ce qu'il faut saisir) est dans le Profil
+    expect(logged.get_by_text("Pour faire apparaître l'araignée")).to_be_visible()
+    expect(logged.locator(".item .v")).to_have_count(0)  # plus de liste de questions sur l'écran principal
+    for rubrique in ("Identité", "Sports et objectifs", "Préférences", "Compte et sécurité"):
+        expect(logged.locator("details.fold summary", has_text=rubrique)).to_be_visible()
+    logged.locator("details.fold summary", has_text="Compte et sécurité").click()
+    expect(logged.get_by_role("button", name="Se déconnecter")).to_be_visible()
+    logged.get_by_role("button", name="Voir le détail dans Statistiques").click()
+    expect(logged.get_by_role("heading", name="Statistiques", level=1)).to_be_visible()
+
+
+def test_profile_questionnaire_edit(logged: Page):
+    tab(logged, "Profil")
+    logged.locator(".card", has_text="Questionnaire").get_by_role("button", name="Ouvrir").click()
+    expect(logged.get_by_role("heading", name="Questionnaire", level=1)).to_be_visible()
+    logged.locator("details.fold summary").first.click()
+    logged.locator(".item").first.click()  # édition d'une réponse
+    expect(logged.get_by_role("button", name="Retour")).to_be_visible()
+    logged.get_by_role("button", name="Retour").click()
+    expect(logged.get_by_role("heading", name="Questionnaire", level=1)).to_be_visible()
+
+
 def test_switch_to_english(page: Page):
     page.goto("/")
     page.get_by_role("button", name="English").click()
