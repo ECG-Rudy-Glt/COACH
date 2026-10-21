@@ -10,7 +10,7 @@ from datetime import date
 from typing import Any
 
 from app.coach import prompts, service
-from app.coach.llm import LLMError, default_model, is_configured, price_eur
+from app.coach.llm import LLMError, default_model, is_configured, price_result
 from app.questionnaire.engine import pending
 from app.questionnaire.models import Fact, Question, current_facts
 from app.repo import Repo
@@ -93,7 +93,7 @@ def analyze(repo: Repo, llm: Any, bank: list[Question], user_id: int, today: dat
             repo.log_llm_call(user_id, KIND, model, (0, 0), 0.0, False, str(e)[:200])
             log.info("analyse d'accueil sans IA : %s", type(e).__name__)
         else:
-            repo.log_llm_call(user_id, KIND, res.model, (res.input_tokens, res.output_tokens), price_eur(res.input_tokens, res.output_tokens), True, None)
+            repo.log_llm_call(user_id, KIND, res.model, (res.input_tokens, res.output_tokens), price_result(res), True, None)
             try:
                 result, source = validate(service.parse_json(res.text), cands), "llm"
             except (ValueError, json.JSONDecodeError):

@@ -10,9 +10,10 @@ from typing import Any
 import yaml
 from fastapi import HTTPException
 
+from app import i18n
 from app.coach import prompts
 from app.coach.history import past_digest
-from app.coach.llm import LLMError, default_model, price_eur
+from app.coach.llm import CachedSystem, LLMError, default_model, price_result
 from app.plan import trajectory
 from app.plan.cycles import describe
 from app.plan.engine import DAYS
@@ -86,6 +87,19 @@ def _monday(d: date) -> date:
 SOURCES_RULE = ("\nAppuie tes conseils sur les règles (champ « regles ») et les publications (champ « sources ») du contexte ; tu peux citer leurs identifiants entre parenthèses, "
                 "par exemple (M5) ou (RUN-003). N'invente jamais d'étude, de chiffre ou d'identifiant absent de ces listes ; si aucune source ne soutient un conseil, "
                 "présente-le comme un repère de pratique.")
+FIXED_CONTEXT_KEYS = ("regles", "sources")  # identiques d'un appel à l'autre : ils forment, avec la consigne, le préfixe que le fournisseur peut mettre en cache
+
+
+def split_context(ctx: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Sépare le contexte en (texte des références fixes, reste variable). Rien n'est retiré : les champs « regles » et « sources » changent seulement de place.
+
+    Le texte fixe vient après la consigne dans le message système et ne contient ni date ni donnée de l'utilisateur.
+    """
+    fixed = {k: ctx[k] for k in FIXED_CONTEXT_KEYS if k in ctx}
+    head = "\n\nRÉFÉRENCES FIXES du contexte (champs « regles » et « sources ») :\n" if i18n.current() == "fr" else "\n\nFIXED REFERENCES of the context (fields \"regles\" and \"sources\"):\n"
+    return head + json.dumps(fixed, ensure_ascii=False, default=str), {k: v for k, v in ctx.items() if k not in FIXED_CONTEXT_KEYS}
+
+
 _EVIDENCE: dict[str, str] = {}
 _EVIDENCE_IDS: set[str] = set()
 _BY_RULE: dict[str, list[str]] = {}
@@ -261,14 +275,14 @@ def review(repo: Repo, llm: Any, user_id: int, today: date | None = None) -> dic
     facts = current_facts(repo.list_facts(user_id))
     if (set(facts.get("health.red_flags") or []) - {"aucun"}) and facts.get("health.red_flags_discussed") != "oui":
         raise HTTPException(409, "Un signal d'alerte à l'effort doit d'abord être discuté avec un médecin (règle S1).")
-    ctx = build_context(repo, user_id, today)
+    references, rest = split_context(build_context(repo, user_id, today))
     model = default_model()
     try:
-        res = llm.complete(prompts.get("review", SYSTEM), json.dumps(ctx, ensure_ascii=False, default=str), 1400, model, json_mode=True)
+        res = llm.complete(CachedSystem(prompts.get("review", SYSTEM) + references), json.dumps(rest, ensure_ascii=False, default=str), 1400, model, json_mode=True)
     except LLMError as e:
         repo.log_llm_call(user_id, "weekly_review", model, (0, 0), 0.0, False, str(e)[:200])
         raise HTTPException(502, str(e)) from e
-    cost = price_eur(res.input_tokens, res.output_tokens)
+    cost = price_result(res)
     repo.log_llm_call(user_id, "weekly_review", res.model, (res.input_tokens, res.output_tokens), cost, True, None)
     try:
         out = parse_json(res.text)

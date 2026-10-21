@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 from app import i18n
 from app.coach import history, prompts, service
-from app.coach.llm import LLMError, default_model, price_eur
+from app.coach.llm import CachedSystem, LLMError, default_model, price_result
 from app.repo import Repo
 
 MAX_CHAT_PER_DAY = 60
@@ -86,8 +86,11 @@ def chat(repo: Repo, llm: Any, user_id: int, text: str, today: date | None = Non
     mine = repo.add_message(user_id, "user", text)  # conservé même si le service IA échoue
     from app.nutrition.api import coach_context  # import local : app.nutrition.api dépend de app.coach.service
 
-    context = json.dumps({**service.build_context(repo, user_id, today), "nutrition": coach_context(repo, user_id, today)}, ensure_ascii=False, default=str)
-    system = prompts.get("chat", CHAT_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + ("\n\nCONTEXTE :\n" if i18n.current() == "fr" else "\n\nCONTEXT:\n") + context
+    references, rest = service.split_context({**service.build_context(repo, user_id, today), "nutrition": coach_context(repo, user_id, today)})
+    context = json.dumps(rest, ensure_ascii=False, default=str)
+    # préfixe fixe (consigne + règles + sources, mis en cache par Anthropic) puis contexte de l'utilisateur ; même texte qu'avant, découpé en deux blocs
+    system = CachedSystem(prompts.get("chat", CHAT_SYSTEM) + prompts.get("sources_rule", service.SOURCES_RULE) + references,
+                          ("\n\nCONTEXTE :\n" if i18n.current() == "fr" else "\n\nCONTEXT:\n") + context)
     model = default_model()
     try:
         past = _alternating(prior)
@@ -98,7 +101,7 @@ def chat(repo: Repo, llm: Any, user_id: int, text: str, today: date | None = Non
     except LLMError as e:
         repo.log_llm_call(user_id, "chat", model, (0, 0), 0.0, False, str(e)[:200])
         raise HTTPException(502, str(e)) from e
-    repo.log_llm_call(user_id, "chat", res.model, (res.input_tokens, res.output_tokens), price_eur(res.input_tokens, res.output_tokens), True, None)
+    repo.log_llm_call(user_id, "chat", res.model, (res.input_tokens, res.output_tokens), price_result(res), True, None)
     out = parse_reply(res.text)
     if out["remember"]:
         repo.add_memory(user_id, "decision", (today, today), out["remember"], {"source": "chat"})
