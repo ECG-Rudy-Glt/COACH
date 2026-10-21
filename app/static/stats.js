@@ -329,10 +329,124 @@ function statsPrefCard() {
   return h("div", { class: "card stack" }, h("h3", null, "Statistiques"), body);
 }
 
+// ---------- section « Forme » (araignée) ----------
+// Seulement des axes qu'une donnée mesure (ST14). Chaque axe : un pourcentage de TA propre référence, plafonné à 100 (ST15), avec sa définition, sa source,
+// sa période, sa référence et sa valeur brute en texte. Pas de score global, pas de comparaison avec d'autres personnes.
+
+const RADAR_TEXT = {
+  volume: { name: "Volume", def: "Moyenne par semaine des 4 dernières semaines terminées, en kilomètres de course (en minutes d'activité si vous ne courez pas), face à votre référence.",
+    source: "Source : sorties mesurées par la montre et séances saisies à la main.", range: "0 % = aucune activité ; 100 % = la référence atteinte ou dépassée." },
+  regularity: { name: "Régularité", def: "Part des séances prévues par le plan qui sont faites, sur les 12 dernières semaines terminées. Les séances passées volontairement ne comptent pas.",
+    source: "Source : séances du plan et leur état.", range: "0 % = aucune séance faite ; 100 % = toutes les séances prévues faites." },
+  endurance: { name: "Endurance", def: "Meilleur effort de course des 8 dernières semaines mesuré par la montre, converti en temps équivalent sur la distance de l'objectif (10 km sans objectif), face à votre référence. Les temps saisis à la main et les records ne servent pas ici.",
+    source: "Source : sorties de course de la montre (niveau actuel du plan).", range: "Pourcentage = temps de référence ÷ votre temps équivalent ; 100 % = référence atteinte ou battue." },
+  strength: { name: "Force", def: "Maximum théorique sur une répétition (formule d'Epley, séries de 1 à 10 répétitions) des 12 dernières semaines, par exercice de référence, face aux 12 semaines précédentes. Moyenne des exercices présents dans les deux périodes.",
+    source: "Source : séries chargées saisies dans vos séances.", range: "0 % = aucune charge ; 100 % = au moins aussi fort que la période précédente." },
+};
+
+const RADAR_REASONS = {
+  short_history: "Pas assez d'historique : il faut au moins 3 semaines avec de l'activité parmi les 12 semaines qui précèdent la période, ou un objectif de course daté.",
+  few_planned: "Pas assez de séances prévues : il en faut au moins 8, réparties sur 4 semaines, parmi les 12 dernières semaines terminées.",
+  off: "Régularité masquée dans votre profil : rien n'est calculé. Vous pouvez la réactiver dans Profil, rubrique Statistiques.",
+  no_run: "Aucune sortie de course exploitable ces 8 dernières semaines (au moins 3 km, allure plausible, peu de dénivelé, pas un simple footing).",
+  no_reference: "Pas de référence : ajoutez un objectif de performance daté, ou courez de nouveau assez longtemps pour qu'une estimation plus ancienne existe.",
+  few_lifts: "Il faut au moins 2 exercices de référence (développé couché, squat, rowing…) avec des séries chargées de 1 à 10 répétitions dans chacune des deux périodes de 12 semaines.",
+};
+
+const stSigned = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
+const stDot = (iso) => stShort(iso).replace(/\.$/, "");  // « 18 oct. » : le point de l'abréviation ne doit pas doubler celui de la phrase
+const stPeriod = (n) => (n && n.from ? __("Période : du {from} au {to}.", { from: stDot(n.from), to: stDot(n.to) }) : null);
+
+// Valeur brute, référence et période d'un axe sous forme de texte (utilisés par la carte de l'axe et par le tableau).
+function radarFacts(a, n) {
+  if (a.id === "volume") {
+    const u = a.unit;
+    return { value: __("{value} {u} par semaine en moyenne ({weeks}).", { value: stN(n.value), u, weeks: n.weeks.map((x) => stN(x)).join(" / ") }),
+      reference: n.reference_kind === "goal" ? __("{value} {u} par semaine : repère de volume du plan pour votre objectif.", { value: stN(n.reference), u })
+        : __("{value} {u} : votre meilleure semaine des 12 semaines précédentes.", { value: stN(n.reference), u }), period: stPeriod(n) };
+  }
+  if (a.id === "regularity") {
+    return { value: __("{done} séances faites sur {planned} prévues.", { done: n.done, planned: n.planned }), reference: "Toutes les séances prévues faites.", period: stPeriod(n) };
+  }
+  if (a.id === "endurance") {
+    const src = { time: n.time, km: stN(n.to_km), from_km: stN(n.from_km), from_time: n.from_time, day: stDot(n.day) };
+    return { value: n.kind === "estimate" ? __("Temps équivalent {time} sur {km} km, d'après {from_km} km en {from_time} le {day}.", src)
+      : __("Au plus {time} sur {km} km, d'après {from_km} km en {from_time} le {day} (sans fréquence cardiaque, la sortie prouve seulement que vous courez au moins à cette allure).", src),
+    reference: n.reference_kind === "goal" ? __("Votre objectif : {time} sur {km} km.", { time: n.reference_time, km: stN(n.to_km) })
+      : __("Votre meilleure estimation antérieure : {time} sur {km} km, le {day}.", { time: n.reference_time, km: stN(n.to_km), day: stDot(n.reference_day) }),
+    period: "Période : les 8 dernières semaines." };
+  }
+  return { value: n.lifts.map((x) => __("{label} : ≈ {now} kg", { label: x.label, now: stN(x.e1rm) })).join(" ; "),
+    reference: n.lifts.map((x) => __("{label} : ≈ {ref} kg ({score} %)", { label: x.label, ref: stN(x.reference), score: x.score })).join(" ; "), period: "Période : les 12 dernières semaines contre les 12 précédentes." };
+}
+
+function radarChart(drawn, compare, label) {
+  const W = 320, H = 290, cx = 160, cy = 145, R = 80, n = drawn.length;
+  const ang = (i) => -Math.PI / 2 + (2 * Math.PI * i) / n;
+  const pt = (i, pct, extra = 0) => [cx + Math.cos(ang(i)) * (R * pct / 100 + extra), cy + Math.sin(ang(i)) * (R * pct / 100 + extra)];
+  const poly = (vals) => vals.map((v, i) => pt(i, v).map((x) => x.toFixed(1)).join(",")).join(" ");
+  const svg = svgRoot(W, H, label);
+  for (const p of [25, 50, 75, 100]) svg.append(svgEl("polygon", { class: "st-ring", points: poly(drawn.map(() => p)) }));
+  drawn.forEach((_, i) => { const [x, y] = pt(i, 100); svg.append(svgEl("line", { class: "st-spoke", x1: cx, y1: cy, x2: x, y2: y })); });
+  svg.append(svgEl("text", { class: "st-text", x: cx + 3, y: cy - R / 2 - 2 }, "50 %"), svgEl("text", { class: "st-text", x: cx + 3, y: cy - R - 2 }, "100 %"));
+  if (compare) svg.append(svgEl("polygon", { class: "st-area-before", points: poly(drawn.map((a) => a.before.score)) }));
+  svg.append(svgEl("polygon", { class: "st-area", points: poly(drawn.map((a) => a.now.score)) }));
+  drawn.forEach((a, i) => {
+    const [x, y] = pt(i, a.now.score);
+    svg.append(svgEl("circle", { class: "st-point", cx: x, cy: y, r: 3.5 }));
+    const [lx, ly] = pt(i, 100, 14), c = Math.cos(ang(i)), s = Math.sin(ang(i));
+    const anchor = c > 0.3 ? "start" : c < -0.3 ? "end" : "middle", ny = ly + (s < -0.5 ? -11 : s > 0.5 ? 8 : -1);
+    svg.append(svgEl("text", { class: "st-text strong", x: lx, y: ny, "text-anchor": anchor }, __(RADAR_TEXT[a.id].name)),
+      svgEl("text", { class: "st-val", x: lx, y: ny + 11, "text-anchor": anchor }, `${a.now.score} %`));
+  });
+  return svg;
+}
+
+function radarAxisCard(a, weeks) {
+  const t = RADAR_TEXT[a.id], name = __(t.name);
+  const info = [h("p", { class: "st-note" }, t.def), h("p", { class: "st-note" }, t.source), h("p", { class: "st-note" }, t.range)];
+  if (a.status !== "ok") return stCard(name, h("p", { class: "muted" }, __("Axe non tracé. {reason}", { reason: __(RADAR_REASONS[a.reason]) })), ...info);
+  const f = radarFacts(a, a.now), s = a.now.score;
+  const before = a.before ? [__("Il y a {n} semaines : {score} %.", { n: weeks, score: a.before.score }), a.delta === 0 ? __("Aucun écart avec maintenant.") : __("Écart avec maintenant : {d} points.", { d: stSigned(a.delta) })].join(" ")
+    : __("Il y a {n} semaines : pas assez de données pour cet axe.", { n: weeks });
+  return stCard(name,
+    h("p", null, h("span", { class: "st-big" }, `${s} %`), h("span", { class: "st-unit" }, "de votre référence")),
+    h("div", { class: "st-meter", role: "img", "aria-label": __("{name} : {score} % de la référence", { name, score: s }) }, h("i", { style: `width:${s}%` })),
+    h("p", null, h("strong", null, "Valeur : "), f.value), h("p", null, h("strong", null, "Référence : "), f.reference), f.period ? h("p", { class: "muted" }, f.period) : null,
+    h("p", { class: "muted" }, before), ...info);
+}
+
+function radarTableRows(axes, weeks) {
+  return axes.map((a) => {
+    const name = __(RADAR_TEXT[a.id].name);
+    if (a.status !== "ok") return [name, "–", "–", __("Non tracé : {reason}", { reason: __(RADAR_REASONS[a.reason]) }), "–"];
+    const f = radarFacts(a, a.now);
+    return [name, `${a.now.score} %`, a.before ? `${a.before.score} %` : "–", f.value, f.reference];
+  });
+}
+
+async function renderRadar(box) {
+  const d = await api(`/users/${userId}/stats/radar`);
+  const drawn = d.axes.filter((a) => a.status === "ok"), weeks = d.compare_weeks;
+  const label = __("Forme sur {n} axes, en pourcentage de votre référence : {values}.", { n: drawn.length,
+    values: drawn.map((a) => `${__(RADAR_TEXT[a.id].name)} ${a.now.score} %${d.compare ? __(" (il y a {n} semaines : {score} %)", { n: weeks, score: a.before.score }) : ""}`).join(", ") });
+  const head = ["Axe", "Maintenant", __("Il y a {n} semaines", { n: weeks }), "Valeur", "Référence"];
+  const intro = stCard("Forme",
+    h("p", { class: "muted" }, "Chaque axe compare une mesure à votre propre référence : 100 % veut dire référence atteinte ou dépassée. Aucune comparaison avec d'autres personnes, aucun score global."),
+    d.chart ? radarChart(drawn, d.compare, label) : h("p", null, __("Il faut au moins 3 axes mesurés pour tracer la forme ; {n} pour l'instant. Les axes sont détaillés ci-dessous.", { n: drawn.length })),
+    d.chart ? stLegend(["", "maintenant"], ...(d.compare ? [["before", __("il y a {n} semaines", { n: weeks })]] : [])) : null,
+    d.chart && !d.compare ? h("p", { class: "st-note" }, __("La forme d'il y a {n} semaines n'est pas tracée : tous les axes n'ont pas de valeur à cette date. Les écarts sont donnés axe par axe.", { n: weeks })) : null,
+    valuesTable("Axes de la forme", head, radarTableRows(d.axes, weeks)));
+  const missing = stCard("Vitesse et récupération : non tracées",
+    h("p", null, "Aucune mesure validée ne représente la vitesse ni la récupération aujourd'hui. La fréquence cardiaque au repos et l'état d'entraînement de la montre n'ont pas de correspondance publiée avec une échelle."),
+    h("p", { class: "st-note" }, "Elles s'ajouteront quand une définition publiée existera : un axe tracé sans mesure serait une invention."));
+  box.replaceChildren(intro, ...d.axes.map((a) => radarAxisCard(a, weeks)), missing);
+}
+
 // ---------- écran ----------
 
 // Sections de l'écran : [id, libellé, rendu, préférence]. Chaque lot en ajoute une ; une section à préférence disparaît quand l'utilisateur la désactive.
-const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress], ["regularity", "Régularité", renderRegularity, "regularity"]];
+const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress], ["regularity", "Régularité", renderRegularity, "regularity"], ["radar", "Forme", renderRadar]];
 
 async function statsScreen(section) {
   let prefs = {};
