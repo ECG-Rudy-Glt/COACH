@@ -44,6 +44,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - CI reports test coverage (job summary) and fails below a minimum threshold (`.coveragerc`, currently 83 %).
 - Background jobs start from a FastAPI lifespan handler instead of the deprecated `on_event` hook (no behaviour change).
 ### Fixed
+- Repository hygiene: the binary `.coverage` report is no longer tracked and is ignored.
 - Nutrition screen: it crashed on load since the Statistics screen was added, because `stats.js` redefined `weekCard()` (also used by `app.js`) and the later definition won. The statistics one is now `statsWeekCard()`.
 - Meal form: saving a meal did nothing (the file and error variables had been lost in a merge), fixed.
 - Performance goal: when the level comes only from a personal best (no current time entered), the screen and the coach call it a starting point, likely faster than your current level, instead of "estimated current level" (rule C13).
