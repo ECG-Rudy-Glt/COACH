@@ -50,9 +50,11 @@ def nutrition_block(meals: list[dict[str, Any]], today: date, targets: dict[date
     return {"days": out, "average": avg, "has_target": bool(targets)}
 
 
-def weight_block(trend: dict[str, Any], target_kg: float | None) -> dict[str, Any]:
-    """Courbe de poids avec moyenne glissante de 7 jours (ST3 / N5). Le rythme n'est donné que si le moteur a assez de pesées."""
-    return {"series": trend["series"][-60:], "current": trend.get("current"), "rate_pct_per_week": trend.get("rate_pct_per_week"), "target_kg": target_kg}
+def weight_block(trend: dict[str, Any], target_kg: float | None, wt: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Courbe de poids lissée (ST3 / N5). La tendance (kg et % par mois) n'est donnée que si le moteur a 3 pesées sur 14 jours."""
+    wt = wt or {}
+    return {"series": trend["series"][-60:], "current": trend.get("current"), "rate_pct_per_week": trend.get("rate_pct_per_week"), "target_kg": target_kg,
+            "kg_per_month": wt.get("kg_per_month"), "pct_per_month": wt.get("pct_per_month")}
 
 
 def _pace(distance_m: float | None, duration_s: int | None) -> float | None:

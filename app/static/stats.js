@@ -121,15 +121,16 @@ function mealsCard(n) {
 function weightCard(w) {
   if (!w.series.length) return stEmpty("Poids", "Aucune pesée enregistrée. Deux pesées par semaine, le matin, suffisent : on suit la tendance, pas le chiffre d'un jour.",
     h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => nutritionScreen() }, "Saisir mon poids"));
-  const rate = w.rate_pct_per_week;
-  const label = w.target_kg ? __("Courbe de poids sur 60 jours : tendance sur 7 jours {current} kg, objectif {target} kg.", { current: stFmt(w.current, 1), target: stFmt(w.target_kg, 1) })
-    : __("Courbe de poids sur 60 jours : tendance sur 7 jours {current} kg.", { current: stFmt(w.current, 1) });
+  const sg = (v) => `${v > 0 ? "+" : ""}${stFmt(v, 2)}`;
+  const label = w.target_kg ? __("Courbe de poids sur 60 jours : poids lissé {current} kg, objectif {target} kg.", { current: stFmt(w.current, 1), target: stFmt(w.target_kg, 1) })
+    : __("Courbe de poids sur 60 jours : poids lissé {current} kg.", { current: stFmt(w.current, 1) });
   return stCard("Poids",
-    h("p", null, h("span", { class: "st-big" }, stFmt(w.current, 1)), h("span", { class: "st-unit" }, "kg"), h("span", { class: "muted" }, "(tendance sur 7 jours)")),
-    rate != null ? h("p", { class: "muted" }, __("Rythme : {rate} % par semaine.", { rate: `${rate > 0 ? "+" : ""}${stFmt(rate, 2)}` })) : h("p", { class: "muted" }, "Rythme non calculé : il faut au moins 3 pesées réparties sur 7 jours."),
+    h("p", null, h("span", { class: "st-big" }, stFmt(w.current, 1)), h("span", { class: "st-unit" }, "kg"), h("span", { class: "muted" }, "(poids lissé)")),
+    w.kg_per_month != null ? h("p", { class: "muted" }, __("Tendance : {kg} kg par mois ({pct} % par mois).", { kg: sg(w.kg_per_month), pct: sg(w.pct_per_month) }))
+      : h("p", { class: "muted" }, "Tendance non calculée : il faut au moins 3 pesées sur les 14 derniers jours."),
     plotChart({ dots: w.series.map((p) => ({ day: p.day, y: p.kg })), line: w.series.map((p) => ({ day: p.day, y: p.avg })), target: w.target_kg, snap: true, label }),
-    stLegend(["", "tendance 7 jours"], ["dot", "pesée"], ...(w.target_kg ? [["target", __("objectif {target} kg", { target: stFmt(w.target_kg, 1) })]] : [])),
-    valuesTable("Pesées et tendance", ["Jour", "Pesée (kg)", "Tendance (kg)"], w.series.slice().reverse().map((p) => [stDay(p.day, { day: "numeric", month: "short", year: "2-digit" }), stFmt(p.kg, 1), stFmt(p.avg, 1)])));
+    stLegend(["", "courbe lissée"], ["dot", "pesée"], ...(w.target_kg ? [["target", __("objectif {target} kg", { target: stFmt(w.target_kg, 1) })]] : [])),
+    valuesTable("Pesées et courbe lissée", ["Jour", "Pesée (kg)", "Lissé (kg)"], w.series.slice().reverse().map((p) => [stDay(p.day, { day: "numeric", month: "short", year: "2-digit" }), stFmt(p.kg, 1), stFmt(p.avg, 1)])));
 }
 
 function statsWeekCard(wk) {
@@ -490,7 +491,7 @@ async function statsScreen(section) {
   const box = h("div", { class: "stack", "aria-live": "polite" }, h("p", { class: "muted" }, "Chargement…"));
   const nav = sections.length > 1 ? h("div", { class: "st-seg", role: "group", "aria-label": "Section" }, sections.map(([id, name]) =>
     h("button", { type: "button", class: "chip", style: `border:0;cursor:pointer;opacity:${id === cur[0] ? 1 : 0.6};${id === cur[0] ? "outline:2px solid var(--accent)" : ""}`,
-      "aria-pressed": id === cur[0], onclick: () => statsScreen(id) }, name))) : null;
+      pressed: id === cur[0], onclick: () => statsScreen(id) }, name))) : null;
   show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Statistiques"), themeToggle()), h("h1", null, "Statistiques"), nav, box,
     h("p", { class: "st-note" }, "Chiffres calculés par le moteur à partir de vos données, jamais par une IA. Ce suivi ne remplace pas un avis médical."), tabbar("home"));
   try { await cur[2](box); } catch (e) { if (!e.handled) box.replaceChildren(h("p", { class: "error", role: "alert" }, e.message || "Statistiques indisponibles.")); }

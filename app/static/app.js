@@ -1528,21 +1528,53 @@ function bar(label, val, target, unit) {
     h("div", { class: "mini", style: "width:100%;height:6px;background:var(--line);border-radius:3px;overflow:hidden" }, h("i", { style: `display:block;height:100%;width:${pct}%;background:var(--accent)` })));
 }
 
-function weightChart(w, targetKg) {
+// Courbe de poids sur la période choisie : axe du temps réel, courbe lissée (le lissage de 7 jours reste interne), pesées en points, objectif en pointillés.
+function weightChart(w, targetKg, months) {
   if (!w.length) return null;
-  const W = 320, H = 110, P = 8;
-  const kgs = w.map((x) => x.kg).concat(targetKg ? [targetKg] : []);
-  const lo = Math.min(...kgs) - 0.5, hi = Math.max(...kgs) + 0.5;
-  const x = (i) => P + (w.length === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (w.length - 1));
-  const y = (kg) => H - P - ((kg - lo) / (hi - lo)) * (H - 2 * P);
+  const W = 320, H = 140, PL = 34, PR = 8, PT = 8, PB = 20;
+  const day = (iso) => new Date(iso + "T12:00:00").getTime();
+  const end = Date.now(), start = end - ({ 1: 30, 3: 91, 6: 182, 12: 365 }[months] || 91) * 86400000;
+  const kgs = w.map((x) => x.kg).concat(w.map((x) => x.avg)).concat(targetKg ? [targetKg] : []);
+  const lo = Math.floor(Math.min(...kgs) - 0.5), hi = Math.ceil(Math.max(...kgs) + 0.5);
+  const x = (iso) => PL + ((day(iso) - start) / (end - start)) * (W - PL - PR);
+  const y = (kg) => H - PB - ((kg - lo) / (hi - lo)) * (H - PT - PB);
+  const fmt = (t) => new Date(t).toLocaleDateString(langTag(), { day: "numeric", month: "short" });
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Courbe de poids");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", __("Courbe de poids sur {n} mois, de {lo} à {hi} kg.", { n: months, lo: Math.min(...w.map((p) => p.kg)), hi: Math.max(...w.map((p) => p.kg)) }));
   svg.style.cssText = "width:100%;height:auto;stroke-width:2";
-  const pts = w.map((p, i) => `${x(i)},${y(p.avg ?? p.kg)}`).join(" ");
-  svg.innerHTML = (targetKg ? `<line x1="${P}" x2="${W - P}" y1="${y(targetKg)}" y2="${y(targetKg)}" stroke="var(--mark)" stroke-dasharray="4 4"/>` : "")
-    + `<polyline fill="none" stroke="var(--accent)" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>`
-    + w.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.kg)}" r="2.5" fill="var(--muted)" stroke="none"/>`).join("");
+  const txt = "fill=\"var(--muted)\" stroke=\"none\" font-size=\"10\"";
+  svg.innerHTML = `<line x1="${PL}" x2="${W - PR}" y1="${H - PB}" y2="${H - PB}" stroke="var(--line)" stroke-width="1"/>`
+    + `<text x="${PL - 4}" y="${y(hi) + 8}" text-anchor="end" ${txt}>${hi}</text><text x="${PL - 4}" y="${y(lo)}" text-anchor="end" ${txt}>${lo}</text>`
+    + `<text x="${PL}" y="${H - 5}" ${txt}>${fmt(start)}</text><text x="${W - PR}" y="${H - 5}" text-anchor="end" ${txt}>${fmt(end)}</text>`
+    + (targetKg && targetKg >= lo && targetKg <= hi ? `<line x1="${PL}" x2="${W - PR}" y1="${y(targetKg)}" y2="${y(targetKg)}" stroke="var(--mark)" stroke-dasharray="4 4"/>` : "")
+    + w.map((p) => `<circle cx="${x(p.day)}" cy="${y(p.kg)}" r="2" fill="var(--muted)" stroke="none"/>`).join("")
+    + `<polyline fill="none" stroke="var(--accent)" stroke-linejoin="round" stroke-linecap="round" points="${w.map((p) => `${x(p.day)},${y(p.avg)}`).join(" ")}"/>`;
   return svg;
+}
+
+const WEIGHT_PERIODS = [1, 3, 6, 12];
+const weightMonths = () => { const v = Number(store.get("sc-weight-months")); return WEIGHT_PERIODS.includes(v) ? v : 3; };
+
+function weightTrendLines(wt) {
+  const sg = (v) => `${v > 0 ? "+" : ""}${String(v).replace(".", I18N.locale() === "fr" ? "," : ".")}`;
+  const lines = [];
+  lines.push(wt.kg_per_month != null
+    ? h("p", null, h("strong", null, __("Tendance : {kg} kg par mois ({pct} % par mois)", { kg: sg(wt.kg_per_month), pct: sg(wt.pct_per_month) })), h("span", { class: "muted" }, __(" sur {n} mois", { n: wt.months })))
+    : h("p", { class: "muted" }, "Tendance non calculée : il faut au moins 3 pesées sur les 14 derniers jours."));
+  if (wt.target_kg && wt.remaining_kg != null) {
+    lines.push(h("p", null, __("Écart à l'objectif ({target} kg) : {gap} kg", { target: wt.target_kg, gap: Math.abs(wt.remaining_kg) })));
+    if (wt.eta_date) lines.push(h("p", { class: "muted" }, __("Objectif atteint vers le {date} (estimation, si le rythme se maintient).", { date: new Date(wt.eta_date + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "long", year: "numeric" }) })));
+    else if (wt.kg_per_month != null && Math.abs(wt.remaining_kg) > 0.2) lines.push(h("p", { class: "muted" }, "Date d'atteinte non estimée : la tendance actuelle ne mène pas à l'objectif dans les trois ans."));
+  }
+  return lines;
+}
+
+function weightPeriodPicker(d) {
+  const cur = weightMonths();
+  return h("div", { class: "chips", role: "group", "aria-label": "Période" }, WEIGHT_PERIODS.map((m) =>
+    h("button", { type: "button", class: "chip", pressed: cur === m, style: chipStyle(cur === m), onclick: () => { store.set("sc-weight-months", String(m)); nutritionScreen(d.day); } },
+      __("{n} mois", { n: m }))));
 }
 
 const chipStyle = (on) => `border:0;cursor:pointer;opacity:${on ? 1 : 0.55};${on ? "outline:2px solid var(--accent)" : ""}`;
@@ -1615,7 +1647,7 @@ function correctionBlock(m, reload) {
 async function nutritionScreen(day) {
   nutDay.value = day || nutDay.value;
   let d, prog;
-  try { d = await api(`/users/${userId}/nutrition/day${nutDay.value ? `?day=${nutDay.value}` : ""}`); prog = await api(`/users/${userId}/nutrition/progress`); }
+  try { d = await api(`/users/${userId}/nutrition/day${nutDay.value ? `?day=${nutDay.value}` : ""}`); prog = await api(`/users/${userId}/nutrition/progress?months=${weightMonths()}`); }
   catch (e) { return fail(e); }
   nutDay.value = d.day;
   const t = d.targets, tot = d.totals;
@@ -1647,13 +1679,14 @@ async function nutritionScreen(day) {
     h("button", { class: "iconbtn", "aria-label": "Jour suivant", disabled: d.day > d.today, onclick: () => nutritionScreen(shiftDay(d.day, 1)) }, icon("next")));
   const wInput = h("input", { id: "w-kg", type: "number", inputmode: "decimal", step: "0.1", min: "30", max: "250", placeholder: "Poids (kg)", "aria-label": "Poids en kilogrammes" });
   const wWaist = h("input", { id: "w-waist", type: "number", inputmode: "decimal", step: "0.5", placeholder: "Tour de taille (cm), facultatif", "aria-label": "Tour de taille en centimètres" });
+  const wDate = h("input", { id: "w-day", type: "date", max: new Date().toISOString().slice(0, 10), min: new Date(Date.now() - 730 * 86400000).toISOString().slice(0, 10), "aria-label": "Date de la pesée (par défaut aujourd'hui)" });
   const wBtn = h("button", { class: "btn sm", style: "align-self:flex-start" }, "Enregistrer le poids");
   wBtn.addEventListener("click", async () => {
     if (!wInput.value) return;
-    try { await api(`/users/${userId}/nutrition/weight`, { method: "POST", body: { kg: Number(wInput.value), waist_cm: wWaist.value ? Number(wWaist.value) : null } }); toast("Poids enregistré"); nutritionScreen(d.day); }
+    try { await api(`/users/${userId}/nutrition/weight`, { method: "POST", body: { kg: Number(wInput.value), day: wDate.value || undefined, waist_cm: wWaist.value ? Number(wWaist.value) : null } }); toast("Poids enregistré"); nutritionScreen(d.day); }
     catch (e) { toast(e.message); }
   });
-  const pr = prog.profile, tr = prog.trend;
+  const pr = prog.profile;
   show(
     h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Nutrition"), themeToggle()),
     h("h1", null, "Nutrition"),
@@ -1672,10 +1705,12 @@ async function nutritionScreen(day) {
     d.meals.length ? null : h("div", { class: "card" }, h("p", { class: "muted" }, "Aucun repas enregistré ce jour. Décrivez ce que vous avez mangé, avec ou sans photo : l'IA estime calories et macros (ordres de grandeur).")),
     h("div", { class: "card stack" }, h("h3", null, "Suivi du poids"),
       h("p", { class: "muted" }, __("Taille {height_cm} cm · IMC {bmi}{v}", { height_cm: pr.height_cm, bmi: pr.bmi, v: pr.target_kg ? __(" · objectif {target_kg} kg", { target_kg: pr.target_kg }) : "" })),
-      weightChart(tr.series.slice(-30), pr.target_kg),
-      tr.current ? h("p", null, __("Tendance (moyenne sur 7 jours) : {current} kg", { current: tr.current }), tr.rate_pct_per_week != null ? h("span", { class: "muted" }, __(" · {v}{rate_pct_per_week} % par semaine", { v: tr.rate_pct_per_week > 0 ? "+" : "", rate_pct_per_week: tr.rate_pct_per_week })) : null) : h("p", { class: "muted" }, "Aucune pesée pour l'instant."),
+      weightPeriodPicker(d),
+      weightChart(prog.weight.series, pr.target_kg, prog.weight.months),
+      prog.weight.current ? h("p", null, __("Poids actuel (lissé) : {current} kg", { current: prog.weight.current })) : null,
+      ...weightTrendLines(prog.weight),
       ...prog.advice.map((a) => h("p", { class: "muted" }, a)),
-      h("div", { class: "grid2" }, wInput, wWaist), wBtn,
+      h("div", { class: "grid2" }, wInput, wWaist), h("label", { class: "muted", for: "w-day" }, "Date de la pesée (facultatif, jusqu'à 2 ans en arrière)"), wDate, wBtn,
       h("p", { class: "muted", style: "font-size:.8125rem" }, prog.disclaimer)),
     tabbar("food"),
   );

@@ -140,7 +140,7 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | N2 | Protéines : 2,0 g/kg/jour en perte de poids avec musculation (plage 1,8 à 2,4), réparties sur 3 à 5 prises | 2,0 g/kg | A-B (Morton 2018 ; Helms 2014, exprimé par kg de masse maigre) |
 | N3 | Lipides au moins 0,8 g/kg ; glucides pour le reste ; ±120 kcal de glucides selon que la journée contient une séance de 45 min ou plus, la moyenne reste inchangée | 0,8 g/kg | C |
 | N4 | Rythme de perte 0,5 % du poids par semaine à moins de 12 semaines d'un objectif sportif, 0,75 % sinon ; sous 0,25 % pendant 3 semaines avec 14 jours renseignés : −100 à −150 kcal ; au-delà de 1 % : +150 kcal | 0,5 à 0,75 % | B (Garthe 2011 ; Helms 2014) |
-| N5 | Le poids se suit par moyenne glissante sur 7 jours, au moins deux pesées par semaine, jamais d'après le chiffre d'un jour (eau, sel, digestion) | 7 j | C |
+| N5 | Le poids se suit par tendance sur plusieurs mois (régression linéaire des pesées de la période choisie : 1, 3, 6 ou 12 mois), jamais d'après le chiffre d'un jour (eau, sel, digestion) ; la courbe est lissée par une moyenne de 7 jours interne, et la tendance n'est affichée qu'avec au moins 3 pesées sur 14 jours | 14 j | C |
 | N6 | Les estimations de repas par texte ou photo sont des ordres de grandeur (fourchette, confiance) : on suit les moyennes hebdomadaires, jamais un repas isolé ; aucun jugement moral | sous-estimation fréquente : l'estimateur est invité à retenir la fourchette haute; un poids indiqué est multiplié par la densité du plat cuit | B |
 | N7 | Pas de déficit pour un mineur, en cas de grossesse ou post-partum, ni d'antécédent de trouble alimentaire déclaré : renvoi vers un professionnel | | C |
 | N8 | Qualité : 25 à 30 g de fibres, des légumes à chaque repas, produits ultra-transformés et alcool limités | | B |
@@ -153,7 +153,7 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 |---|---|---|---|
 | ST1 | Chaque chiffre de l'écran Statistiques vient des données stockées et d'un calcul déterministe du moteur, jamais d'un LLM ; une donnée absente est affichée comme absente (ni 0, ni valeur interpolée) ; une estimation est marquée « ≈ » ; chaque graphique a une alternative texte (tableau) | | C |
 | ST2 | Repas : la moyenne de la semaine ne porte que sur les jours ayant au moins un repas estimé (un jour sans estimation n'est pas un zéro) ; la cible n'est affichée que si la taille, l'année de naissance et un poids sont connus ; l'écart à la cible est présenté sans jugement (voir N6) | 7 jours | C |
-| ST3 | Poids : la courbe montre les pesées et leur moyenne glissante sur 7 jours (N5) ; le rythme hebdomadaire n'est affiché que lorsque le moteur dispose de 3 pesées sur au moins 7 jours | 7 j | C |
+| ST3 | Poids : la courbe montre les pesées et leur courbe lissée (N5) ; la tendance en kg et % par mois n'est affichée que lorsque le moteur dispose de 3 pesées sur les 14 derniers jours | 14 j | C |
 | ST4 | Pas : relevés de la montre par jour ; la journée en cours est incomplète et n'entre pas dans la moyenne ; un total à 0 (montre non portée) n'est pas enregistré | 7 jours | C |
 | ST5 | Activité récente : une séance reliée à la montre n'est comptée qu'une fois (via l'activité) ; l'allure n'est calculée que pour une course d'au moins 1 km | 14 jours | C |
 | ST6 | Records de course (5 km, 10 km) : trois sources affichées séparément, jamais fusionnées ni extrapolées : record déclaré, meilleure allure mesurée sur une sortie d'au moins cette distance, dernière estimation de la montre | 5 km, 10 km | C |
@@ -234,7 +234,7 @@ Issues des bases `data/evidence/*.yaml` (60 publications relues sur leurs résum
 - **M13** (supersets) : séances plus courtes, hypertrophie similaire (Zhang 2025). La référence « Weakley 2021 » citée de mémoire n'existe pas.
 - **N1** : Mifflin-St Jeor est exacte à ±10 % pour moins de la moitié des sportifs récréatifs (ten Haaf 2014) : traiter la cible comme un point de départ à ajuster sur la tendance de poids. Le repère de 7 700 kcal/kg n'est valable qu'à court terme (Hall 2008).
 - **N2** : en déficit avec musculation, les consensus vont jusqu'à 2,3-3,1 g/kg de masse maigre (Helms 2014, ISSN) ; 2,0 g/kg de poids total reste dans la plage prudente.
-- **N5** : aucune étude ne valide la moyenne glissante sur 7 jours ni le seuil de deux pesées par semaine ; le poids fluctue d'environ 0,35 % d'un jour à l'autre (Turicchi 2020) : règle de pratique.
+- **N5** : aucune étude ne valide le lissage sur 7 jours ni le seuil de 3 pesées sur 14 jours ; le poids fluctue d'environ 0,35 % d'un jour à l'autre (Turicchi 2020) : règle de pratique.
 - **N6** : l'estimation de calories sur photo ou description sous-estime de façon systématique ; la fourchette « ±20 à 30 % » n'est pas démontrée.
 - **N9, N10** : règles de conception sans étude propre ; les valeurs d'Open Food Facts sont déclarées par des contributeurs et peuvent être fausses ou périmées : la correction de l'utilisateur prime.
 - **N3, N7, N8** : non vérifiées.

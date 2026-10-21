@@ -50,7 +50,33 @@ def test_training_sessions_raise_the_energy_target():
     assert eng.targets(eng.build_profile(FACTS, date(2026, 10, 18), None, sessions, None))["tdee"] > base + 80
 
 
-def test_weight_trend_uses_a_moving_average_and_advises():
+def _weights(n, step, start=70.0, per_day=-0.03, every=3):
+    return [{"day": TODAY - timedelta(days=step - every * i), "kg": round(start + per_day * every * i, 2)} for i in range(n)]
+
+
+def test_weight_trend_regression_per_month_and_eta():
+    e = _weights(40, 117, per_day=-0.03)  # -0,03 kg/jour sur ~4 mois, pesées tous les 3 jours
+    wt = eng.weight_trend(e, TODAY, 3, 65.0)
+    assert wt["months"] == 3 and wt["kg_per_month"] == pytest.approx(-0.03 * 30.44, abs=0.02)
+    assert wt["pct_per_month"] < 0 and wt["remaining_kg"] == pytest.approx(wt["current"] - 65.0, abs=0.05)
+    eta = date.fromisoformat(wt["eta_date"])
+    assert TODAY < eta < TODAY + timedelta(days=365)
+    assert all(date.fromisoformat(x["day"]) >= TODAY - timedelta(days=91) for x in wt["series"])  # seulement la période choisie
+    assert eng.weight_trend(e, TODAY, 1)["months"] == 1 and eng.weight_trend(e, TODAY, 99)["months"] == 3
+
+
+def test_weight_trend_needs_three_weighings_in_14_days_and_hides_wrong_direction_eta():
+    old = _weights(10, 100)  # aucune pesée récente
+    wt = eng.weight_trend(old, TODAY, 3, 60.0)
+    assert wt["kg_per_month"] is None and wt["reason"] == "few" and wt["eta_date"] is None and wt["remaining_kg"] is not None
+    two = _weights(10, 60) + [{"day": TODAY - timedelta(days=1), "kg": 69.0}, {"day": TODAY, "kg": 69.0}]
+    assert eng.weight_trend(two, TODAY, 3)["kg_per_month"] is None
+    gaining = eng.weight_trend(_weights(30, 87, per_day=0.03), TODAY, 3, 60.0)  # grossit alors que l'objectif est plus bas
+    assert gaining["kg_per_month"] > 0 and gaining["eta_date"] is None
+    assert eng.weight_trend([], TODAY)["reason"] == "none"
+
+
+def test_weight_trend_moving_average_and_advises():
     e = [{"day": TODAY - timedelta(days=21 - 3 * i), "kg": 67 - 0.3 * i + (0.8 if i == 3 else 0)} for i in range(8)]
     tr = eng.trend(e, TODAY)
     assert tr["rate_pct_per_week"] is not None and tr["rate_pct_per_week"] < 0 and tr["series"][-1]["avg"] > tr["series"][-1]["kg"] - 1
@@ -141,6 +167,17 @@ def test_other_users_cannot_see_meals_or_photos(ctx):
     assert c.get(f"/users/{uid}/nutrition/day").status_code == 403
     assert c.get(f"/users/{other}/nutrition/meals/{mid}/photo").status_code == 404
     assert c.delete(f"/users/{other}/nutrition/meals/{mid}").status_code == 404
+
+
+def test_weight_accepts_two_years_back_and_progress_period(ctx):
+    c, uid, repo, llm = ctx
+    for d in (TODAY - timedelta(days=700), TODAY - timedelta(days=300), TODAY - timedelta(days=10), TODAY - timedelta(days=5), TODAY - timedelta(days=1)):
+        assert c.post(f"/users/{uid}/nutrition/weight", json={"day": str(d), "kg": 80 - (TODAY - d).days * 0.01}).status_code == 200
+    assert c.post(f"/users/{uid}/nutrition/weight", json={"day": str(TODAY - timedelta(days=731)), "kg": 80}).status_code == 422
+    p12 = c.get(f"/users/{uid}/nutrition/progress?months=12").json()["weight"]
+    p3 = c.get(f"/users/{uid}/nutrition/progress").json()["weight"]
+    assert p12["months"] == 12 and p3["months"] == 3 and len(p12["series"]) == 4 and len(p3["series"]) == 3 and p3["kg_per_month"] is not None
+    assert c.get(f"/users/{uid}/nutrition/progress?months=2").status_code == 422
 
 
 def test_weight_and_progress(ctx):

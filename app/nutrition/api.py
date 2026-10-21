@@ -60,6 +60,9 @@ class CorrectionIn(BaseModel):
     fat_g: float | None = Field(default=None, ge=0, le=200)
 
 
+WEIGHT_HISTORY_DAYS = 730  # pesées acceptées et lues : 2 ans
+
+
 class WeightIn(BaseModel):
     day: date | None = None
     kg: float = Field(ge=30, le=250)
@@ -199,12 +202,13 @@ def coach_context(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
         week.append({"jour": d.isoformat(), "kcal_estimees": t["kcal"], "proteines_g": t["protein_g"], "repas_estimes": t["estimated_meals"], "repas": t["meals"]})
     today_meals = [{"moment": m["slot"], "description": m["description"][:120], "kcal": (m["analysis"] or {}).get("kcal"),
                     "proteines_g": (m["analysis"] or {}).get("protein_g")} for m in days.get(today, [])]
-    tr = eng.trend(repo.list_weights(user_id, today - timedelta(days=60)), today)
+    weights = repo.list_weights(user_id, today - timedelta(days=WEIGHT_HISTORY_DAYS))
+    tr, wt = eng.trend(weights, today), eng.weight_trend(weights, today, 3, p.target_kg)
     return {"cibles_jour": {k: tg[k] for k in ("kcal", "protein_g", "carbs_g", "fat_g", "tdee", "deficit_kcal", "rate_pct_per_week")},
             "objectif_poids": {"sens": p.direction, "cible_kg": p.target_kg, "poids_kg": p.weight_kg, "protege_N7": bool(p.blocked_reason)},
             "aujourdhui": {"repas": today_meals, "total": {k: v for k, v in _sum(days.get(today, [])).items() if k in ("kcal", "protein_g", "carbs_g", "fat_g")}},
             "sept_jours": week, "synthese_7j": week_summary(repo, user_id, today),
-            "tendance_poids": {"moyenne_7j_kg": tr.get("current"), "pct_par_semaine": tr.get("rate_pct_per_week")},
+            "tendance_poids": {"poids_lisse_kg": tr.get("current"), "pct_par_semaine": tr.get("rate_pct_per_week"), "pct_par_mois": wt["pct_per_month"], "kg_par_mois": wt["kg_per_month"]},
             "attention": "kcal et macros des repas = estimations (souvent sous-évaluées, N6) ; un jour sans repas saisi n'est pas un jour sans manger"}
 
 
@@ -320,17 +324,19 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     def weight(body: WeightIn, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         today = date.today()
         d = body.day or today
-        if d > today or d < today - timedelta(days=120):
+        if d > today or d < today - timedelta(days=WEIGHT_HISTORY_DAYS):
             raise HTTPException(422, "Date hors de la plage autorisée.")
         repo.upsert_weight(user_id, d, body.kg, body.waist_cm)
         return {"ok": True, "day": d.isoformat()}
 
     @router.get("/progress")
-    def progress(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+    def progress(months: int = 3, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        if months not in eng.PERIOD_DAYS:
+            raise HTTPException(422, "Période inconnue : 1, 3, 6 ou 12 mois.")
         today = date.today()
         p, facts = _profile(repo, user_id, today)
         tg = eng.targets(p)
-        weights = repo.list_weights(user_id, today - timedelta(days=120))
+        weights = repo.list_weights(user_id, today - timedelta(days=WEIGHT_HISTORY_DAYS))
         tr = eng.trend(weights, today)
         meals = repo.list_meals(user_id, today - timedelta(days=13), today)
         days_logged = len({m["day"] for m in meals})
@@ -343,7 +349,8 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
                    "target_protein_g": tg["protein_g"]}
         bmi = round(p.weight_kg / (p.height_cm / 100) ** 2, 1)
         return {"profile": {"height_cm": p.height_cm, "weight_kg": p.weight_kg, "target_kg": p.target_kg, "bmi": bmi, "direction": p.direction},
-                "targets": tg, "trend": tr, "weights": [{"day": w["day"].isoformat(), "kg": w["kg"], "waist_cm": w["waist_cm"]} for w in weights][-30:],
+                "targets": tg, "trend": tr, "weight": eng.weight_trend(weights, today, months, p.target_kg),
+                "weights": [{"day": w["day"].isoformat(), "kg": w["kg"], "waist_cm": w["waist_cm"]} for w in weights][-30:],
                 "week_average": avg, "days_logged_14": days_logged, "advice": eng.advice(p, tg, tr, days_logged),
                 "disclaimer": "Estimations : ce suivi ne remplace pas un avis médical ou diététique."}
 

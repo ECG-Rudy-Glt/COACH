@@ -202,7 +202,7 @@ def fallback_digest(repo: Repo, user_id: int, today: date) -> tuple[str, str]:
         lines.append(i18n.tr("- Aucun repas saisi cette semaine : quelques jours de suivi suffisent à rendre les conseils utiles."))
     if n["poids_tendance_kg"]:
         r = n["rythme_pct_par_semaine"]
-        lines.append(i18n.tr("- Poids (tendance sur 7 jours) : {poids_tendance_kg} kg", poids_tendance_kg=n["poids_tendance_kg"])
+        lines.append(i18n.tr("- Poids (lissé) : {poids_tendance_kg} kg", poids_tendance_kg=n["poids_tendance_kg"])
                      + (i18n.tr(", {r} % par semaine.", r=f"{r:+.2f}") if r is not None else "."))
     lines += ["", i18n.tr("Le coach reste disponible dans l'application pour adapter la suite.")]
     return i18n.tr("Votre semaine en un coup d'œil"), "\n".join(lines)
