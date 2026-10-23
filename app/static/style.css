@@ -360,3 +360,7 @@ body.kb .composer { bottom: 8px; }
 .bcard .bdone svg { width: 16px; height: 16px; stroke-width: 3; }
 .bempty { margin-top: 20px; text-align: center; color: var(--muted); font-size: .875rem; opacity: .6; }
 .ghost.bcard { opacity: .96; cursor: grabbing; }
+
+dl.kv { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; text-align: right; font-weight: 600; }

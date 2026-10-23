@@ -83,6 +83,7 @@ ST4: "Statistiques pas : relevés de la montre, jour en cours hors moyenne, tota
 ST5: "Statistiques activité : séance reliée à la montre comptée une fois ; allure seulement pour une course d'au moins 1 km."
 N9: "Estimation de repas peu sûre : 1 à 2 questions courtes au plus (quantité, graisse de cuisson, sauce, boisson), on peut toujours passer ; l'estimation est refaite avec les réponses."
 N10: "Valeur déclarée avant valeur devinée : code-barres puis correction de l'utilisateur, qui sert d'exemple aux estimations suivantes ; chiffre principal = moyenne hebdomadaire."
+N11: "Bilan du jour : dépense estimée = base (BMR × niveau d'activité) + activités réellement faites (calories de la montre, sinon MET ; séance reliée comptée une fois) ; solde ≈ avec les repas estimés ; jour courant « à ce stade » ; la cible du jour ne change pas (pas de compensation) ; aucun solde si profil protégé (N7) ; aucun jugement."
 ST6: "Statistiques records de course : déclaré, mesuré (meilleure allure sur sortie assez longue) et estimation de la montre restent séparés, jamais extrapolés."
 ST7: "Statistiques charges : e1RM Epley seulement pour 1 à 10 répétitions chargées, marqué ≈ ; sans charge, répétitions ; séances faites seulement."
 ST8: "Statistiques trajectoire : objectif de performance actif et daté seulement ; phases et jalons de C10 à C12 ; repère interpolé, pas une prévision."

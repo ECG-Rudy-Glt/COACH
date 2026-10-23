@@ -1562,5 +1562,21 @@
  "Mon activité": "My activity",
  "FC moyenne (facultatif)": "Avg HR (optional)",
  "Commentaire": "Comment",
- "Sensations, douleurs, ce que vous avez fait…": "How it felt, pain, what you did…"
+ "Sensations, douleurs, ce que vous avez fait…": "How it felt, pain, what you did…",
+ "≈ {v} kcal": "≈ {v} kcal",
+ "Dépense à ce stade": "Spent so far",
+ "Dépense estimée du jour": "Estimated energy spent today",
+ "dont métabolisme et vie quotidienne": "of which resting metabolism and daily life",
+ "{label} (montre)": "{label} (watch)",
+ "Dépense totale prévue (séances restantes comprises)": "Total expected spend (remaining sessions included)",
+ "Mangé (estimé)": "Eaten (estimated)",
+ "Solde à ce stade": "Balance so far",
+ "Solde du jour": "Day's balance",
+ "{v} kcal ≈": "{v} kcal ≈",
+ "Aucun solde n'est affiché pour votre profil.": "No balance is shown for your profile.",
+ "Ajoutez et estimez vos repas pour voir le solde.": "Add and estimate your meals to see the balance.",
+ "Bilan du jour": "Day's balance",
+ "À ce stade": "So far",
+ "Estimations (règle N11). L'objectif du jour ne change pas : une sortie longue n'oblige pas à manger plus.": "Estimates (rule N11). The day's target does not change: a long outing does not mean you have to eat more.",
+ "{v} kcal": "{v} kcal"
 }
