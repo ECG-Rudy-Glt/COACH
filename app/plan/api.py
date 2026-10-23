@@ -23,14 +23,15 @@ class Generate(BaseModel):
 
 MOVE_PAST_DAYS = 56  # on ne rattache pas une séance à plus de 8 semaines en arrière
 MOVE_FUTURE_DAYS = 120
-ALLOWED_LOG = {"rpe", "minutes", "note", "adaptation", "changes", "exercises", "source", "garmin_id", "distance_km", "avg_hr", "max_hr", "calories", "training_load", "garmin_name"}  # noqa: E501
+ALLOWED_LOG = {"rpe", "minutes", "note", "adaptation", "changes", "exercises", "source", "garmin_id", "distance_km", "avg_hr", "max_hr", "calories", "training_load", "garmin_name", "pace_s_km"}  # noqa: E501
+NUMERIC_LOG = {"rpe": (1, 10), "minutes": (1, 1500), "distance_km": (0.1, 1000), "avg_hr": (30, 250), "max_hr": (30, 250)}
 CHANGES = {"plus léger", "plus court", "plus long", "exercice remplacé", "séries en moins", "séries en plus", "douleur", "trop facile", "trop dur", "matériel manquant"}
 
 
 def estimated_facts(repo: Repo, user_id: int, facts: dict[str, Any], goals: list[dict[str, Any]], today: date) -> dict[str, Any]:
     """Faits + niveau récent estimé (C14, C15) d'après les sorties de la montre et les charges saisies."""
     acts = repo.list_activities(user_id, today - timedelta(days=56), 500)
-    sess = repo.list_sessions(user_id, today - timedelta(days=84), today)
+    sess = repo.list_sessions(user_id, today - timedelta(days=84), today + timedelta(days=1))
     return with_estimates(facts, acts, sess, goals, today)
 
 
@@ -44,6 +45,15 @@ def clean_log(raw: dict[str, Any] | None) -> dict[str, Any] | None:
     for k in ("note", "adaptation"):
         if isinstance(out.get(k), str):
             out[k] = out[k].strip()[:600]
+    for k, (lo, hi) in NUMERIC_LOG.items():  # valeurs saisies à la main : bornées, sinon ignorées (jamais d'erreur pour un champ facultatif)
+        if k in out:
+            v = out[k]
+            if isinstance(v, bool) or not isinstance(v, int | float) or not lo <= v <= hi:
+                del out[k]
+    if out.get("distance_km") and out.get("minutes") and not out.get("garmin_id"):
+        out["pace_s_km"] = round(out["minutes"] * 60 / out["distance_km"])  # allure moyenne déduite des deux mesures saisies, jamais fournie par le client
+    elif "pace_s_km" in out and not out.get("garmin_id"):
+        del out["pace_s_km"]
     if "changes" in out:
         out["changes"] = [c for c in (out["changes"] if isinstance(out["changes"], list) else []) if c in CHANGES][:8]
     return out
@@ -60,12 +70,14 @@ class Move(BaseModel):
 
 # séance faite hors plan (ex. un « dos biceps » improvisé) : saisie par l'utilisateur, jamais générée ni modifiée par le moteur
 MANUAL_TITLES = {"strength_upper": "Haut du corps", "strength_lower": "Jambes", "strength_full": "Musculation", "strength_crossfit": "CrossFit",
-                 "run_easy": "Course facile", "run_long": "Sortie longue", "run_quality": "Course qualité"}
+                 "run_easy": "Course facile", "run_long": "Sortie longue", "run_quality": "Course qualité",
+                 "sport_bike": "Vélo", "sport_swim": "Natation", "sport_walk": "Marche", "sport_other": "Autre sport"}
 
 
 class Manual(BaseModel):
     day: date
-    kind: Literal["strength_upper", "strength_lower", "strength_full", "strength_crossfit", "run_easy", "run_long", "run_quality"]
+    kind: Literal["strength_upper", "strength_lower", "strength_full", "strength_crossfit", "run_easy", "run_long", "run_quality",
+                  "sport_bike", "sport_swim", "sport_walk", "sport_other"]
     title: str = Field(default="", max_length=80)
     duration_min: int = Field(ge=5, le=600)
     logged: dict[str, Any] | None = None

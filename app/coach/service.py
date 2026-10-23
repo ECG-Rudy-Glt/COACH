@@ -119,7 +119,7 @@ def build_context(repo: Repo, user_id: int, today: date, evidence_digest: dict[s
     """Contexte envoyé au LLM : aucun nom, aucun email, aucun identifiant de compte."""
     facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
     goals_all = repo.list_goals(user_id, None)
-    facts = with_estimates(facts, repo.list_activities(user_id, today - timedelta(days=56), 500), repo.list_sessions(user_id, today - timedelta(days=84), today), goals_all, today)
+    facts = with_estimates(facts, repo.list_activities(user_id, today - timedelta(days=56), 500), repo.list_sessions(user_id, today - timedelta(days=84), today + timedelta(days=1)), goals_all, today)
     profile = {k: facts[k] for k in FACT_KEYS if k in facts}
     if "body.birth_year" in facts:
         profile["age"] = today.year - int(facts["body.birth_year"])
