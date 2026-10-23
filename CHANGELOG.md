@@ -3,6 +3,9 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Fixed
+- Interface not updating on the phone: the service worker now revalidates every interface file with the server (`cache: "no-cache"`, also when pre-caching) instead of possibly serving a stale `app.js` from the browser's HTTP cache, and the page reloads itself once when a new service worker takes over (never while typing, with a sheet open or while saving; loop guard). The running interface version is shown in *Profile > Account and security*.
+
 ### Added
 - Add a session done outside the plan: *Plan > Add a completed session* (type, optional name such as "Back and biceps", day up to 8 weeks back, duration), then list its exercises with sets (library names suggested as you type so loads feed *My performances* and the next sessions). `POST /users/{id}/plan/sessions` (status `done`, `details.manual`), `DELETE /users/{id}/plan/sessions/{sid}` for these sessions only; kept by plan regeneration, counted in weekly minutes, lift estimates (C15) and the coach's context, left out of consistency (ST11, ST17). No migration.
 - Activity import from FIT, TCX and GPX files (issue #18): Profile > Preferences > *Import FIT, TCX, GPX files* (Coros, Suunto, Polar, Wahoo, Apple Watch exports, Garmin offline…). `POST /users/{id}/activities/import` (base64, 20 files of 10 MB, format detected from the content, `fitdecode` + `defusedxml`), per-file result (imported / duplicate / unreadable), duplicates detected by file hash or same start (±2 min) and similar duration, imported activities feed matching with planned sessions, statistics, estimated level and weekly volume like Garmin ones. New `source` column on `garmin_activities` (migration 0014); only the totals are kept, never the GPS track. Guide: `docs/activity-import.md`.
