@@ -1310,7 +1310,7 @@ async function planScreen(restore = false) {
     nodes.push(h("div", { class: "card", style: "padding:0;overflow:hidden" }, list.map((s) => {
       const sub = [__("{duration_min} min", { duration_min: s.duration_min }), s.details.zone, s.details.format, s.details.manual ? "ajoutée" : s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
       const row = h("button", { class: `sess ${s.status}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
-        h("span", { class: "dot" }, s.status === "done" ? icon("check") : isRun(s.kind) ? "C" : "M"),
+        h("span", { class: "dot" }, s.status === "done" ? icon("check") : isRun(s.kind) ? "C" : s.kind.startsWith("sport_") ? "S" : "M"),
         h("span", { class: "grow" }, h("strong", null, s.title), h("span", { class: "sub" }, sub)),
         icon("next"));
       if (s.status !== "skipped") attachLongPress(row, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); });
@@ -1335,7 +1335,16 @@ async function planScreen(restore = false) {
 
 // ---------- séance faite hors plan (ajoutée à la main) ----------
 const MANUAL_KINDS = [["strength_upper", "Musculation haut du corps"], ["strength_lower", "Musculation jambes"], ["strength_full", "Musculation complète"],
-  ["strength_crossfit", "CrossFit"], ["run_easy", "Course facile"], ["run_long", "Sortie longue"], ["run_quality", "Course qualité"]];
+  ["strength_crossfit", "CrossFit"], ["run_easy", "Course facile"], ["run_long", "Sortie longue"], ["run_quality", "Course qualité"],
+  ["sport_bike", "Vélo"], ["sport_swim", "Natation"], ["sport_walk", "Marche"], ["sport_other", "Autre sport"]];
+const isStrengthKind = (k) => k.startsWith("strength_");
+const fmtPace = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+const parsePace = (t) => {  // « 5:30 » ou « 5,5 » (minutes par km) -> secondes par km
+  const m = /^\s*(\d{1,2}):([0-5]\d)\s*$/.exec(t);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  const v = Number(String(t).replace(",", "."));
+  return v > 0 && v < 60 ? Math.round(v * 60) : null;
+};
 
 function addSessionSheet(today, day) {
   const kind = h("select", { id: "ms-kind" }, MANUAL_KINDS.map(([k, t]) => h("option", { value: k }, t)));
@@ -1372,12 +1381,13 @@ function sessionScreen(s, today) {
   const draftKey = `sc-draft-${userId}-${s.id}`;
   const draft = (() => { try { return JSON.parse(store.get(draftKey)); } catch { return null; } })(); // saisie non enregistrée (app fermée, réseau coupé)
   const src = draft || logged;
-  const st = { rpe: src.rpe ?? "", minutes: src.minutes ?? "", note: src.note ?? "", adaptation: src.adaptation ?? "", changes: [...(src.changes || [])], sets: [] };
+  const st = { distance_km: src.distance_km ?? "", avg_hr: src.avg_hr ?? "", rpe: src.rpe ?? "", minutes: src.minutes ?? (manual ? s.duration_min : ""), note: src.note ?? "", adaptation: src.adaptation ?? "", changes: [...(src.changes || [])], sets: [] };
   const prevSets = (name) => ((src.exercises || []).find((x) => x.name === name) || {}).sets || [];
   const err = h("p", { class: "error", role: "alert" });
   const saved = h("p", { class: "muted", role: "status" });
   // enregistrement automatique : brouillon local immédiat, serveur après une courte pause, et à la sortie de l'écran ou de l'app
   const collect = () => ({ adaptation: st.adaptation || null, changes: st.changes, rpe: st.rpe || null, minutes: st.minutes || null, note: st.note || null,
+    ...(manual && !isStrengthKind(s.kind) ? { distance_km: st.distance_km || null, avg_hr: st.avg_hr || null } : {}),
     exercises: st.sets.filter((x) => (manual ? x.name : x.sets.some((y) => y.kg != null || y.reps != null))) });  // séance ajoutée : l'exercice choisi reste, même sans série
   let dirty = false, timer = null, inflight = Promise.resolve();
   const persist = (keepalive) => {
@@ -1427,7 +1437,7 @@ function sessionScreen(s, today) {
   });
 
   // séance ajoutée : pas de créneaux prescrits, l'utilisateur liste ses exercices (noms de la bibliothèque proposés : ils relient charges et performances)
-  const manualEx = manual && !isRun(s.kind) ? (() => {
+  const manualEx = manual && isStrengthKind(s.kind) ? (() => {
     st.sets = (src.exercises || []).filter((x) => x && x.name).map((x) => ({ name: x.name, sets: JSON.parse(JSON.stringify(x.sets || [])) }));
     const list = h("div", { class: "stack" });
     const exBox = (ex) => {
@@ -1441,24 +1451,56 @@ function sessionScreen(s, today) {
         h("button", { class: "link", style: "align-self:flex-start", onclick: () => { ex.sets.push({}); draw(); touch(); } }, "Ajouter une série"));
     };
     const draw = () => list.replaceChildren(...st.sets.map(exBox));
-    const names = h("datalist", { id: "ms-ex-names" });
-    const name = h("input", { type: "text", list: "ms-ex-names", maxlength: 80, placeholder: "Ex. : Tirage vertical, curl biceps…", "aria-label": "Nom de l'exercice" });
+    const results = h("ul", { class: "exresults", "aria-label": __("Exercices de la bibliothèque") });
+    const name = h("input", { type: "search", maxlength: 80, placeholder: "Ex. : Tirage vertical, curl biceps…", "aria-label": "Nom de l'exercice", autocomplete: "off" });
+    const pick = (v) => { st.sets.push({ name: v, sets: [] }); name.value = ""; results.replaceChildren(); draw(); touch(); };
     let wait = null;
     name.addEventListener("input", () => {
       clearTimeout(wait);
       const q = name.value.trim();
-      if (q.length < 2) return;
+      if (q.length < 2) { results.replaceChildren(); return; }
       wait = setTimeout(async () => {
-        try { const r = await api(`/exercises?q=${encodeURIComponent(q)}&limit=8`); names.replaceChildren(...r.items.map((e) => h("option", { value: e.name }))); } catch { /* saisie libre */ }
+        try {
+          const r = await api(`/exercises?q=${encodeURIComponent(q)}&limit=8`);
+          results.replaceChildren(...r.items.map((e) => h("li", null, h("button", { type: "button", class: "link exres", onclick: () => pick(e.name) },
+            e.thumb ? h("img", { src: `/media/${e.thumb}`, alt: "", loading: "lazy" }) : null,
+            h("span", { class: "grow stack", style: "gap:0" }, h("strong", null, e.name), h("span", { class: "muted" }, (e.muscles_primary || []).slice(0, 2).join(", ")))))));
+        } catch { /* saisie libre */ }
       }, 250);
     });
-    const addEx = () => { const v = name.value.trim(); if (!v) return; st.sets.push({ name: v, sets: [] }); name.value = ""; draw(); touch(); };
+    const addEx = () => { const v = name.value.trim(); if (v) pick(v); };
     name.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addEx(); } });
     draw();
     return [list, h("div", { class: "card stack" }, h("h3", null, "Ajouter un exercice"),
-      h("p", { class: "muted" }, "Les noms de la bibliothèque sont proposés pendant la saisie : vos charges rejoignent alors vos performances et vos prochaines séances."),
-      h("div", { class: "row" }, h("div", { class: "grow" }, name), h("button", { class: "btn sm", onclick: addEx }, "Ajouter")), names)];
+      h("p", { class: "muted" }, "Cherchez dans la bibliothèque et touchez l'exercice : vos charges rejoignent alors vos performances et vos prochaines séances. Un nom libre est aussi accepté."),
+      h("div", { class: "row" }, h("div", { class: "grow" }, name), h("button", { class: "btn sm", onclick: addEx }, "Ajouter")), results)];
   })() : [];
+  // séance ajoutée de course ou d'un autre sport : distance, durée, allure moyenne (déduite, ou saisie pour déduire la durée) et fréquence cardiaque
+  let minsIn = null, paceIn = null;
+  const syncPace = () => {
+    if (!paceIn) return;
+    const km = Number(st.distance_km), min = Number(st.minutes);
+    if (km > 0 && min > 0) paceIn.value = fmtPace(Math.round(min * 60 / km));
+  };
+  const endurance = manual && !isStrengthKind(s.kind) ? (() => {
+    const withPace = isRun(s.kind) || s.kind === "sport_walk";
+    const dist = num(st.distance_km, (v) => { st.distance_km = v ?? ""; syncPace(); }, "10", "Distance (km)");
+    dist.id = "ms-dist";
+    paceIn = withPace ? h("input", { id: "ms-pace", type: "text", inputmode: "text", placeholder: "5:30", "aria-label": "Allure moyenne (min par km)",
+      value: st.distance_km > 0 && st.minutes > 0 ? fmtPace(Math.round(st.minutes * 60 / st.distance_km)) : "",
+      oninput: (e) => {
+        const sec = parsePace(e.target.value);
+        if (!sec || !(Number(st.distance_km) > 0)) return;
+        st.minutes = Math.round(Number(st.distance_km) * sec / 60 * 10) / 10;  // allure et distance donnent la durée
+        if (minsIn) minsIn.value = st.minutes;
+        touch();
+      } }) : null;
+    const hr = num(st.avg_hr, (v) => { st.avg_hr = v ?? ""; }, "150", "Fréquence cardiaque moyenne (facultatif)");
+    return h("div", { class: "card stack" }, h("h3", null, isRun(s.kind) ? "Ma course" : "Mon activité"),
+      h("div", { class: "field" }, h("label", { for: "ms-dist" }, "Distance (km)"), dist),
+      paceIn ? h("div", { class: "field" }, h("label", { for: "ms-pace" }, "Allure moyenne (min par km)"), paceIn) : null,
+      h("div", { class: "field" }, h("label", null, "FC moyenne (facultatif)"), hr));
+  })() : null;
   let armed = false;
   const delBtn = manual ? h("button", { class: "link", onclick: async () => {
     if (!armed) { armed = true; delBtn.textContent = __("Confirmer la suppression"); return; }
@@ -1518,6 +1560,7 @@ function sessionScreen(s, today) {
       h("button", { class: "link", style: "align-self:flex-start;padding:2px 0", onclick: unlink }, "Dissocier de cette activité")) : null,
     ...slots,
     ...manualEx,
+    endurance,
     ...(s.details.blocks || []).map((b) => h("div", { class: "card stack" },
       h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, __("{minutes} min", { minutes: b.minutes }))),
       h("ul", { class: "plain" }, b.items.map((it) => h("li", null, it))),
@@ -1530,9 +1573,11 @@ function sessionScreen(s, today) {
       chipsBox, adapt, h("button", { class: "btn sm", style: "align-self:flex-start", onclick: saveAdapt }, "Enregistrer mon adaptation")),
     h("div", { class: "card stack" }, h("h3", null, "Après la séance"),
       isRun(s.kind) || s.details.blocks || manual ? h("div", { class: "field" }, h("label", { for: "mins" }, "Durée réelle (min)"),
-        num(st.minutes, (v) => { st.minutes = v; }, String(s.duration_min), "Durée réelle en minutes")) : null,
-      rpe, h("div", { class: "field" }, h("label", { for: "note" }, "Remarque"),
-        h("input", { id: "note", type: "text", value: st.note, maxlength: 600, placeholder: "Sensations, douleurs…", oninput: (e) => { st.note = e.target.value; touch(); } })), saved, err),
+        (minsIn = num(st.minutes, (v) => { st.minutes = v; syncPace(); }, String(s.duration_min), "Durée réelle en minutes"))) : null,
+      rpe, manual ? h("div", { class: "field" }, h("label", { for: "note" }, "Commentaire"),
+        h("textarea", { id: "note", rows: 3, maxlength: 600, placeholder: "Sensations, douleurs, ce que vous avez fait…", oninput: (e) => { st.note = e.target.value; touch(); } }, st.note))
+        : h("div", { class: "field" }, h("label", { for: "note" }, "Remarque"),
+          h("input", { id: "note", type: "text", value: st.note, maxlength: 600, placeholder: "Sensations, douleurs…", oninput: (e) => { st.note = e.target.value; touch(); } })), saved, err),
     s.rules.length ? h("p", { class: "muted" }, __("Règles appliquées : {join}.", { join: s.rules.join(", ") })) : null,
     actionBar(manual ? h("button", { class: "btn primary", onclick: () => save("done") }, "Enregistrer la séance")
       : done ? h("button", { class: "btn", onclick: () => save("planned") }, "Rouvrir la séance")
@@ -2131,7 +2176,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v28";
+const UI_BUILD = "sc-v29";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

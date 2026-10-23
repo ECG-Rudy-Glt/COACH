@@ -3,6 +3,9 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Changed
+- Sessions added outside the plan now cover runs and other sports: new types (cycling, swimming, walking, other sport), distance, average pace (derived from distance and duration, or typed to deduce the duration) and average heart rate for runs and sports, a free comment, perceived effort (RPE) values bounded server-side, and an exercise picker that searches the library (thumbnail and muscles) instead of a bare suggestion list. Fixed: lift estimates (C15) ignored sessions done today.
+
 ### Fixed
 - Interface not updating on the phone: the service worker now revalidates every interface file with the server (`cache: "no-cache"`, also when pre-caching) instead of possibly serving a stale `app.js` from the browser's HTTP cache, and the page reloads itself once when a new service worker takes over (never while typing, with a sheet open or while saving; loop guard). The running interface version is shown in *Profile > Account and security*.
 

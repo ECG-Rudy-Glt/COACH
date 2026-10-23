@@ -276,7 +276,7 @@ def get_benchmarks(
     years = cur.get("history.sport_years")
     novice = isinstance(years, int | float) and years < 1 and not values  # débutant déclaré : pas de records à saisir, ses premières séances servent de référence
     today = date.today()
-    est = lift_estimates(repo.list_sessions(user_id, today - timedelta(days=84), today), today)  # C15 : « estimé », la saisie de l'utilisateur n'est jamais remplacée
+    est = lift_estimates(repo.list_sessions(user_id, today - timedelta(days=84), today + timedelta(days=1)), today)  # C15 : « estimé », la saisie de l'utilisateur n'est jamais remplacée
     return {"sections": sections, "values": values, "estimates": est, "filled": filled, "total": total, "novice": bool(novice)}
 
 

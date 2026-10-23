@@ -93,3 +93,30 @@ def test_manual_session_feeds_lifts_but_not_regularity():
     wk = daily.week_block([*plan, extra], [], TODAY)
     assert (wk["planned"], wk["done"]) == (4, 1) and wk["minutes"] == 40 + 50  # mais ses minutes comptent
     assert lift_estimates([extra], TODAY)["bench"]["kg"] == 80  # C15 : les charges saisies comptent comme celles d'une séance du plan
+
+
+def test_run_and_other_sport_keep_distance_hr_and_derive_pace(env):
+    c, _, uid = env
+    r = add(c, uid, kind="run_easy", title="", logged={"minutes": 50, "distance_km": 10, "avg_hr": 150, "rpe": 6, "note": "Bonnes jambes", "pace_s_km": 1})
+    s = r.json()
+    assert r.status_code == 201 and s["title"] == "Course facile" and s["logged"]["pace_s_km"] == 300  # allure déduite, la valeur du client est ignorée
+    assert (s["logged"]["avg_hr"], s["logged"]["note"]) == (150, "Bonnes jambes")
+    bike = add(c, uid, kind="sport_bike", title="", logged={"minutes": 90, "distance_km": 35}).json()
+    assert bike["title"] == "Vélo" and bike["kind"] == "sport_bike"
+    assert add(c, uid, kind="sport_other", title="Escalade").json()["title"] == "Escalade"
+
+
+def test_out_of_range_manual_values_are_dropped_not_stored(env):
+    c, _, uid = env
+    s = add(c, uid, kind="run_easy", logged={"minutes": 50, "distance_km": -3, "avg_hr": 999, "rpe": 11, "max_hr": "x"}).json()["logged"]
+    assert s["minutes"] == 50 and not {"distance_km", "avg_hr", "rpe", "max_hr", "pace_s_km"} & s.keys()
+
+
+def test_edited_manual_session_still_feeds_estimated_level_through_the_api(env):
+    c, _, uid = env
+    s = add(c, uid, logged={"exercises": [{"name": "Bench Press", "sets": [{"kg": 60, "reps": 5}]}]}).json()
+    assert c.get(f"/users/{uid}/benchmarks").json()["estimates"]["bench"]["kg"] == 60
+    c.patch(f"/users/{uid}/plan/sessions/{s['id']}", json={"status": "done", "logged": {**s["logged"], "exercises": [{"name": "Bench Press", "sets": [{"kg": 80, "reps": 5}]}]}})
+    assert c.get(f"/users/{uid}/benchmarks").json()["estimates"]["bench"]["kg"] == 80  # modification après coup prise en compte (C15)
+    c.delete(f"/users/{uid}/plan/sessions/{s['id']}")
+    assert "bench" not in c.get(f"/users/{uid}/benchmarks").json()["estimates"]
