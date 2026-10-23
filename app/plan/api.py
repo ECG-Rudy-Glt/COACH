@@ -58,6 +58,19 @@ class Move(BaseModel):
     day: date
 
 
+# séance faite hors plan (ex. un « dos biceps » improvisé) : saisie par l'utilisateur, jamais générée ni modifiée par le moteur
+MANUAL_TITLES = {"strength_upper": "Haut du corps", "strength_lower": "Jambes", "strength_full": "Musculation", "strength_crossfit": "CrossFit",
+                 "run_easy": "Course facile", "run_long": "Sortie longue", "run_quality": "Course qualité"}
+
+
+class Manual(BaseModel):
+    day: date
+    kind: Literal["strength_upper", "strength_lower", "strength_full", "strength_crossfit", "run_easy", "run_long", "run_quality"]
+    title: str = Field(default="", max_length=80)
+    duration_min: int = Field(ge=5, le=600)
+    logged: dict[str, Any] | None = None
+
+
 class Done(BaseModel):
     status: Literal["planned", "done", "skipped"]
     logged: dict[str, Any] | None = None
@@ -206,6 +219,24 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
             raise HTTPException(404, "Séance inconnue.")
         around = repo.list_sessions(user_id, body.day - timedelta(days=2), body.day + timedelta(days=3))
         return {"session": serialize(moved), "warnings": move_warnings(moved, around)}
+
+    @router.post("/sessions", status_code=201)
+    def add_manual(body: Manual, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Ajoute une séance déjà faite hors plan. Statut « faite » : une régénération du plan (qui ne remplace que les séances « planned ») la garde."""
+        today = date.today()
+        if not today - timedelta(days=MOVE_PAST_DAYS) <= body.day <= today:
+            raise HTTPException(422, "Une séance ajoutée doit être déjà faite : aujourd'hui ou dans les 8 dernières semaines.")
+        title = " ".join(body.title.split()) or MANUAL_TITLES[body.kind]
+        row = repo.add_session(user_id, {"day": body.day, "kind": body.kind, "title": title, "duration_min": body.duration_min, "details": {"manual": True},
+                                            "rules": [], "notes": [], "status": "done", "logged": {**(clean_log(body.logged) or {}), "source": "manual"}})
+        return serialize(row)
+
+    @router.delete("/sessions/{session_id}")
+    def delete_manual(session_id: int, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, bool]:
+        row = find_session(repo, user_id, session_id, date.today())
+        if not (row.get("details") or {}).get("manual"):
+            raise HTTPException(409, "Seule une séance ajoutée à la main peut être supprimée ; une séance du plan se passe.")
+        return {"deleted": repo.remove_session(user_id, session_id)}
 
     @router.patch("/sessions/{session_id}")
     def update(session_id: int, body: Done, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

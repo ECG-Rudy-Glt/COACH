@@ -77,8 +77,9 @@ def test_nutrition_screen(logged: Page):
 def test_plan_screen(logged: Page):
     tab(logged, "Plan")
     expect(logged.get_by_role("heading", name="Mon plan")).to_be_visible()
-    expect(logged.get_by_text("Footing facile").first).to_be_visible()
-    logged.get_by_text("Footing facile").first.click()
+    first = logged.locator("button.sess").first  # la séance affichée dépend du jour de la semaine (un vendredi, plus de footing à venir)
+    expect(first).to_be_visible()
+    first.click()
     expect(logged.get_by_role("button", name="Retour").first).to_be_visible()  # détail d'une séance
 
 

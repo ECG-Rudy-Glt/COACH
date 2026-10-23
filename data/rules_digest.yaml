@@ -88,7 +88,7 @@ ST7: "Statistiques charges : e1RM Epley seulement pour 1 à 10 répétitions cha
 ST8: "Statistiques trajectoire : objectif de performance actif et daté seulement ; phases et jalons de C10 à C12 ; repère interpolé, pas une prévision."
 ST9: "Statistiques volume : semaine du lundi, semaine en cours incomplète, kilomètres mesurés par la montre, séance reliée comptée une fois."
 ST10: "Statistiques allure : points non reliés ; comparaison 28 j / 28 j seulement avec 3 sorties d'au moins 3 km de chaque côté."
-ST11: "Statistiques régularité : semaine tenue à 75 % des séances prévues faites ; séance passée volontairement hors calcul ; semaine en cours jamais jugée non tenue."
+ST11: "Statistiques régularité : semaine tenue à 75 % des séances prévues faites ; séance passée volontairement ou ajoutée hors plan hors calcul ; semaine en cours jamais jugée non tenue."
 ST12: "Statistiques séries : semaines tenues consécutives ; semaine sans séance prévue neutre ; pas de badge."
 ST13: "Statistiques régularité désactivable dans le profil ; aucune notification ni relance fondée dessus ; ton sans culpabilisation."
 ST14: "Statistiques araignée : axes mesurés seulement (volume, régularité, endurance, force) ; vitesse et récupération non tracées ; pas de score global ; axe sans donnée suffisante non tracé ; polygone dès 3 axes."

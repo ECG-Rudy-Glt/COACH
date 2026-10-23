@@ -76,6 +76,8 @@ flowchart LR
 
 Only **one week** is generated at a time, after reading the previous week's feedback, so the plan adapts instead of drifting.
 
+A session done outside the plan (an improvised "back and biceps") is added by the user (`POST /users/{id}/plan/sessions`, today or up to 8 weeks back, `details.manual`, status `done`). Regeneration only replaces `planned` rows, so it is kept; it counts in minutes, lift estimates (C15) and the coach's view, but not in consistency (ST11, ST17), which measures the sessions the engine planned. Only such a session can be deleted (`DELETE …/plan/sessions/{sid}`); a planned one is skipped instead.
+
 ## LLM safety boundary
 
 ```mermaid

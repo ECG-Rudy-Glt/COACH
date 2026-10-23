@@ -41,6 +41,18 @@ class PlanMemory:
             r["day"] = day
         return r
 
+    def add_session(self, user_id: int, row: dict[str, Any]) -> dict[str, Any]:
+        sid = max(self._sess(), default=0) + 1
+        self._sess()[sid] = {"id": sid, "user_id": user_id, "status": "planned", "logged": None, **row}
+        return self._sess()[sid]
+
+    def remove_session(self, user_id: int, session_id: int) -> bool:
+        r = self._sess().get(session_id)
+        if not r or r["user_id"] != user_id:
+            return False
+        del self._sess()[session_id]
+        return True
+
 
 class PlanPostgres:
     def add_sessions(self, user_id: int, rows: list[dict[str, Any]]) -> None:
@@ -70,3 +82,14 @@ class PlanPostgres:
             return c.execute("UPDATE planned_sessions SET details = CASE WHEN day = %s THEN details ELSE "
                              "jsonb_set(details, '{moved_from}', COALESCE(details->'moved_from', to_jsonb(day::text))) END, day = %s, updated_at = now() "
                              "WHERE id = %s AND user_id = %s RETURNING *", (day, day, session_id, user_id)).fetchone()
+
+    def add_session(self, user_id: int, row: dict[str, Any]) -> dict[str, Any]:
+        with self._conn() as c:
+            return c.execute("INSERT INTO planned_sessions (user_id, day, kind, title, duration_min, details, rules, notes, status, logged) "
+                             "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s::jsonb) RETURNING *",
+                             (user_id, row["day"], row["kind"], row["title"], row["duration_min"], json.dumps(row["details"]), row["rules"], row["notes"],
+                              row.get("status", "planned"), json.dumps(row["logged"]) if row.get("logged") is not None else None)).fetchone()
+
+    def remove_session(self, user_id: int, session_id: int) -> bool:
+        with self._conn() as c:
+            return c.execute("DELETE FROM planned_sessions WHERE id = %s AND user_id = %s", (session_id, user_id)).rowcount > 0

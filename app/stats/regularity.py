@@ -22,13 +22,14 @@ def week_rows(sessions: list[dict[str, Any]], today: date, weeks: int = HISTORY_
     """Une ligne par semaine (lundi au dimanche), de la plus ancienne à la semaine en cours.
 
     `met` : True (tenue), False (non tenue) ou None (rien à juger : aucune séance prévue, ou semaine en cours pas encore tenue). Une séance passée
-    volontairement (« skipped ») sort du calcul ; une séance passée sans retour compte comme non faite.
+    volontairement (« skipped ») sort du calcul ; une séance passée sans retour compte comme non faite. Une séance ajoutée à la main hors plan n'est
+    pas une séance prévue par le moteur : elle n'entre pas dans le calcul (sinon une séance en plus rattraperait une séance manquée).
     """
     this = monday_of(today)
     out = []
     for i in range(weeks):
         mon = this - timedelta(weeks=weeks - 1 - i)
-        week = [s for s in sessions if mon <= s["day"] < mon + timedelta(days=7)]
+        week = [s for s in sessions if mon <= s["day"] < mon + timedelta(days=7) and not (s.get("details") or {}).get("manual")]
         done = sum(1 for s in week if s["status"] == "done")
         skipped = sum(1 for s in week if s["status"] == "skipped")
         planned = len(week) - skipped
