@@ -1551,5 +1551,6 @@
  "Supprimer cette séance": "Delete this session",
  "Enregistrer la séance": "Save the session",
  "Une séance ajoutée doit être déjà faite : aujourd'hui ou dans les 8 dernières semaines.": "An added session must already be done: today or within the last 8 weeks.",
- "Seule une séance ajoutée à la main peut être supprimée ; une séance du plan se passe.": "Only a session added by hand can be deleted; a planned session is skipped instead."
+ "Seule une séance ajoutée à la main peut être supprimée ; une séance du plan se passe.": "Only a session added by hand can be deleted; a planned session is skipped instead.",
+ "Interface : {build}": "Interface: {build}"
 }

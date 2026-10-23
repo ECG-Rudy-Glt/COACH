@@ -216,7 +216,13 @@ function toast(msg) {
   setTimeout(() => t.remove(), 2200);
 }
 
+let writesInFlight = 0; // enregistrements en cours : on ne recharge jamais l'interface pendant l'un d'eux
 async function api(path, opts = {}) {
+  const write = !!opts.method && opts.method !== "GET";
+  if (write) writesInFlight++;
+  try { return await apiCall(path, opts); } finally { if (write) writesInFlight--; }
+}
+async function apiCall(path, opts) {
   const res = await fetch(path, {
     method: opts.method || "GET",
     headers: { "X-Lang": I18N.locale(), ...(opts.body ? { "Content-Type": "application/json" } : {}) },
@@ -703,7 +709,8 @@ async function profile() {
       link("Garmin : importer mes activités", garminScreen), link("Importer des fichiers FIT, TCX, GPX", importScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
     fold("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
       link("Changer mon mot de passe", passwordScreen),
-      h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter")]),
+      h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter"),
+      h("p", { class: "muted", id: "ui-build" }, __("Interface : {build}", { build: UI_BUILD }))]),
     h("div", { class: "card row" },
       h("div", { class: "grow stack" }, h("span", { class: "eyebrow" }, "Questionnaire"), h("h3", null, __("{pct} % complété", { pct })),
         h("div", { class: "st-meter", role: "img", "aria-label": __("Questionnaire complété à {pct} %", { pct }) }, h("i", { style: `width:${pct}%` }))),
@@ -2123,7 +2130,26 @@ async function start() {
   route();
 }
 
+// Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
+const UI_BUILD = "sc-v28";
+// Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
+function reloadWhenSafe() {
+  const KEY = "sc-reloaded-at";
+  let last = 0;
+  try { last = Number(sessionStorage.getItem(KEY)) || 0; } catch { /* stockage indisponible */ }
+  if (Date.now() - last < 60000) return;  // garde anti-boucle
+  let tries = 0;
+  const busy = () => writesInFlight > 0 || flushActive || typing(document.activeElement) || document.querySelector(".sheet-back");
+  const attempt = () => {
+    if (busy()) { if (++tries < 240) setTimeout(attempt, 2500); return; }  // l'interface à jour sera prise à la prochaine ouverture
+    try { sessionStorage.setItem(KEY, String(Date.now())); } catch { /* idem */ }
+    location.reload();
+  };
+  attempt();
+}
 if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;  // première installation : rien à recharger
   navigator.serviceWorker.register("/sw.js").catch(() => { /* hors HTTPS ou refusé : sans impact */ });
+  if (hadController) navigator.serviceWorker.addEventListener("controllerchange", reloadWhenSafe);
 }
 start();
