@@ -146,6 +146,7 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | N8 | Qualité : 25 à 30 g de fibres, des légumes à chaque repas, produits ultra-transformés et alcool limités | | B |
 | N9 | Quand la confiance d'une estimation de repas n'est pas élevée, l'estimateur peut poser 1 à 2 questions courtes (quantité, graisse de cuisson, sauce, boisson) : l'estimation est refaite avec les réponses, on peut toujours passer ; le serveur borne le nombre, la longueur et ne repose aucune question après des réponses | 2 questions au plus | C |
 | N10 | Une valeur déclarée prime sur une valeur devinée : code-barres Open Food Facts (pour 100 g × quantité saisie) puis correction de l'utilisateur ; les corrections récentes et les repas identiques servent d'exemples aux estimations suivantes du même utilisateur (sans identité) ; le chiffre principal affiché est la moyenne des jours estimés de la semaine | 4 exemples au plus, 90 jours | C |
+| N11 | Bilan du jour : dépense estimée = métabolisme de base × niveau d'activité hors séances (N1) + dépense des activités réellement faites ce jour-là (activité importée avec calories : calories moins la part de repos de sa durée ; sinon MET × poids × durée, comme N1 ; séance faite du plan ou hors plan sans activité reliée : MET) ; une séance reliée à son activité n'est comptée qu'une fois ; solde ≈ = kcal estimées mangées − dépense ; le jour courant est partiel (« à ce stade » : base au prorata de l'heure, dépense totale prévue avec les séances encore planifiées) ; la cible du jour reste celle de N1 à N4 (aucune compensation : une sortie longue n'autorise pas à manger plus) ; aucun solde pour un profil protégé (N7) ni sans repas estimé ; aucun jugement | MET de N1 | C (repère de bilan énergétique ; estimations à ±10-20 %) |
 
 ## G ter. Statistiques : écran de suivi des données
 
@@ -236,5 +237,5 @@ Issues des bases `data/evidence/*.yaml` (60 publications relues sur leurs résum
 - **N2** : en déficit avec musculation, les consensus vont jusqu'à 2,3-3,1 g/kg de masse maigre (Helms 2014, ISSN) ; 2,0 g/kg de poids total reste dans la plage prudente.
 - **N5** : aucune étude ne valide le lissage sur 7 jours ni le seuil de 3 pesées sur 14 jours ; le poids fluctue d'environ 0,35 % d'un jour à l'autre (Turicchi 2020) : règle de pratique.
 - **N6** : l'estimation de calories sur photo ou description sous-estime de façon systématique ; la fourchette « ±20 à 30 % » n'est pas démontrée.
-- **N9, N10** : règles de conception sans étude propre ; les valeurs d'Open Food Facts sont déclarées par des contributeurs et peuvent être fausses ou périmées : la correction de l'utilisateur prime.
+- **N9, N10, N11** : règles de conception sans étude propre ; les valeurs d'Open Food Facts sont déclarées par des contributeurs et peuvent être fausses ou périmées : la correction de l'utilisateur prime.
 - **N3, N7, N8** : non vérifiées.

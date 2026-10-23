@@ -1830,6 +1830,26 @@ function correctionBlock(m, reload) {
   return h("div", { class: "stack", style: "gap:8px" }, open, form);
 }
 
+// Bilan énergétique du jour (N11) : dépense estimée face aux kcal estimées mangées ; le jour courant est partiel (« à ce stade »), jamais de compensation ni de jugement.
+function energyCard(e, target) {
+  const sp = e.spent, kcal = (v) => __("≈ {v} kcal", { v });
+  const rows = [
+    [e.current ? "Dépense à ce stade" : "Dépense estimée du jour", kcal(sp.so_far_kcal)],
+    ["dont métabolisme et vie quotidienne", kcal(e.current ? sp.base_so_far_kcal : sp.base_kcal)],
+    ...sp.items.map((i) => [i.source === "watch" ? __("{label} (montre)", { label: i.label }) : i.label, kcal(i.kcal)]),
+    e.current && sp.planned_remaining_kcal ? ["Dépense totale prévue (séances restantes comprises)", kcal(sp.projected_kcal)] : null,
+    ["Mangé (estimé)", e.estimated_meals ? kcal(e.eaten_kcal) : "—"],
+    e.balance.kcal != null ? [e.current ? "Solde à ce stade" : "Solde du jour", __("{v} kcal ≈", { v: (e.balance.kcal > 0 ? "+" : "") + e.balance.kcal })] : null,
+    ["Objectif du jour", __("{v} kcal", { v: target })]].filter(Boolean);
+  const note = e.balance.reason === "protected" ? "Aucun solde n'est affiché pour votre profil."
+    : e.balance.reason === "no_meals" ? "Ajoutez et estimez vos repas pour voir le solde." : null;
+  return h("div", { class: "card stack", "aria-labelledby": "energy-h" },
+    h("div", { class: "row between" }, h("h3", { id: "energy-h" }, "Bilan du jour"), e.current ? h("span", { class: "chip" }, "À ce stade") : null),
+    h("dl", { class: "kv" }, rows.map(([k, v]) => h("div", { class: "row between" }, h("dt", null, __(k)), h("dd", { class: "num" }, v)))),
+    note ? h("p", { class: "muted" }, note) : null,
+    h("p", { class: "muted", style: "font-size:.8125rem" }, "Estimations (règle N11). L'objectif du jour ne change pas : une sortie longue n'oblige pas à manger plus."));
+}
+
 async function nutritionScreen(day) {
   nutDay.value = day || nutDay.value;
   let d, prog;
@@ -1885,6 +1905,7 @@ async function nutritionScreen(day) {
       tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, __("{v} repas sans estimation : ils ne sont pas comptés.", { v: tot.meals - tot.estimated_meals })) : null,
       t.notice ? h("p", { class: "muted" }, t.notice) : null,
       h("p", { class: "muted", style: "font-size:.8125rem" }, __("Dépense estimée {tdee} kcal, déficit {deficit_kcal} kcal ({rate_pct_per_week} % du poids par semaine). Règles {join}.", { tdee: t.tdee, deficit_kcal: t.deficit_kcal, rate_pct_per_week: t.rate_pct_per_week, join: t.rules.join(", ") }))),
+    d.energy.future ? null : energyCard(d.energy, t.kcal),
     h("div", { class: "grid2" }, h("button", { class: "btn primary", onclick: () => mealForm(d.day) }, "Ajouter un repas"),
       d.barcode ? h("button", { class: "btn", onclick: () => barcodeForm(d.day) }, "Produit emballé") : null),
     ...d.meals.map(mealCard),
@@ -2176,7 +2197,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v29";
+const UI_BUILD = "sc-v30";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

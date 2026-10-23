@@ -89,6 +89,49 @@ def targets(p: NutritionProfile, day_load: str = "mean") -> dict[str, Any]:
     return out
 
 
+def _net_kcal(sport: str, kg: float, minutes: float) -> float:
+    return (MET.get(sport, MET["other"]) - 1) * kg * minutes / 60  # (MET − 1) : le repos est déjà dans le métabolisme de base × niveau d'activité
+
+
+def day_expenditure(p: NutritionProfile, sessions: list[dict[str, Any]], activities: list[dict[str, Any]], *, elapsed: float = 1.0, planned: bool = True) -> dict[str, Any]:
+    """N11 : dépense estimée d'un jour. Base = BMR × niveau d'activité hors séances (N1) + activités réellement faites ce jour-là.
+
+    Activité importée avec calories : calories moins la part de repos de sa durée (déjà dans la base), sinon MET × poids × durée. Séance faite (du plan ou hors plan)
+    sans activité reliée : MET. Une séance reliée à une activité n'est comptée qu'une fois (l'activité). `elapsed` = part de la journée écoulée (jour courant).
+    `planned` : ajoute les séances encore prévues dans `projected_kcal` (jour courant ou à venir). Tout est une estimation (≈), sans jugement ni compensation."""
+    bmr = bmr_mifflin(p.sex, p.weight_kg, p.height_cm, p.age)
+    base = bmr * PAL.get(p.work, 1.25)
+    items: list[dict[str, Any]] = []
+    linked = {(x.get("logged") or {}).get("garmin_id") for x in sessions} - {None}
+    for a in activities:
+        minutes = (a.get("duration_s") or 0) / 60
+        if a.get("calories"):
+            kcal, how = max(a["calories"] - bmr / 1440 * minutes, 0), "watch"
+        else:
+            kcal, how = _net_kcal(a.get("sport") or "other", p.weight_kg, minutes), "met"
+        items.append({"label": a.get("name") or a.get("sport") or "activité", "kcal": round(kcal), "source": how, "minutes": round(minutes)})
+    for x in sessions:
+        lg = x.get("logged") or {}
+        if x["status"] != "done" or lg.get("garmin_id") in linked:  # reliée : l'activité est déjà comptée ci-dessus
+            continue
+        minutes = lg.get("minutes") or x["duration_min"]
+        items.append({"label": x["title"], "kcal": round(_net_kcal(KIND_SPORT.get(x["kind"], "other"), p.weight_kg, minutes)), "source": "met", "minutes": round(minutes)})
+    done = sum(i["kcal"] for i in items)
+    remaining = round(sum(_net_kcal(KIND_SPORT.get(x["kind"], "other"), p.weight_kg, x["duration_min"]) for x in sessions if x["status"] == "planned")) if planned else 0
+    return {"base_kcal": round(base), "base_so_far_kcal": round(base * elapsed), "activity_kcal": done, "so_far_kcal": round(base * elapsed) + done,
+            "planned_remaining_kcal": remaining, "projected_kcal": round(base) + done + remaining, "items": items, "partial": elapsed < 1.0, "rules": ["N11"]}
+
+
+def day_balance(p: NutritionProfile, spent: dict[str, Any], eaten_kcal: int, estimated_meals: int) -> dict[str, Any]:
+    """N11 : solde ≈ = kcal estimées mangées − dépense (du jour entier, ou « à ce stade » pour le jour courant). Aucun solde pour un profil protégé (N7)
+    ni sans repas estimé ; la cible du jour reste celle de N1 à N4, jamais relevée par la dépense (pas de compensation)."""
+    if p.blocked_reason:
+        return {"kcal": None, "reason": "protected"}
+    if not estimated_meals:
+        return {"kcal": None, "reason": "no_meals"}
+    return {"kcal": round(eaten_kcal - spent["so_far_kcal"]), "reason": None}
+
+
 def trend(entries: list[dict[str, Any]], today: date) -> dict[str, Any]:
     """Tendance de poids : moyenne glissante de 7 jours (N5) et rythme hebdomadaire sur 21 jours."""
     pts = sorted(((e["day"], float(e["kg"])) for e in entries), key=lambda x: x[0])

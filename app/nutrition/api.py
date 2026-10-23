@@ -107,6 +107,18 @@ def _day_load(repo: Repo, user_id: int, day: date) -> str:
     return "training" if any(x["duration_min"] >= 45 and x["status"] != "skipped" for x in s) else "rest"
 
 
+def day_energy(repo: Repo, user_id: int, d: date, today: date, tot: dict[str, Any], p: eng.NutritionProfile | None = None) -> dict[str, Any]:
+    """Bilan énergétique d'un jour (N11) : dépense estimée (base + activités réellement faites), kcal estimées mangées, solde ≈. Jour courant : « à ce stade »."""
+    if p is None:
+        p, _ = _profile(repo, user_id, today)
+    sessions = repo.list_sessions(user_id, d, d + timedelta(days=1))
+    acts = [a for a in repo.list_activities(user_id, d, 200) if a["day"] == d]
+    elapsed = 1.0 if d < today else (0.0 if d > today else min((datetime.now().hour * 60 + datetime.now().minute) / 1440, 1.0))
+    spent = eng.day_expenditure(p, sessions, acts, elapsed=elapsed, planned=d >= today)
+    return {"day": d.isoformat(), "current": d == today, "future": d > today, "spent": spent, "eaten_kcal": tot["kcal"], "estimated_meals": tot["estimated_meals"],
+            "balance": eng.day_balance(p, spent, tot["kcal"], tot["estimated_meals"]) if d <= today else {"kcal": None, "reason": "future"}, "protected": bool(p.blocked_reason)}
+
+
 def _sum(meals: list[dict[str, Any]]) -> dict[str, Any]:
     done = [m["analysis"] for m in meals if m["analysis"]]
     return {"kcal": sum(a["kcal"] for a in done), "protein_g": sum(a["protein_g"] for a in done), "carbs_g": sum(a["carbs_g"] for a in done),
@@ -188,6 +200,18 @@ def week_summary(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
             "avertissement": "estimations de repas souvent sous-évaluées : on suit la tendance, pas un jour isolé"}
 
 
+def energy_for_coach(e: dict[str, Any]) -> dict[str, Any]:
+    """Mêmes chiffres que la carte « Bilan du jour » (N11) pour le chat ; estimations, pas de jugement, pas de compensation."""
+    sp = e["spent"]
+    out: dict[str, Any] = {"depense_a_ce_stade_kcal": sp["so_far_kcal"], "depense_prevue_journee_kcal": sp["projected_kcal"], "dont_activites_faites_kcal": sp["activity_kcal"],
+                           "activites": [{"nom": i["label"], "kcal": i["kcal"], "source": "montre" if i["source"] == "watch" else "MET"} for i in sp["items"]],
+                           "mange_estime_kcal": e["eaten_kcal"], "repas_estimes": e["estimated_meals"], "solde_a_ce_stade_kcal": e["balance"]["kcal"],
+                           "regle": "N11 : estimations (≈) ; la cible du jour ne change pas, une sortie longue n'oblige pas à manger plus, aucun jugement"}
+    if e["protected"]:
+        out["note"] = "profil protégé (N7) : ne présente aucun solde ni déficit"
+    return out
+
+
 def coach_context(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
     """Nutrition vue par le coach (discussion) : cibles du jour, repas du jour, 7 derniers jours, poids. Chiffres du moteur, estimations signalées."""
     p, _ = _profile(repo, user_id, today)
@@ -206,6 +230,7 @@ def coach_context(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
     tr, wt = eng.trend(weights, today), eng.weight_trend(weights, today, 3, p.target_kg)
     return {"cibles_jour": {k: tg[k] for k in ("kcal", "protein_g", "carbs_g", "fat_g", "tdee", "deficit_kcal", "rate_pct_per_week")},
             "objectif_poids": {"sens": p.direction, "cible_kg": p.target_kg, "poids_kg": p.weight_kg, "protege_N7": bool(p.blocked_reason)},
+            "bilan_energetique_jour": energy_for_coach(day_energy(repo, user_id, today, today, _sum(days.get(today, [])), p)),
             "aujourdhui": {"repas": today_meals, "total": {k: v for k, v in _sum(days.get(today, [])).items() if k in ("kcal", "protein_g", "carbs_g", "fat_g")}},
             "sept_jours": week, "synthese_7j": week_summary(repo, user_id, today),
             "tendance_poids": {"poids_lisse_kg": tr.get("current"), "pct_par_semaine": tr.get("rate_pct_per_week"), "pct_par_mois": wt["pct_per_month"], "kg_par_mois": wt["kg_per_month"]},
@@ -225,7 +250,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         tot = _sum(meals)
         rem = {k: max(tg[k] - tot[k], 0) for k in ("kcal", "protein_g", "carbs_g", "fat_g")}
         return {"day": d.isoformat(), "today": today.isoformat(), "targets": tg, "meals": [_public(m) for m in meals], "totals": tot, "remaining": rem,
-                "barcode": nut_barcode.enabled()}
+                "energy": day_energy(repo, user_id, d, today, tot, p), "barcode": nut_barcode.enabled()}
 
     @router.post("/meals", status_code=201)
     def add_meal(body: MealIn, request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
