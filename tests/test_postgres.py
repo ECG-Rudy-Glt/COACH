@@ -99,3 +99,18 @@ def test_move_session_keeps_the_original_day():
     again = repo.move_session(uid, sid, date(2026, 10, 16))
     assert again["details"]["moved_from"] == "2026-10-12"  # le premier jour prévu est conservé
     assert repo.move_session(uid + 999, sid, date(2026, 10, 16)) is None
+
+
+def test_manual_session_add_and_remove():
+    from datetime import date
+
+    repo = PostgresRepo(DSN)
+    repo.migrate(Path(__file__).parent.parent / "db" / "migrations")
+    uid = repo.create_user("manual")
+    s = repo.add_session(uid, {"day": date(2026, 10, 20), "kind": "strength_upper", "title": "Dos biceps", "duration_min": 50, "details": {"manual": True},
+                               "rules": [], "notes": [], "status": "done", "logged": {"source": "manual", "exercises": [{"name": "Pull-ups", "sets": [{"reps": 8}]}]}})
+    assert s["status"] == "done" and s["details"] == {"manual": True} and s["logged"]["exercises"][0]["name"] == "Pull-ups"
+    repo.delete_planned_from(uid, date(2026, 10, 1))  # une régénération ne la touche pas
+    assert [r["id"] for r in repo.list_sessions(uid, date(2026, 10, 1), None)] == [s["id"]]
+    assert repo.remove_session(uid + 999, s["id"]) is False
+    assert repo.remove_session(uid, s["id"]) is True and repo.list_sessions(uid, date(2026, 10, 1), None) == []

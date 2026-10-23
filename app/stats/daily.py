@@ -82,11 +82,13 @@ def recent_items(activities: list[dict[str, Any]], sessions: list[dict[str, Any]
 
 
 def week_block(sessions: list[dict[str, Any]], activities: list[dict[str, Any]], today: date) -> dict[str, Any]:
-    """Semaine en cours (lundi à dimanche) : séances faites sur séances prévues, minutes et kilomètres de course mesurés ou saisis."""
+    """Semaine en cours (lundi à dimanche) : séances faites sur séances prévues, minutes et kilomètres de course mesurés ou saisis.
+    Les séances ajoutées à la main hors plan comptent dans les minutes, pas dans « faites sur prévues » (ST11)."""
     monday = today - timedelta(days=today.weekday())
     week = [s for s in sessions if monday <= s["day"] < monday + timedelta(days=7) and s["status"] != "skipped"]
     done = [s for s in week if s["status"] == "done"]
+    plan = [s for s in week if not (s.get("details") or {}).get("manual")]
     acts = [a for a in activities if monday <= a["day"] <= today]
     manual_min = sum(((s.get("logged") or {}).get("minutes") or s["duration_min"]) for s in done if not (s.get("logged") or {}).get("garmin_id"))
-    return {"monday": monday.isoformat(), "planned": len(week), "done": len(done), "minutes": round(sum((a["duration_s"] or 0) / 60 for a in acts) + manual_min),
+    return {"monday": monday.isoformat(), "planned": len(plan), "done": sum(s["status"] == "done" for s in plan), "minutes": round(sum((a["duration_s"] or 0) / 60 for a in acts) + manual_min),
             "run_km": round(sum((a["distance_m"] or 0) for a in acts if a["sport"] == "run") / 1000, 1)}

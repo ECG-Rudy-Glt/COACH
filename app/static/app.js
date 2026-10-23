@@ -1216,7 +1216,8 @@ async function planScreen(restore = false) {
     b.addEventListener("click", () => gen(b));
     return show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"),
       h("div", { class: "card stack" }, h("p", null, "Aucun plan pour l'instant."),
-        h("p", { class: "muted" }, "Le plan est calculé à partir de votre profil, de votre matériel, de vos disponibilités et de vos objectifs. Vous pourrez l'ajuster à tout moment."), b),
+        h("p", { class: "muted" }, "Le plan est calculé à partir de votre profil, de votre matériel, de vos disponibilités et de vos objectifs. Vous pourrez l'ajuster à tout moment."), b,
+        h("button", { class: "link", style: "align-self:flex-start", onclick: () => addSessionSheet(data.today, data.today) }, "Ajouter une séance faite")),
       tabbar("plan"));
   }
   const thisMonday0 = mondayOf(data.today);
@@ -1236,6 +1237,8 @@ async function planScreen(restore = false) {
     h("strong", null, labelOf(viewWeek)),
     h("button", { class: "iconbtn", "aria-label": "Semaine suivante", disabled: viewWeek >= lastW, onclick: () => goWeek(shiftDay(viewWeek, 7)) }, icon("next")));
   const present = viewWeek >= thisMonday0;
+  const addBtn = viewWeek <= thisMonday0 && shiftDay(viewWeek, 6) >= shiftDay(data.today, -56)
+    ? h("button", { class: "btn", onclick: () => addSessionSheet(data.today, viewWeek === thisMonday0 ? data.today : shiftDay(viewWeek, 6)) }, icon("plus"), "Ajouter une séance faite") : null;
   const SPORT_LBL = { run: "Course", bike: "Vélo", strength: "Musculation", swim: "Natation", walk: "Marche", other: "Autre" };
   const reload = () => { planScreen(true); };
   const linkSheet = (a) => {
@@ -1277,7 +1280,7 @@ async function planScreen(restore = false) {
         h("div", { class: "bhead" }, h("span", null, I18N.weekday((new Date(iso + "T12:00:00").getDay() + 6) % 7).slice(0, 3)), h("strong", null, String(Number(iso.slice(8))))),
         ...list.map((s) => {
           const card = h("button", { class: `bcard ${s.status} ${isRun(s.kind) ? "k-run" : "k-str"}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
-            h("span", { class: "bt" }, s.title), h("span", { class: "bm" }, __("{duration_min} min{v}", { duration_min: s.duration_min, v: s.details.moved_from ? __(" · déplacée") : "" })),
+            h("span", { class: "bt" }, s.title), h("span", { class: "bm" }, __("{duration_min} min{v}", { duration_min: s.duration_min, v: s.details.manual ? __(" · ajoutée") : s.details.moved_from ? __(" · déplacée") : "" })),
             s.status === "done" ? h("span", { class: "bdone" }, icon("check")) : null);
           if (s.status !== "skipped") attachLongPress(card, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); }, wrap);
           return card;
@@ -1298,7 +1301,7 @@ async function planScreen(restore = false) {
     }
     nodes.push(h("div", { class: "dayhead" + (day === data.today ? " today" : "") }, fmtDay(day, data.today)));
     nodes.push(h("div", { class: "card", style: "padding:0;overflow:hidden" }, list.map((s) => {
-      const sub = [__("{duration_min} min", { duration_min: s.duration_min }), s.details.zone, s.details.format, s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
+      const sub = [__("{duration_min} min", { duration_min: s.duration_min }), s.details.zone, s.details.format, s.details.manual ? "ajoutée" : s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
       const row = h("button", { class: `sess ${s.status}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
         h("span", { class: "dot" }, s.status === "done" ? icon("check") : isRun(s.kind) ? "C" : "M"),
         h("span", { class: "grow" }, h("strong", null, s.title), h("span", { class: "sub" }, sub)),
@@ -1318,13 +1321,46 @@ async function planScreen(restore = false) {
   const nextCard = finished && !upcomingWeek.length
     ? h("div", { class: "card stack" }, h("h3", null, "Semaine terminée"),
       h("p", { class: "muted" }, "Le plan avance une semaine à la fois : le coach lit d'abord vos retours, puis ajuste la semaine suivante."), nextBtn) : null;
-  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), actsCard,
+  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
     h("p", { class: "muted" }, "La semaine en cours n'est jamais modifiée sans votre accord."), upcomingWeek.length ? regen : null, tabbar("plan"));
   if (restore && scrollMemo.plan != null) window.scrollTo(0, scrollMemo.plan);
 }
 
+// ---------- séance faite hors plan (ajoutée à la main) ----------
+const MANUAL_KINDS = [["strength_upper", "Musculation haut du corps"], ["strength_lower", "Musculation jambes"], ["strength_full", "Musculation complète"],
+  ["strength_crossfit", "CrossFit"], ["run_easy", "Course facile"], ["run_long", "Sortie longue"], ["run_quality", "Course qualité"]];
+
+function addSessionSheet(today, day) {
+  const kind = h("select", { id: "ms-kind" }, MANUAL_KINDS.map(([k, t]) => h("option", { value: k }, t)));
+  const title = h("input", { id: "ms-title", type: "text", maxlength: 80, placeholder: "Ex. : Dos biceps" });
+  const dayIn = h("input", { id: "ms-day", type: "date", min: shiftDay(today, -56), max: today, value: day });
+  const mins = h("input", { id: "ms-min", type: "number", inputmode: "numeric", min: 5, max: 600, value: 60 });
+  const err = h("p", { class: "error", role: "alert" });
+  const add = h("button", { class: "btn primary" }, "Ajouter la séance");
+  let close = () => {};
+  add.addEventListener("click", async () => {
+    err.textContent = "";
+    if (!dayIn.value || !(Number(mins.value) >= 5)) { err.textContent = __("Indiquez le jour et une durée d'au moins 5 minutes."); return; }
+    add.disabled = true;
+    try {
+      const s = await api(`/users/${userId}/plan/sessions`, { method: "POST", body: { kind: kind.value, title: title.value, day: dayIn.value, duration_min: Math.round(Number(mins.value)) } });
+      close(); toast("Séance ajoutée");
+      planView.matchedAt = 0;  // une activité de la montre du même jour peut s'y rattacher
+      planView.week = mondayOf(s.day) === mondayOf(today) ? null : mondayOf(s.day);
+      sessionScreen(s, today);
+    } catch (e) { add.disabled = false; err.textContent = __(e.message); }
+  });
+  close = sheet("Ajouter une séance faite",
+    h("p", { class: "muted" }, "Une séance faite en dehors du plan : elle compte dans votre volume, vos performances et ce que voit le coach, sans changer le plan."),
+    h("div", { class: "field" }, h("label", { for: "ms-kind" }, "Type"), kind),
+    h("div", { class: "field" }, h("label", { for: "ms-title" }, "Nom (facultatif)"), title),
+    h("div", { class: "row" }, h("div", { class: "field grow" }, h("label", { for: "ms-day" }, "Jour"), dayIn), h("div", { class: "field grow" }, h("label", { for: "ms-min" }, "Durée (min)"), mins)),
+    err, add);
+}
+
 function sessionScreen(s, today) {
   const done = s.status === "done";
+  const manual = !!s.details.manual;
   const logged = s.logged || {};
   const draftKey = `sc-draft-${userId}-${s.id}`;
   const draft = (() => { try { return JSON.parse(store.get(draftKey)); } catch { return null; } })(); // saisie non enregistrée (app fermée, réseau coupé)
@@ -1335,7 +1371,7 @@ function sessionScreen(s, today) {
   const saved = h("p", { class: "muted", role: "status" });
   // enregistrement automatique : brouillon local immédiat, serveur après une courte pause, et à la sortie de l'écran ou de l'app
   const collect = () => ({ adaptation: st.adaptation || null, changes: st.changes, rpe: st.rpe || null, minutes: st.minutes || null, note: st.note || null,
-    exercises: st.sets.filter((x) => x.sets.some((y) => y.kg != null || y.reps != null)) });
+    exercises: st.sets.filter((x) => (manual ? x.name : x.sets.some((y) => y.kg != null || y.reps != null))) });  // séance ajoutée : l'exercice choisi reste, même sans série
   let dirty = false, timer = null, inflight = Promise.resolve();
   const persist = (keepalive) => {
     clearTimeout(timer);
@@ -1382,6 +1418,46 @@ function sessionScreen(s, today) {
             num(st.sets[i].sets[k].reps, (v) => { st.sets[i].sets[k].reps = v; }, "reps", __("{name}, série {v}, répétitions", { name, v: k + 1 }))];
         })));
   });
+
+  // séance ajoutée : pas de créneaux prescrits, l'utilisateur liste ses exercices (noms de la bibliothèque proposés : ils relient charges et performances)
+  const manualEx = manual && !isRun(s.kind) ? (() => {
+    st.sets = (src.exercises || []).filter((x) => x && x.name).map((x) => ({ name: x.name, sets: JSON.parse(JSON.stringify(x.sets || [])) }));
+    const list = h("div", { class: "stack" });
+    const exBox = (ex) => {
+      if (!ex.sets.length) ex.sets.push({}, {}, {});
+      return h("div", { class: "card exbox" },
+        h("div", { class: "row" }, h("strong", { class: "grow" }, ex.name),
+          h("button", { class: "link", onclick: () => { st.sets = st.sets.filter((x) => x !== ex); draw(); touch(); } }, "Retirer")),
+        h("div", { class: "sets" }, h("span", null, ""), h("span", null, "kg"), h("span", null, "reps"),
+          ex.sets.map((row, k) => [h("span", null, k + 1), num(row.kg, (v) => { row.kg = v; }, "kg", __("{name}, série {v}, kg", { name: ex.name, v: k + 1 })),
+            num(row.reps, (v) => { row.reps = v; }, "reps", __("{name}, série {v}, répétitions", { name: ex.name, v: k + 1 }))])),
+        h("button", { class: "link", style: "align-self:flex-start", onclick: () => { ex.sets.push({}); draw(); touch(); } }, "Ajouter une série"));
+    };
+    const draw = () => list.replaceChildren(...st.sets.map(exBox));
+    const names = h("datalist", { id: "ms-ex-names" });
+    const name = h("input", { type: "text", list: "ms-ex-names", maxlength: 80, placeholder: "Ex. : Tirage vertical, curl biceps…", "aria-label": "Nom de l'exercice" });
+    let wait = null;
+    name.addEventListener("input", () => {
+      clearTimeout(wait);
+      const q = name.value.trim();
+      if (q.length < 2) return;
+      wait = setTimeout(async () => {
+        try { const r = await api(`/exercises?q=${encodeURIComponent(q)}&limit=8`); names.replaceChildren(...r.items.map((e) => h("option", { value: e.name }))); } catch { /* saisie libre */ }
+      }, 250);
+    });
+    const addEx = () => { const v = name.value.trim(); if (!v) return; st.sets.push({ name: v, sets: [] }); name.value = ""; draw(); touch(); };
+    name.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addEx(); } });
+    draw();
+    return [list, h("div", { class: "card stack" }, h("h3", null, "Ajouter un exercice"),
+      h("p", { class: "muted" }, "Les noms de la bibliothèque sont proposés pendant la saisie : vos charges rejoignent alors vos performances et vos prochaines séances."),
+      h("div", { class: "row" }, h("div", { class: "grow" }, name), h("button", { class: "btn sm", onclick: addEx }, "Ajouter")), names)];
+  })() : [];
+  let armed = false;
+  const delBtn = manual ? h("button", { class: "link", onclick: async () => {
+    if (!armed) { armed = true; delBtn.textContent = __("Confirmer la suppression"); return; }
+    try { clearTimeout(timer); dirty = false; await api(`/users/${userId}/plan/sessions/${s.id}`, { method: "DELETE" }); store.del(draftKey); flushActive = null; toast("Séance supprimée"); planScreen(true); }
+    catch (e) { err.textContent = __(e.message); }
+  } }, "Supprimer cette séance") : null;
 
   const CHANGES_FR = ["plus léger", "plus court", "plus long", "exercice remplacé", "séries en moins", "séries en plus", "douleur", "trop facile", "trop dur", "matériel manquant"];
   const chipsBox = h("div", { class: "chips" });
@@ -1434,6 +1510,7 @@ function sessionScreen(s, today) {
         .filter(Boolean).map((t) => h("span", { class: "chip" }, t))),
       h("button", { class: "link", style: "align-self:flex-start;padding:2px 0", onclick: unlink }, "Dissocier de cette activité")) : null,
     ...slots,
+    ...manualEx,
     ...(s.details.blocks || []).map((b) => h("div", { class: "card stack" },
       h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, __("{minutes} min", { minutes: b.minutes }))),
       h("ul", { class: "plain" }, b.items.map((it) => h("li", null, it))),
@@ -1441,18 +1518,19 @@ function sessionScreen(s, today) {
     slots.length ? h("details", { class: "card" }, h("summary", { style: "font-weight:600;cursor:pointer" }, "Comment doser l'effort (RIR et RPE)"),
       h("p", { class: "muted", style: "margin-top:8px" }, "RIR = répétitions en réserve : combien de répétitions vous pourriez encore faire à la fin de la série. RIR 2 signifie qu'il vous en restait 2 (RPE 8 sur 10). RIR 4 : très facile, RPE 6."),
       h("p", { class: "muted", style: "margin-top:6px" }, "Au fil des semaines, on se rapproche de l'échec (RIR 2-3, puis 2, puis 1-2), et la semaine allégée repart très facile. Quand vous atteignez le haut de la fourchette de répétitions sur toutes les séries, augmentez la charge.")) : null,
-    h("div", { class: "card stack" }, h("h3", null, "Ce que j'ai adapté"),
+    manual ? null : h("div", { class: "card stack" }, h("h3", null, "Ce que j'ai adapté"),
       h("p", { class: "muted" }, "Dites au coach ce que vous avez changé ou adapté dans cette séance. Il en tiendra compte pour la suite."),
       chipsBox, adapt, h("button", { class: "btn sm", style: "align-self:flex-start", onclick: saveAdapt }, "Enregistrer mon adaptation")),
     h("div", { class: "card stack" }, h("h3", null, "Après la séance"),
-      isRun(s.kind) || s.details.blocks ? h("div", { class: "field" }, h("label", { for: "mins" }, "Durée réelle (min)"),
+      isRun(s.kind) || s.details.blocks || manual ? h("div", { class: "field" }, h("label", { for: "mins" }, "Durée réelle (min)"),
         num(st.minutes, (v) => { st.minutes = v; }, String(s.duration_min), "Durée réelle en minutes")) : null,
       rpe, h("div", { class: "field" }, h("label", { for: "note" }, "Remarque"),
         h("input", { id: "note", type: "text", value: st.note, maxlength: 600, placeholder: "Sensations, douleurs…", oninput: (e) => { st.note = e.target.value; touch(); } })), saved, err),
-    h("p", { class: "muted" }, __("Règles appliquées : {join}.", { join: s.rules.join(", ") })),
-    actionBar(done ? h("button", { class: "btn", onclick: () => save("planned") }, "Rouvrir la séance")
+    s.rules.length ? h("p", { class: "muted" }, __("Règles appliquées : {join}.", { join: s.rules.join(", ") })) : null,
+    actionBar(manual ? h("button", { class: "btn primary", onclick: () => save("done") }, "Enregistrer la séance")
+      : done ? h("button", { class: "btn", onclick: () => save("planned") }, "Rouvrir la séance")
       : h("button", { class: "btn primary", onclick: () => save("done") }, "Terminer la séance"),
-      h("div", { class: "links" }, !done && s.status !== "skipped" ? h("button", { class: "link", onclick: () => save("skipped") }, "Passer cette séance") : null)),
+      h("div", { class: "links" }, !done && s.status !== "skipped" ? h("button", { class: "link", onclick: () => save("skipped") }, "Passer cette séance") : null, delBtn)),
   );
   flushActive = (keepalive) => persist(keepalive);
   if (draft) { dirty = true; saved.textContent = __("Saisie reprise, enregistrement…"); timer = setTimeout(() => persist(false), 300); }
