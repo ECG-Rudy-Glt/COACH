@@ -34,3 +34,17 @@
 .st-chart .st-area-before { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; }
 .st-chart .st-point { fill: var(--accent); stroke: var(--surface); stroke-width: 1.5; }
 .st-legend i.before { border-top: 2px dashed var(--muted); }
+/* Schéma des muscles : trois niveaux par la seule variable --accent (clair, sombre, éco), l'alternative en tableau double l'information */
+.mu-wrap { max-width: 360px; margin: 0 auto; width: 100%; }
+.mu-fig { display: block; width: 100%; height: auto; }
+.mu-fig .mu-body { fill: var(--surface-2); stroke: var(--line); stroke-width: 1; }
+.mu-fig .mu { fill: var(--surface-2); stroke: var(--line); stroke-width: .8; stroke-linejoin: round; }
+.mu-fig .mu.mu-2nd { fill: var(--accent); fill-opacity: .38; stroke: var(--accent); }
+.mu-fig .mu.mu-main { fill: var(--accent); fill-opacity: 1; stroke: var(--accent); }
+.mu-key { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: middle; margin-right: 6px; background: var(--surface-2); border: 1px solid var(--line); }
+.mu-key.mu-main { background: var(--accent); border-color: var(--accent); }
+.mu-key.mu-2nd { background: color-mix(in srgb, var(--accent) 38%, transparent); border-color: var(--accent); }
+.st-legend i.mu-key { border-top: 1px solid var(--line); height: 14px; }
+.st-legend i.mu-key.mu-main { border-color: var(--accent); }
+.st-legend i.mu-key.mu-2nd { border-color: var(--accent); }
+.mu-fig .st-text { stroke: none; fill: var(--muted); font: 10px var(--body); }

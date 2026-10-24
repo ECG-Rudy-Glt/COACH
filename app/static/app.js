@@ -1434,6 +1434,7 @@ function sessionScreen(s, today) {
   const done = s.status === "done";
   const manual = !!s.details.manual;
   const logged = s.logged || {};
+  const muscleBox = done ? muscleSessionCard(s) : null;
   const draftKey = `sc-draft-${userId}-${s.id}`;
   const draft = (() => { try { return JSON.parse(store.get(draftKey)); } catch { return null; } })(); // saisie non enregistrée (app fermée, réseau coupé)
   const src = draft || logged;
@@ -1453,7 +1454,7 @@ function sessionScreen(s, today) {
     const mine = { ...(s.logged || {}), ...collect() };
     saved.textContent = __("Enregistrement…");
     inflight = inflight.then(() => api(`/users/${userId}/plan/sessions/${s.id}`, { method: "PATCH", body: { status: s.status, logged: mine }, keepalive }))
-      .then(() => { s.logged = mine; if (!dirty) { store.del(draftKey); saved.textContent = __("Enregistré"); err.textContent = ""; } })
+      .then(() => { s.logged = mine; if (muscleBox) muscleBox.refresh(); if (!dirty) { store.del(draftKey); saved.textContent = __("Enregistré"); err.textContent = ""; } })
       .catch((e) => { dirty = true; saved.textContent = __("Pas encore enregistré (le brouillon est gardé sur cet appareil)"); if (!e.handled) err.textContent = __(e.message); });
     return inflight;
   };
@@ -1634,6 +1635,7 @@ function sessionScreen(s, today) {
       h("button", { class: "link", style: "align-self:flex-start;padding:2px 0", onclick: unlink }, "Dissocier de cette activité")) : null,
     ...slots,
     ...manualEx,
+    muscleBox,
     endurance,
     ...(s.details.blocks || []).map((b) => h("div", { class: "card stack" },
       h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, __("{minutes} min", { minutes: b.minutes }))),
@@ -2271,7 +2273,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v32";
+const UI_BUILD = "sc-v33";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";
