@@ -102,7 +102,7 @@ function show(...nodes) {
 }
 
 // Carte dépliante : titre et résumé toujours visibles, détail à la demande ; l'état (ouvert ou fermé) est mémorisé par carte sur cet appareil.
-function fold(id, eyebrow, title, summary, body, open = false) {
+function foldCard(id, eyebrow, title, summary, body, open = false) {
   const key = `sc-fold-${id}`;
   const saved = store.get(key);
   const d = h("details", { class: "card fold", open: saved == null ? open : saved === "1" },
@@ -110,6 +110,13 @@ function fold(id, eyebrow, title, summary, body, open = false) {
     h("div", { class: "stack fold-body" }, body));
   d.addEventListener("toggle", () => store.set(key, d.open ? "1" : "0"));
   return d;
+}
+
+// Détail replié (natif <details>, clavier et lecteur d'écran compris) : un résumé court reste visible, les explications et le détail de calcul se déplient à la demande.
+function fold(title, content, { open = false, cls = "" } = {}) {
+  const kids = [].concat(content).filter((k) => k != null && k !== false);
+  if (!kids.length) return null;
+  return h("details", { class: `more ${cls}`.trim(), open: open || null }, h("summary", null, title), h("div", { class: "stack more-body" }, kids));
 }
 
 // Feuille qui monte du bas (iPhone comme Android) : fermée par un toucher à côté, la touche Échap ou le bouton.
@@ -448,7 +455,7 @@ async function home() {
       : prof.answered
         ? h("div", { class: "card" }, h("p", { class: "muted" }, "Choisissez vos sports dans le questionnaire : la page des performances apparaîtra ensuite."))
         : null,
-    domainRows.length ? h("div", { class: "card" }, h("h3", null, "Par thème"), h("div", { style: "margin-top:8px" }, domainRows)) : null,
+    domainRows.length ? foldCard("home-domains", "Questionnaire", "Par thème", __("{answered} réponses", { answered: prof.answered }), h("div", null, domainRows)) : null,
     tabbar("home"),
   );
 }
@@ -700,16 +707,16 @@ async function profile() {
     h("div", { class: "top" }, h("span", { class: "grow" }), h("span", { class: "muted" }, __("{answered} réponses", { answered: prof.answered }))),
     h("h1", null, "Profil"),
     typeof radarProfileCard === "function" ? radarProfileCard() : null,
-    fold("profile-identity", "Identité", userName || "Mon compte", null, [
+    foldCard("profile-identity", "Identité", userName || "Mon compte", null, [
       h("div", { class: "stack" }, h("h3", null, "Langue"), langSwitch(), h("p", { class: "muted" }, "Langue de l'application, du coach IA et des mails.")),
       h("div", { class: "stack" }, h("h3", null, "Thème"), themeToggle())]),
-    fold("profile-sports", "Sports et objectifs", sports || "Sports non renseignés", goalsSummary, [
+    foldCard("profile-sports", "Sports et objectifs", sports || "Sports non renseignés", goalsSummary, [
       goalsCard(goalsData), link("Mes performances", benchmarks)]),
-    fold("profile-prefs", "Préférences", "Statistiques, Garmin, import, bibliothèque", null, [
+    foldCard("profile-prefs", "Préférences", "Statistiques, Garmin, import, bibliothèque", null, [
       typeof statsPrefCard === "function" ? statsPrefCard() : null,
       weatherPrefCard(), aiCostCard(),
       link("Garmin : importer mes activités", garminScreen), link("Importer des fichiers FIT, TCX, GPX", importScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
-    fold("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
+    foldCard("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
       link("Changer mon mot de passe", passwordScreen),
       h("button", { class: "link", style: "text-align:left", onclick: logout }, "Se déconnecter"),
       h("p", { class: "muted", id: "ui-build" }, __("Interface : {build}", { build: UI_BUILD }))]),
@@ -798,7 +805,7 @@ async function questionnaireScreen() {
   }
   const sections = Object.keys(DOMAINS).filter((d) => groups.has(d)).map((d) => {
     const qs = groups.get(d).sort((x, y) => x.order - y.order);
-    return fold(`profile-${d}`, qs.length > 1 ? __("{n} réponses", { n: qs.length }) : __("{n} réponse", { n: qs.length }), DOMAINS[d], null,
+    return foldCard(`profile-${d}`, qs.length > 1 ? __("{n} réponses", { n: qs.length }) : __("{n} réponse", { n: qs.length }), DOMAINS[d], null,
       qs.map((q) => h("button", { class: "item", onclick: () => edit(q, facts) }, h("span", { class: "l" }, q.text), h("span", { class: "v" }, fmtValue(q, facts)))));
   });
   show(
@@ -1185,12 +1192,13 @@ function coachCard(c) {
   const pending = !!d && (d.proposals.some((p) => p.status === "proposed") || d.questions.length > 0);  // il y a quelque chose à décider ou à répondre : ouvert par défaut
   const when = latest ? new Date(latest.created_at).toLocaleDateString(langTag(), { weekday: "long", day: "numeric", month: "long" }) : null;
   const note = pending ? __("{length} proposition(s), {length2} question(s)", { length: d.proposals.filter((p) => p.status === "proposed").length, length2: d.questions.length }) : (latest && latest.summary ? latest.summary.slice(0, 90) + (latest.summary.length > 90 ? "…" : "") : "Le coach relit vos séances et propose des ajustements");
-  return fold("coach", "Bilan du coach", when || "Pas encore de bilan", note, [
+  return foldCard("coach", "Bilan du coach", when || "Pas encore de bilan", note, [
     latest && latest.summary ? h("p", null, latest.summary) : h("p", { class: "muted" }, "Le coach relit vos séances et vos activités Garmin, puis propose des ajustements que vous validez."),
-    d && d.adherence ? h("p", { class: "muted" }, d.adherence) : null,
+    d && d.adherence ? fold("Régularité sur la période", h("p", { class: "muted" }, d.adherence)) : null,
     d && d.proposals.length ? h("div", { class: "stack" }, d.proposals.map((p, i) => h("div", { class: "form" },
-      h("strong", null, act(p)), h("span", { class: "muted" }, p.reason),
-      h("div", { class: "chips" }, p.rule_ids.map((r) => h("span", { class: "chip" }, r)), (p.source_ids || []).map((r) => h("button", { class: "chip", style: "border:0;cursor:pointer", onclick: () => evidenceScreen(r) }, r))),
+      h("strong", null, act(p)),
+      fold("Pourquoi cet ajustement", [h("span", { class: "muted" }, p.reason),
+        h("div", { class: "chips" }, p.rule_ids.map((r) => h("span", { class: "chip" }, r)), (p.source_ids || []).map((r) => h("button", { class: "chip", style: "border:0;cursor:pointer", onclick: () => evidenceScreen(r) }, r)))]),
       p.status === "proposed"
         ? h("div", { class: "row" }, h("button", { class: "btn sm primary", onclick: () => decide(i, "apply") }, "Appliquer"), h("button", { class: "btn sm", onclick: () => decide(i, "dismiss") }, "Ignorer"))
         : h("span", { class: "muted" }, p.status === "applied" ? "Appliqué" : "Ignoré")))) : (latest ? h("p", { class: "muted" }, "Aucun ajustement proposé : le plan reste tel quel.") : null),
@@ -1198,7 +1206,7 @@ function coachCard(c) {
       h("button", { class: "btn sm", style: "align-self:flex-start", onclick: () => coachChat() }, "Répondre au coach")) : null,
     btn,
     h("button", { class: "link", onclick: () => coachChat() }, "Parler au coach"),
-    h("p", { class: "muted" }, __("Budget IA ce mois : {toFixed} € sur {limit_eur} €.", { toFixed: c.budget.spent_eur.toFixed(2), limit_eur: c.budget.limit_eur }))], pending);
+    fold("Budget IA", h("p", { class: "muted" }, __("Budget IA ce mois : {toFixed} € sur {limit_eur} €.", { toFixed: c.budget.spent_eur.toFixed(2), limit_eur: c.budget.limit_eur })))], pending);
 }
 
 // ---------- plan ----------
@@ -1216,7 +1224,7 @@ function fmtDay(iso, today) {
 
 function outlookCard(o) {
   if (!o) return null;
-  return fold("outlook", o.ok ? "Objectif" : "Objectif ambitieux", o.event, __("Dans {weeks_to_event} semaines · {v}", { weeks_to_event: o.weeks_to_event, v: o.ok ? __("cohérent avec votre préparation") : __("à reconsidérer") }), [
+  return foldCard("outlook", o.ok ? "Objectif" : "Objectif ambitieux", o.event, __("Dans {weeks_to_event} semaines · {v}", { weeks_to_event: o.weeks_to_event, v: o.ok ? __("cohérent avec votre préparation") : __("à reconsidérer") }), [
     h("p", { class: o.ok ? "muted" : "" }, o.message),
     h("p", { class: "muted" }, __("Volume projeté {projected_peak_km} km par semaine (repère : {needed_peak_km} km).", { projected_peak_km: o.projected_peak_km, needed_peak_km: o.needed_peak_km }))]);
 }
@@ -1238,9 +1246,10 @@ function trajectoryCard(t) {
     h("li", { class: i === 0 ? "now" : "" }, h("strong", null, p.label), __(" · {dayFr} → {dayFr2} · {weeks} sem.", { dayFr: dayFr(p.start), dayFr2: dayFr(p.end), weeks: p.weeks }))));
   const tests = t.milestones.length ? h("p", { class: "muted" }, "Tests de contrôle : " + t.milestones.map((m) => `${fullFr(m.date)} (${m.label} en ${m.target_time})`).join(", ") + ".") : null;
   const head = t.level ? __("{time} → {time2} · écart {gap_pct} % ({verdict})", { time: t.level.time, time2: t.target.time, gap_pct: t.gap_pct, verdict: t.verdict }) : __("Objectif {time}", { time: t.target.time });
-  return fold("trajectory", "Trajectoire", `${t.target.title} · ${fullFr(t.target.date)}`, head, [
-    h("p", { class: "muted" }, __("{level}{gap} Volume visé : environ {weekly_km_target} km par semaine.", { level, gap, weekly_km_target: t.weekly_km_target })),
-    phases, tests,
+  return foldCard("trajectory", "Trajectoire", `${t.target.title} · ${fullFr(t.target.date)}`, head, [
+    h("p", { class: "muted" }, __("Volume visé : environ {weekly_km_target} km par semaine.", { weekly_km_target: t.weekly_km_target })),
+    fold("Comment est estimé votre niveau", h("p", { class: "muted" }, `${level}${gap}`.trim())),
+    fold("Phases et tests de contrôle", [phases, tests]),
     ...t.warnings.map((w) => h("p", null, w))], t.warnings.length > 0);
 }
 
@@ -1252,7 +1261,7 @@ function cycleCard(c) {
     h("span", { class: "wk" + (u.allegee ? " light" : "") + (u.semaine === c.upcoming[0].semaine ? " now" : ""), title: __("Semaine du {dayFr} : {phase}{v}", { dayFr: dayFr(u.semaine), phase: u.phase, v: u.allegee ? __(", allégée") : "" }) })));
   const note = [c.next_deload ? __("Prochaine semaine allégée : semaine du {dayFr}.", { dayFr: dayFr(c.next_deload) }) : null,
     cur.weeks_to_event != null ? __("Objectif dans {weeks_to_event} semaine{v}.", { weeks_to_event: cur.weeks_to_event, v: cur.weeks_to_event > 1 ? "s" : "" }) : null].filter(Boolean).join(" ");
-  return fold("cycle", "Cycle d'entraînement", `${cur.macro_label} · ${cur.label}`, cur.macro_text, [strip, note ? h("p", { class: "muted" }, note) : null]);
+  return foldCard("cycle", "Cycle d'entraînement", `${cur.macro_label} · ${cur.label}`, cur.macro_text, [strip, note ? h("p", { class: "muted" }, note) : null]);
 }
 
 function planCard() {
@@ -1409,7 +1418,7 @@ async function planScreen(restore = false) {
   const nextCard = finished && !upcomingWeek.length
     ? h("div", { class: "card stack" }, h("h3", null, "Semaine terminée"),
       h("p", { class: "muted" }, "Le plan avance une semaine à la fois : le coach lit d'abord vos retours, puis ajuste la semaine suivante."), nextBtn) : null;
-  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), ...(data.advice || []).map((a) => h("div", { class: "card" }, h("p", { class: "muted" }, a))), coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
+  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), (data.advice || []).length ? foldCard("plan-advice", "Conseils", (data.advice || []).length > 1 ? __("{n} conseils sur votre plan", { n: data.advice.length }) : "Un conseil sur votre plan", null, data.advice.map((a) => h("p", { class: "muted" }, a))) : null, coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
     h("p", { class: "muted" }, "La semaine en cours n'est jamais modifiée sans votre accord."), upcomingWeek.length ? regen : null, tabbar("plan"));
   if (restore && scrollMemo.plan != null) window.scrollTo(0, scrollMemo.plan);
 }
@@ -1509,8 +1518,8 @@ function sessionScreen(s, today) {
           slot.target ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, slot.target.text)
             : slot.suggested_kg ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, __("Charge de départ conseillée : {suggested_kg} kg", { suggested_kg: slot.suggested_kg })) : null),
         slot.exercise ? h("button", { class: "link", onclick: () => exerciseDetail(slot.exercise.id) }, "Fiche") : null),
-      slot.cue ? h("p", { class: "muted" }, slot.cue) : null,
-      slot.why ? h("p", { class: "muted", style: "font-style:italic" }, __("Pourquoi : {why}", { why: slot.why })) : null,
+      fold("Consigne et pourquoi", [slot.cue ? h("p", { class: "muted" }, slot.cue) : null,
+        slot.why ? h("p", { class: "muted", style: "font-style:italic" }, __("Pourquoi : {why}", { why: slot.why })) : null]),
       h("div", { class: "sets" }, h("span", null, ""), h("span", null, "kg"), h("span", null, "reps"),
         Array.from({ length: n }, (_, k) => {
           st.sets[i].sets[k] = st.sets[i].sets[k] || {};
@@ -1633,12 +1642,12 @@ function sessionScreen(s, today) {
     return h("section", { class: `card stack wxcard wx-${w.status}`, "aria-labelledby": "wx-h" },
       h("h3", { id: "wx-h" }, wxBadge(w)),
       h("p", null, __("Prévision à {hour} h : {facts}", { hour: f.hour, facts })),
-      w.reasons.length ? h("ul", { class: "plain" }, w.reasons.map((r) => h("li", null, r.text, " ", h("span", { class: "muted" }, `(${r.rule})`)))) : h("p", { class: "muted" }, "Aucune règle météo déclenchée."),
-      w.reasons.length ? h("p", { class: "muted" }, w.reasons[0].adapt) : null,
+      w.reasons.length ? fold("Pourquoi cette météo", [h("ul", { class: "plain" }, w.reasons.map((r) => h("li", null, r.text, " ", h("span", { class: "muted" }, `(${r.rule})`)))),
+        h("p", { class: "muted" }, w.reasons[0].adapt)]) : h("p", { class: "muted" }, "Aucune règle météo déclenchée."),
       sug ? h("button", { class: "btn", onclick: async () => { if (await moveSession(s, sug.day)) { await persist(false); planScreen(true); } } },
         __("Déplacer à {weekday}", { weekday: I18N.weekday((new Date(sug.day + "T12:00:00").getDay() + 6) % 7) })) : null,
       w.status !== "ok" && !sug ? h("p", { class: "muted" }, "Aucun autre jour de la semaine ne convient mieux : adaptez la séance ou gardez-la telle quelle.") : null,
-      h("p", { class: "muted" }, "Prévision indicative, jamais un avis médical : c'est vous qui décidez de déplacer ou d'adapter la séance. Le plan ne change jamais tout seul."));
+      fold("À savoir", h("p", { class: "muted" }, "Prévision indicative, jamais un avis médical : c'est vous qui décidez de déplacer ou d'adapter la séance. Le plan ne change jamais tout seul.")));
   })();
   const unlink = async () => {
     try { await api(`/users/${userId}/plan/sessions/${s.id}/link`, { method: "DELETE" }); toast("Activité dissociée"); planScreen(true); } catch (e) { toast(e.message); }
@@ -1649,7 +1658,7 @@ function sessionScreen(s, today) {
     h("h1", null, s.title),
     h("div", { class: "chips" }, s.details.cycle ? h("span", { class: "chip" }, `${s.details.cycle.macro_label} · ${s.details.cycle.label}`) : null, h("span", { class: "chip" }, __("{duration_min} min", { duration_min: s.duration_min })), s.details.zone ? h("span", { class: "chip" }, s.details.zone) : null,
       s.details.format ? h("span", { class: "chip" }, s.details.format) : null, s.details.vert_m ? h("span", { class: "chip" }, `≈ ${s.details.vert_m} m D+`) : null),
-    s.notes.length ? h("div", { class: "card" }, s.notes.map((n) => h("p", { class: "muted" }, n))) : null,
+    s.notes.length ? fold(s.notes.length > 1 ? __("Notes sur cette séance ({n})", { n: s.notes.length }) : "Note sur cette séance", s.notes.map((n) => h("p", { class: "muted" }, n)), { cls: "card" }) : null,
     s.status === "skipped" ? null : h("div", { class: "card row" }, h("div", { class: "grow stack", style: "gap:2px" }, h("strong", null, "Jour de la séance"),
       h("span", { class: "muted" }, longDay(s.day) + (s.details.moved_from ? __(" · prévue le {longDay}", { longDay: longDay(s.details.moved_from) }) : ""))),
       h("button", { class: "btn sm", onclick: moveDialog }, "Changer de jour")),
@@ -1668,9 +1677,9 @@ function sessionScreen(s, today) {
       h("div", { class: "row" }, h("h3", { class: "grow" }, b.title), h("span", { class: "chip" }, __("{minutes} min", { minutes: b.minutes }))),
       h("ul", { class: "plain" }, b.items.map((it) => h("li", null, it))),
       b.effort ? h("p", { class: "muted" }, __("Effort visé : {effort}", { effort: b.effort })) : null)),
-    slots.length ? h("details", { class: "card" }, h("summary", { style: "font-weight:600;cursor:pointer" }, "Comment doser l'effort (RIR et RPE)"),
-      h("p", { class: "muted", style: "margin-top:8px" }, "RIR = répétitions en réserve : combien de répétitions vous pourriez encore faire à la fin de la série. RIR 2 signifie qu'il vous en restait 2 (RPE 8 sur 10). RIR 4 : très facile, RPE 6."),
-      h("p", { class: "muted", style: "margin-top:6px" }, "Au fil des semaines, on se rapproche de l'échec (RIR 2-3, puis 2, puis 1-2), et la semaine allégée repart très facile. Quand vous atteignez le haut de la fourchette de répétitions sur toutes les séries, augmentez la charge.")) : null,
+    slots.length ? fold("Comment doser l'effort (RIR et RPE)", [
+      h("p", { class: "muted" }, "RIR = répétitions en réserve : combien de répétitions vous pourriez encore faire à la fin de la série. RIR 2 signifie qu'il vous en restait 2 (RPE 8 sur 10). RIR 4 : très facile, RPE 6."),
+      h("p", { class: "muted" }, "Au fil des semaines, on se rapproche de l'échec (RIR 2-3, puis 2, puis 1-2), et la semaine allégée repart très facile. Quand vous atteignez le haut de la fourchette de répétitions sur toutes les séries, augmentez la charge.")], { cls: "card" }) : null,
     manual ? null : h("div", { class: "card stack" }, h("h3", null, "Ce que j'ai adapté"),
       h("p", { class: "muted" }, "Dites au coach ce que vous avez changé ou adapté dans cette séance. Il en tiendra compte pour la suite."),
       chipsBox, adapt, h("button", { class: "btn sm", style: "align-self:flex-start", onclick: saveAdapt }, "Enregistrer mon adaptation")),
@@ -1681,7 +1690,7 @@ function sessionScreen(s, today) {
         h("textarea", { id: "note", rows: 3, maxlength: 600, placeholder: "Sensations, douleurs, ce que vous avez fait…", oninput: (e) => { st.note = e.target.value; touch(); } }, st.note))
         : h("div", { class: "field" }, h("label", { for: "note" }, "Remarque"),
           h("input", { id: "note", type: "text", value: st.note, maxlength: 600, placeholder: "Sensations, douleurs…", oninput: (e) => { st.note = e.target.value; touch(); } })), saved, err),
-    s.rules.length ? h("p", { class: "muted" }, __("Règles appliquées : {join}.", { join: s.rules.join(", ") })) : null,
+    s.rules.length ? fold("Règles appliquées", h("p", { class: "muted" }, __("Règles appliquées : {join}.", { join: s.rules.join(", ") }))) : null,
     actionBar(manual ? h("button", { class: "btn primary", onclick: () => save("done") }, "Enregistrer la séance")
       : done ? h("button", { class: "btn", onclick: () => save("planned") }, "Rouvrir la séance")
       : h("button", { class: "btn primary", onclick: () => save("done") }, "Terminer la séance"),
@@ -1770,10 +1779,9 @@ async function exerciseDetail(id) {
       h("p", { class: "prose" }, e.instructions),
       e.instructions_lang === "en" ? h("p", { class: "muted" }, "Texte en anglais (source).") : null) : null,
     videos.length ? h("div", { class: "stack" }, videos.map((m) => h("a", { class: "btn sm", href: m.video_url, target: "_blank", rel: "noopener noreferrer" }, "Voir la vidéo"))) : null,
-    h("div", { class: "card" }, h("h3", null, "Sources et licences"),
-      h("ul", { class: "credits" }, h("li", null, __("Fiche : {v}, ", { v: e.author || __("auteur non indiqué") }),
+    fold("Sources et licences", h("ul", { class: "credits" }, h("li", null, __("Fiche : {v}, ", { v: e.author || __("auteur non indiqué") }),
         e.license_url ? h("a", { href: e.license_url, target: "_blank", rel: "noopener noreferrer" }, e.license) : e.license),
-      images.map((m) => credit(m, "Image")), videos.map((m) => credit(m, "Vidéo")))),
+      images.map((m) => credit(m, "Image")), videos.map((m) => credit(m, "Vidéo"))), { cls: "card" }),
   );
 }
 
@@ -1806,8 +1814,8 @@ function weekCard(w) {
   return h("div", { class: "card stack" }, h("h3", null, "Moyenne des 7 derniers jours"),
     h("p", { class: "num", style: "font-size:1.9rem" }, __("≈ {kcal} kcal par jour", { kcal: w.kcal })),
     bar("Énergie", w.kcal, w.target_kcal, "kcal"), bar("Protéines", w.protein_g, w.target_protein_g, "g"),
-    h("p", { class: "muted", style: "font-size:.8125rem" }, __(w.days > 1 ? "Sur {days} jours estimés : {sign}{gap} kcal par rapport à l'objectif." : "Sur {days} jour estimé : {sign}{gap} kcal par rapport à l'objectif.",
-      { days: w.days, sign: gap >= 0 ? "+" : "−", gap: Math.abs(gap) }), " ", __("Les estimations sont souvent sous-évaluées : regardez surtout la tendance de poids.")));
+    fold("Détail et limites", h("p", { class: "muted", style: "font-size:.8125rem" }, __(w.days > 1 ? "Sur {days} jours estimés : {sign}{gap} kcal par rapport à l'objectif." : "Sur {days} jour estimé : {sign}{gap} kcal par rapport à l'objectif.",
+      { days: w.days, sign: gap >= 0 ? "+" : "−", gap: Math.abs(gap) }), " ", __("Les estimations sont souvent sous-évaluées : regardez surtout la tendance de poids."))));
 }
 
 function bar(label, val, target, unit) {
@@ -1948,9 +1956,10 @@ function energyCard(e, target) {
     : e.balance.reason === "no_meals" ? "Ajoutez et estimez vos repas pour voir le solde." : null;
   return h("div", { class: "card stack", "aria-labelledby": "energy-h" },
     h("div", { class: "row between" }, h("h3", { id: "energy-h" }, "Bilan du jour"), e.current ? h("span", { class: "chip" }, "À ce stade") : null),
-    h("dl", { class: "kv" }, rows.map(([k, v]) => h("div", { class: "row between" }, h("dt", null, __(k)), h("dd", { class: "num" }, v)))),
+    h("dl", { class: "kv" }, rows.slice(-(e.balance.kcal != null ? 3 : 2)).map(([k, v]) => h("div", { class: "row between" }, h("dt", null, __(k)), h("dd", { class: "num" }, v)))),
     note ? h("p", { class: "muted" }, note) : null,
-    h("p", { class: "muted", style: "font-size:.8125rem" }, "Estimations (règle N11). L'objectif du jour ne change pas : une sortie longue n'oblige pas à manger plus."));
+    fold("Détail du bilan", [h("dl", { class: "kv" }, rows.slice(0, -(e.balance.kcal != null ? 3 : 2)).map(([k, v]) => h("div", { class: "row between" }, h("dt", null, __(k)), h("dd", { class: "num" }, v)))),
+      h("p", { class: "muted", style: "font-size:.8125rem" }, "Estimations (règle N11). L'objectif du jour ne change pas : une sortie longue n'oblige pas à manger plus.")]));
 }
 
 async function nutritionScreen(day) {
@@ -1975,9 +1984,9 @@ async function nutritionScreen(day) {
       m.description ? h("p", null, m.description) : null,
       a ? h("div", { class: "stack", style: "gap:6px" },
         h("div", { class: "chips" }, h("span", { class: "chip" }, __("≈ {kcal} kcal ({kcal_min}-{kcal_max})", { kcal: a.kcal, kcal_min: a.kcal_min, kcal_max: a.kcal_max })), h("span", { class: "chip" }, `P ${a.protein_g} g`), h("span", { class: "chip" }, `G ${a.carbs_g} g`), h("span", { class: "chip" }, `L ${a.fat_g} g`)),
-        a.feedback ? h("p", { class: "muted" }, a.feedback) : null, ...(a.tips || []).map((x) => h("p", { class: "muted" }, "• " + x)),
+        fold("Détail de l'estimation", [a.feedback ? h("p", { class: "muted" }, a.feedback) : null, ...(a.tips || []).map((x) => h("p", { class: "muted" }, "• " + x)),
         h("p", { class: "muted", style: "font-size:.8125rem" }, a.corrected ? (a.original ? __("Chiffres corrigés par vous (estimation initiale : {kcal} kcal).", { kcal: a.original.kcal }) : "Chiffres corrigés par vous.")
-          : a.source === "openfoodfacts" ? __("Valeurs de l'emballage (Open Food Facts). {v}", { v: a.assumptions || "" }) : __("Estimation (confiance {confidence}). {v}", { confidence: a.confidence, v: a.assumptions || "" })),
+          : a.source === "openfoodfacts" ? __("Valeurs de l'emballage (Open Food Facts). {v}", { v: a.assumptions || "" }) : __("Estimation (confiance {confidence}). {v}", { confidence: a.confidence, v: a.assumptions || "" }))]),
         (a.questions || []).length ? clarifyBlock(m, () => nutritionScreen(d.day)) : null,
         correctionBlock(m, () => nutritionScreen(d.day)))
         : est);
@@ -2006,8 +2015,8 @@ async function nutritionScreen(day) {
       h("p", { class: "num", style: "font-size:1.25rem" }, __("≈ {kcal} / {target} kcal (objectif du jour)", { kcal: tot.kcal, target: t.kcal })),
       bar("Énergie", tot.kcal, t.kcal, "kcal"), bar("Protéines", tot.protein_g, t.protein_g, "g"), bar("Glucides", tot.carbs_g, t.carbs_g, "g"), bar("Lipides", tot.fat_g, t.fat_g, "g"),
       tot.meals > tot.estimated_meals ? h("p", { class: "muted" }, __("{v} repas sans estimation : ils ne sont pas comptés.", { v: tot.meals - tot.estimated_meals })) : null,
-      t.notice ? h("p", { class: "muted" }, t.notice) : null,
-      h("p", { class: "muted", style: "font-size:.8125rem" }, __("Dépense estimée {tdee} kcal, déficit {deficit_kcal} kcal ({rate_pct_per_week} % du poids par semaine). Règles {join}.", { tdee: t.tdee, deficit_kcal: t.deficit_kcal, rate_pct_per_week: t.rate_pct_per_week, join: t.rules.join(", ") }))),
+      fold("Détail du calcul de l'objectif", [t.notice ? h("p", { class: "muted" }, t.notice) : null,
+        h("p", { class: "muted", style: "font-size:.8125rem" }, __("Dépense estimée {tdee} kcal, déficit {deficit_kcal} kcal ({rate_pct_per_week} % du poids par semaine). Règles {join}.", { tdee: t.tdee, deficit_kcal: t.deficit_kcal, rate_pct_per_week: t.rate_pct_per_week, join: t.rules.join(", ") }))])),
     d.energy.future ? null : energyCard(d.energy, t.kcal),
     h("div", { class: "grid2" }, h("button", { class: "btn primary", onclick: () => mealForm(d.day) }, "Ajouter un repas"),
       d.barcode ? h("button", { class: "btn", onclick: () => barcodeForm(d.day) }, "Produit emballé") : null),
@@ -2019,9 +2028,9 @@ async function nutritionScreen(day) {
       weightChart(prog.weight.series, pr.target_kg, prog.weight.months),
       prog.weight.current ? h("p", null, __("Poids actuel (lissé) : {current} kg", { current: prog.weight.current })) : null,
       ...weightTrendLines(prog.weight),
-      ...prog.advice.map((a) => h("p", { class: "muted" }, a)),
+      fold("Conseils sur le poids", prog.advice.map((a) => h("p", { class: "muted" }, a))),
       h("div", { class: "grid2" }, wInput, wWaist), h("label", { class: "muted", for: "w-day" }, "Date de la pesée (facultatif, jusqu'à 2 ans en arrière)"), wDate, wBtn,
-      h("p", { class: "muted", style: "font-size:.8125rem" }, prog.disclaimer)),
+      fold("À savoir", h("p", { class: "muted", style: "font-size:.8125rem" }, prog.disclaimer))),
     tabbar("food"),
   );
 }
@@ -2435,7 +2444,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v36";
+const UI_BUILD = "sc-v37";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

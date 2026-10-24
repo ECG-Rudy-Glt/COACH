@@ -246,6 +246,18 @@ textarea { font: inherit; }
 .fold > summary .muted { font-size: .9375rem; overflow-wrap: anywhere; }
 .fold-body { padding: 0 16px 16px; }
 
+/* détail replié « fold() » : titre accent, flèche, zone tactile d'au moins 44 px, thèmes clair, sombre et éco via les variables */
+.more { border-top: .5px solid var(--line); }
+.more.card { padding: 0 16px; border-top: 0; }
+.more > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; color: var(--accent); font-size: .9375rem; font-weight: 600; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: ""; flex: none; width: 8px; height: 8px; margin: 0 4px 3px 0; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.more[open] > summary::after { transform: rotate(-135deg); margin-bottom: -3px; }
+.more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.more-body { padding: 2px 0 12px; overflow-wrap: anywhere; }
+.more.card > .more-body { padding-bottom: 14px; }
+.more .more { border-top: 0; }
+
 /* discussion : bulles animées, indicateur de saisie, zone de saisie fixée au-dessus des onglets */
 .msg.new { animation: msg-in .22s ease-out; }
 .msg.typing { display: inline-flex; gap: 5px; padding: 14px 16px; }
