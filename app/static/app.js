@@ -706,7 +706,7 @@ async function profile() {
       goalsCard(goalsData), link("Mes performances", benchmarks)]),
     fold("profile-prefs", "Préférences", "Statistiques, Garmin, import, bibliothèque", null, [
       typeof statsPrefCard === "function" ? statsPrefCard() : null,
-      weatherPrefCard(),
+      weatherPrefCard(), aiCostCard(),
       link("Garmin : importer mes activités", garminScreen), link("Importer des fichiers FIT, TCX, GPX", importScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
     fold("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
       link("Changer mon mot de passe", passwordScreen),
@@ -718,6 +718,30 @@ async function profile() {
       h("button", { class: "btn sm", onclick: questionnaireScreen }, "Ouvrir")),
     tabbar("user"),
   );
+}
+
+// Coût de l'IA du mois : estimation du serveur d'après les tarifs publics (total du serveur, car le plafond est global, et part de ce compte).
+function aiCostCard() {
+  const body = h("div", { class: "stack", id: "ai-cost" }, h("p", { class: "muted" }, "Chargement…"));
+  const eur = (v) => new Intl.NumberFormat(langTag(), { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: v < 0.1 ? 3 : 2 }).format(v);
+  const usageLabel = (k) => ({ chat: __("Chat avec le coach"), meal: __("Estimation de repas"), weekly_review: __("Bilan hebdomadaire"), digest: __("Résumé par e-mail"),
+    checkin: __("Notifications du coach"), intake: __("Accueil et questionnaire") })[k] || __("Autres usages");
+  api(`/users/${userId}/coach/cost`).then((c) => {
+    const spent = eur(c.spent_eur), limit = eur(c.limit_eur);
+    const text = __("Dépensé ≈ {spent} sur un plafond de {limit}", { spent, limit });
+    body.replaceChildren(
+      h("p", null, h("strong", null, text)),
+      h("div", { class: "st-meter", role: "progressbar", "aria-label": __("Coût de l'IA ce mois-ci"), "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": c.percent, "aria-valuetext": text },
+        h("i", { style: `width:${c.percent}%` })),
+      c.available ? null : h("p", { class: "error", role: "alert" }, __("Plafond atteint : les fonctions IA sont suspendues jusqu'au mois prochain."), " ",
+        h("a", { href: "https://github.com/ECG-Rudy-Glt/COACH/blob/main/docs/configuration.md", target: "_blank", rel: "noopener" }, __("Régler LLM_MONTHLY_BUDGET_EUR"))),
+      h("p", { class: "muted" }, __("{n} appel(s) ce mois-ci sur le serveur, dont {mine} pour votre compte (≈ {cost}).", { n: c.calls, mine: c.mine.calls, cost: eur(c.mine.spent_eur) })),
+      c.usages.length ? h("ul", { class: "stack", style: "list-style:none;padding:0;margin:0" }, c.usages.map((u) => h("li", { class: "row between" },
+        h("span", null, usageLabel(u.kind)), h("span", { class: "muted" }, __("{n} appel(s), ≈ {cost} (vous : {mine})", { n: u.calls, cost: eur(u.cost_eur), mine: u.mine_calls }))))) : h("p", { class: "muted" }, "Aucun appel ce mois-ci."),
+      h("p", { class: "muted" }, __("Modèle : {model}", { model: c.models.join(", ") || c.configured_model || __("aucun") })),
+      h("p", { class: "muted" }, "Estimation d'après les tarifs publics du modèle, la facture du fournisseur fait foi."));
+  }).catch(() => body.replaceChildren(h("p", { class: "muted" }, "Coût indisponible pour le moment.")));
+  return h("div", { class: "stack" }, h("h3", null, "Coût de l'IA ce mois-ci"), body);
 }
 
 // Réglage de la météo des séances (facultative, désactivée tant qu'aucune ville n'est choisie). Seule la ville arrondie à 0,1° est conservée et envoyée.
@@ -2273,7 +2297,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v33";
+const UI_BUILD = "sc-v34";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

@@ -74,6 +74,16 @@ class CoachMemory:
     def llm_calls_since(self, user_id: int, kind: str, since: datetime) -> int:
         return sum(1 for c in self._coach()[1] if c["user_id"] == user_id and c["kind"] == kind and c["created_at"] >= since)
 
+    def llm_usage_since(self, since: datetime, user_id: int) -> list[dict[str, Any]]:
+        """Appels réussis depuis `since`, agrégés par (usage, modèle, appel du compte demandé ou non) : aucune identité d'autrui."""
+        agg: dict[tuple[str, str, bool], list[float]] = {}
+        for c in self._coach()[1]:
+            if c["ok"] and c["created_at"] >= since:
+                a = agg.setdefault((c["kind"], c["model"], c["user_id"] == user_id), [0, 0.0])
+                a[0] += 1
+                a[1] += c["cost"]
+        return [{"kind": k, "model": m, "mine": mine, "calls": int(a[0]), "cost": a[1]} for (k, m, mine), a in agg.items()]
+
 
 class CoachPostgres:
     def mark_backfilled(self, user_id: int) -> None:
@@ -145,3 +155,9 @@ class CoachPostgres:
         with self._conn() as c:
             return c.execute("SELECT count(*) AS n FROM llm_calls WHERE user_id = %s AND kind = %s AND created_at >= %s",
                              (user_id, kind, since)).fetchone()["n"]
+
+    def llm_usage_since(self, since: datetime, user_id: int) -> list[dict[str, Any]]:
+        with self._conn() as c:
+            rows = c.execute("SELECT kind, model, (user_id IS NOT DISTINCT FROM %s) AS mine, count(*) AS calls, COALESCE(SUM(cost_eur), 0) AS cost "
+                             "FROM llm_calls WHERE ok AND created_at >= %s GROUP BY kind, model, mine", (user_id, since)).fetchall()
+        return [{"kind": r["kind"], "model": r["model"], "mine": bool(r["mine"]), "calls": int(r["calls"]), "cost": float(r["cost"])} for r in rows]

@@ -14,3 +14,13 @@ def test_profile_shows_ui_build(page: Page, base_url: str):
     page.get_by_text("Compte et sécurité").click()
     expect(page.locator("#ui-build")).to_contain_text("Interface : sc-v")
     assert "no-cache" in (page.request.get("/sw.js").headers.get("cache-control") or "")
+
+
+def test_profile_shows_ai_cost_card(page: Page, base_url: str):
+    login(page)
+    tab(page, "Profil")
+    page.get_by_text("Préférences").click()
+    bar = page.locator("#ai-cost [role=progressbar]")
+    expect(bar).to_have_attribute("aria-valuenow", "0")
+    expect(page.locator("#ai-cost")).to_contain_text("Dépensé ≈")
+    expect(page.locator("#ai-cost")).to_contain_text("la facture du fournisseur fait foi")

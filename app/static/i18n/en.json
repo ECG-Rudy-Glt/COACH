@@ -1656,5 +1656,22 @@
  "Semaine en cours, incomplète.": "Current week, not finished.",
  "Muscles de la semaine": "Muscles of the week",
  "Muscles": "Muscles",
- "Semaine hors de la période suivie.": "Week outside the tracked period."
+ "Semaine hors de la période suivie.": "Week outside the tracked period.",
+ "Chat avec le coach": "Chat with the coach",
+ "Estimation de repas": "Meal estimate",
+ "Bilan hebdomadaire": "Weekly review",
+ "Résumé par e-mail": "E-mail summary",
+ "Notifications du coach": "Coach notifications",
+ "Accueil et questionnaire": "Welcome and questionnaire",
+ "Autres usages": "Other uses",
+ "Dépensé ≈ {spent} sur un plafond de {limit}": "Spent ≈ {spent} of a {limit} cap",
+ "Coût de l'IA ce mois-ci": "AI cost this month",
+ "Plafond atteint : les fonctions IA sont suspendues jusqu'au mois prochain.": "Cap reached: AI features are paused until next month.",
+ "Régler LLM_MONTHLY_BUDGET_EUR": "Set LLM_MONTHLY_BUDGET_EUR",
+ "{n} appel(s) ce mois-ci sur le serveur, dont {mine} pour votre compte (≈ {cost}).": "{n} call(s) this month on the server, {mine} for your account (≈ {cost}).",
+ "{n} appel(s), ≈ {cost} (vous : {mine})": "{n} call(s), ≈ {cost} (you: {mine})",
+ "Aucun appel ce mois-ci.": "No calls this month.",
+ "Modèle : {model}": "Model: {model}",
+ "Estimation d'après les tarifs publics du modèle, la facture du fournisseur fait foi.": "Estimate based on the model's public prices; the provider's invoice is authoritative.",
+ "Coût indisponible pour le moment.": "Cost unavailable right now."
 }

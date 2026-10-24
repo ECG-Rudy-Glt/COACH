@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import yaml
 from fastapi import HTTPException
@@ -78,6 +79,38 @@ def budget_state(repo: Repo, today: date | None = None) -> dict[str, Any]:
     today = today or date.today()
     spent = repo.llm_spend_month(today.replace(day=1))
     return {"spent_eur": round(spent, 3), "limit_eur": budget_limit(), "available": spent < budget_limit()}
+
+
+PARIS = ZoneInfo("Europe/Paris")  # fuseau du calendrier de l'app (comme les notifications) : le « mois » commence à minuit à Paris
+USAGE_ORDER = ("chat", "meal", "weekly_review", "digest", "checkin", "intake")  # usages connus ; le reste tombe dans « other »
+
+
+def month_start_utc(now: datetime | None = None) -> datetime:
+    local = (now or datetime.now(UTC)).astimezone(PARIS)
+    return local.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
+
+
+def cost_report(repo: Repo, user_id: int, now: datetime | None = None) -> dict[str, Any]:
+    """Coût estimé du mois courant : total du serveur (le plafond est global) et part du compte demandé, par usage. Que des agrégats, jamais d'identité."""
+    now = now or datetime.now(UTC)
+    rows = repo.llm_usage_since(month_start_utc(now), user_id)
+    by: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        k = r["kind"] if r["kind"] in USAGE_ORDER else "other"
+        e = by.setdefault(k, {"kind": k, "calls": 0, "cost_eur": 0.0, "mine_calls": 0, "mine_cost_eur": 0.0})
+        e["calls"] += r["calls"]
+        e["cost_eur"] += r["cost"]
+        if r["mine"]:
+            e["mine_calls"] += r["calls"]
+            e["mine_cost_eur"] += r["cost"]
+    usages = sorted(by.values(), key=lambda e: (USAGE_ORDER.index(e["kind"]) if e["kind"] in USAGE_ORDER else 99))
+    for e in usages:
+        e["cost_eur"], e["mine_cost_eur"] = round(e["cost_eur"], 4), round(e["mine_cost_eur"], 4)
+    spent, limit = sum(r["cost"] for r in rows), budget_limit()
+    return {"month": now.astimezone(PARIS).strftime("%Y-%m"), "spent_eur": round(spent, 3), "limit_eur": limit, "available": spent < limit,
+            "percent": min(100, round(100 * spent / limit)) if limit > 0 else 100, "calls": sum(r["calls"] for r in rows),
+            "mine": {"spent_eur": round(sum(r["cost"] for r in rows if r["mine"]), 3), "calls": sum(r["calls"] for r in rows if r["mine"])},
+            "usages": usages, "models": sorted({r["model"] for r in rows if r["model"]}), "configured_model": default_model() or None}
 
 
 def _monday(d: date) -> date:

@@ -3,6 +3,9 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Added
+- *Profile > Preferences* shows the AI cost of the month: estimated spend against the monthly cap (progress bar), number of calls, breakdown by use (chat, meal estimate, weekly review, e-mails and notifications, welcome), model used, and your account's share of the server total (`GET /users/{id}/coach/cost`, aggregates only, calendar month in Paris time). A clear message links to `LLM_MONTHLY_BUDGET_EUR` when the cap is reached.
+
 ### Changed
 - Sessions added outside the plan now cover runs and other sports: new types (cycling, swimming, walking, other sport), distance, average pace (derived from distance and duration, or typed to deduce the duration) and average heart rate for runs and sports, a free comment, perceived effort (RPE) values bounded server-side, and an exercise picker that searches the library (thumbnail and muscles) instead of a bare suggestion list. Fixed: lift estimates (C15) ignored sessions done today.
 
