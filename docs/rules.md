@@ -173,6 +173,28 @@ journal alimentaire. Preuve : A-B pour les ordres de grandeur, C pour la modulat
 | ST19 | Axe force : e1RM d'Epley (ST7, C15) le plus haut des 12 dernières semaines par exercice de référence, face au plus haut des 12 semaines précédentes ; pourcentage = moyenne des exercices présents dans les deux périodes, au moins 2 exercices, sinon axe non tracé ; les séries au-delà de 10 répétitions ne comptent pas | 12 semaines ; 2 exercices minimum | C |
 | ST20 | Comparaison « il y a 4 semaines » : mêmes règles, fenêtres décalées de 4 semaines ; la forme passée n'est tracée que si chaque axe dessiné a une valeur à cette date (sinon les écarts sont donnés en texte, axe par axe) ; l'écart est en points de pourcentage, calculé par le moteur, sans jugement | 4 semaines | C |
 
+## G quater. Météo des séances en extérieur (optionnelle)
+
+Séances concernées : course (facile, sortie longue, qualité), vélo, marche. Prévision Open-Meteo au jour et à l'heure habituelle de la séance (réglable dans le Profil, 18 h par défaut), sur la durée de la séance. Statut : ok, à surveiller, déconseillé. La météo **propose** de déplacer ou d'adapter ; elle ne modifie jamais le plan seule et n'est jamais un avis médical.
+
+| Id | Règle | Valeur | Preuve |
+|---|---|---|---|
+| W1 | Orage : déconseillé s'il est prévu pendant la séance (codes météo 95, 96, 99), à surveiller s'il l'est dans les 2 h autour ; proposer un autre jour ou la salle | Code orage dans le créneau | C |
+| W2 | Vent : rafales prévues dans le créneau, à surveiller dès 41 km/h (force 6 de Beaufort, 22 nœuds), déconseillé dès 52 km/h (force 7, 28 nœuds) | 41 / 52 km/h | C |
+| W3 | Pluie : à surveiller si la probabilité atteint 60 % avec au moins 2 mm sur la séance, déconseillé dès 4 mm en une heure | 60 % et 2 mm / 4 mm par heure | C |
+| W4 | Chaleur : température ressentie maximale du créneau, à surveiller dès 32 °C, déconseillé dès 39 °C ; conseil : sortir plus tôt ou plus tard, réduire l'allure | 32 / 39 °C | C |
+| W5 | Froid : température ressentie minimale du créneau, à surveiller à −10 °C ou moins, déconseillé à −28 °C ou moins | −10 / −28 °C | C |
+| W6 | Verglas : température de 1 °C ou moins avec précipitations pendant la séance ou pluie verglaçante (déconseillé) ; à surveiller si des précipitations ont précédé (6 h) | 1 °C | C |
+| W7 | Autre jour proposé : dans la même semaine, jour futur dont la météo est « ok » au même créneau, sans autre séance de plein air ni jambes ce jour-là, et sans avertissement d'espacement du déplacement existant (G5, I1, I2) ; le plus proche l'emporte. Sinon, adaptation (salle, raccourcir, plus tôt) | | C |
+| W8 | Confidentialité et repli : désactivée par défaut tant qu'aucune ville n'est saisie ; position arrondie à 0,1° côté serveur avant tout appel ; cache de 2 h ; prévision indisponible = aucun avis, le plan reste utilisable ; le coach ne reçoit le résumé que si la météo est activée | | C |
+
+Preuve : C (pratique prudente). Sources lues le 24/10/2026 : NWS, *Lightning safety* (« When thunder roars, go indoors », weather.gov/safety/lightning-safety) pour W1 ;
+Met Office, échelle de Beaufort (force 6 = 22 à 27 nœuds, force 7 = 28 à 33 nœuds, weather.metoffice.gov.uk/guides/coast-and-sea/beaufort-scale) pour W2 ;
+NWS, indice de chaleur (« extrême prudence » 90 à 103 °F, « danger » 103 à 124 °F, weather.gov/ama/heatindex) pour W4 ;
+NWS, refroidissement éolien (−19 °F, soit −28 °C : peau exposée gelée en 30 minutes, weather.gov/safety/cold-wind-chill-chart) pour W5.
+Lacunes assumées : aucune source officielle lue pour les seuils de pluie (W3 : le seuil de 4 mm/h correspond à la pluie « forte » de plusieurs services, non vérifié à la source, le seuil « à surveiller » est un choix de confort) ni de verglas (W6 : seuil de 1 °C et précipitations = jugement prudent) ;
+la température ressentie d'Open-Meteo n'est pas exactement l'indice de chaleur du NWS (W4) ; les seuils de W2 s'appliquent à la course, au vélo et à la marche sans distinction ; les seuils de W5 « à surveiller » (−10 °C) sont un choix prudent.
+
 ## H. Vérifications automatiques (tests)
 
 - Aucun plan ne dépasse G1, G5, C2, C8 ni ne viole S1 à S6 (tests par propriétés sur des profils aléatoires).

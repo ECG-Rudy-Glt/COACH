@@ -364,3 +364,11 @@ body.kb .composer { bottom: 8px; }
 dl.kv { margin: 0; display: flex; flex-direction: column; gap: 6px; }
 dl.kv dt { color: var(--muted); }
 dl.kv dd { margin: 0; text-align: right; font-weight: 600; }
+
+/* météo des séances en extérieur : le statut est dit en texte et en symbole, la couleur ne porte pas seule l'information */
+.wx { display: inline-flex; align-items: center; gap: 2px; margin-top: 2px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: .8125rem; font-weight: 600; color: var(--muted); width: fit-content; }
+.wx-watch { color: var(--accent); border-color: var(--accent); }
+.wx-avoid { color: var(--danger); border-color: var(--danger); }
+.wxcard.wx-watch { border-left: 4px solid var(--accent); }
+.wxcard.wx-avoid { border-left: 4px solid var(--danger); }
+.wxcard h3 .wx { font-size: 1rem; }

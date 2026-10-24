@@ -20,6 +20,22 @@ import uvicorn  # noqa: E402
 
 from app.coach.llm import LLMResult  # noqa: E402
 from app.main import app  # noqa: E402
+from app.weather import client as weather_client  # noqa: E402
+
+
+def fake_open_meteo(url):
+    """Faux Open-Meteo : une ville (Lyon) et des rafales de 70 km/h tous les jours, donc toute séance en extérieur est « déconseillée »."""
+    if "geocoding" in url:
+        return {"results": [{"name": "Lyon", "admin1": "Auvergne-Rhône-Alpes", "country": "France", "latitude": 45.74846, "longitude": 4.84671}]}
+    from datetime import date, timedelta
+    days = [(date.today() + timedelta(days=d)).isoformat() for d in range(7)]
+    times = [f"{d}T{h:02d}:00" for d in days for h in range(24)]
+    n = len(times)
+    return {"hourly": {"time": times, "temperature_2m": [14] * n, "apparent_temperature": [14] * n, "precipitation_probability": [5] * n, "precipitation": [0.0] * n,
+                       "wind_gusts_10m": [70] * n, "weather_code": [1] * n}}
+
+
+weather_client._get_json = fake_open_meteo  # aucun appel réseau réel
 
 ESTIMATE = {
     "items": [{"name": "Poulet, riz", "quantity": "1 assiette", "kcal": 640, "protein_g": 45, "carbs_g": 70, "fat_g": 18}],
