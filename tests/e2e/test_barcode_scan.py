@@ -97,7 +97,8 @@ def test_scanner_stops_camera_on_close(cam_page: Page):
     open_scanner(pg)
     pg.get_by_role("button", name="Arrêter le scan").click()
     expect(pg.locator(".scan")).to_have_count(0)
-    assert pg.evaluate("window.__tracks.length > 0 && window.__tracks.every((t) => t.readyState === 'ended')")
+    # l'arrêt des pistes est asynchrone : on attend plutôt que de lire l'état à l'instant du clic
+    pg.wait_for_function("window.__tracks.length > 0 && window.__tracks.every((t) => t.readyState === 'ended')", timeout=5000)
 
 
 def test_denied_camera_explains_and_keeps_manual_entry(browser, base_url: str):
