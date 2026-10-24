@@ -5,7 +5,11 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ## [Unreleased]
 ### Added
 - *Profile > Preferences* shows the AI cost of the month: estimated spend against the monthly cap (progress bar), number of calls, breakdown by use (chat, meal estimate, weekly review, e-mails and notifications, welcome), model used, and your account's share of the server total (`GET /users/{id}/coach/cost`, aggregates only, calendar month in Paris time). A clear message links to `LLM_MONTHLY_BUDGET_EUR` when the cap is reached.
+- Live barcode scanning with the camera on iPhone and Android (*Nutrition > Packaged product*): full-screen viewfinder, torch when the device has one, vibration and a green frame on read, EAN-13/EAN-8/UPC-A/UPC-E with check-digit validation, clear message and fallback (photo or typed digits) when the camera is denied. Uses the native `BarcodeDetector` when it supports these formats, otherwise a self-hosted decoder (`barcode-detector` + zxing-cpp WebAssembly, ~1 MB, no CDN, loaded only when the scanner opens, then cached by the service worker). The video never leaves the phone.
+- Product card after a scan: name, brand, quantity, product image (relayed by your server, so the browser never contacts Open Food Facts and the CSP stays `img-src 'self'`), Nutri-Score and Eco-Score, per-100 g values and calories for the quantity eaten.
 
+### Security
+- `Permissions-Policy` now allows the camera for the app's own origin only (`camera=(self)`); the CSP gains `'wasm-unsafe-eval'` for the decoder (no `unsafe-eval`).
 ### Changed
 - Sessions added outside the plan now cover runs and other sports: new types (cycling, swimming, walking, other sport), distance, average pace (derived from distance and duration, or typed to deduce the duration) and average heart rate for runs and sports, a free comment, perceived effort (RPE) values bounded server-side, and an exercise picker that searches the library (thumbnail and muscles) instead of a bare suggestion list. Fixed: lift estimates (C15) ignored sessions done today.
 

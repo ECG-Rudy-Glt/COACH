@@ -5,6 +5,7 @@ Désactivable pour l'auto-hébergement : OFF_ENABLED=0. Adresse remplaçable (mi
 import json
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -14,7 +15,10 @@ TIMEOUT_S = 6
 MAX_BYTES = 1_000_000
 MAX_GRAMS = 5000
 USER_AGENT = f"COACH-selfhosted/{VERSION} (+https://github.com/ECG-Rudy-Glt/COACH)"
-FIELDS = "product_name,brands,nutriments,serving_quantity,quantity"
+FIELDS = "product_name,brands,nutriments,serving_quantity,quantity,nutriscore_grade,ecoscore_grade,image_front_small_url"
+MAX_IMAGE_BYTES = 400_000
+IMAGE_TYPES = ("image/jpeg", "image/png", "image/webp")
+_images: dict[str, str] = {}  # code -> URL de l'image (seulement des produits déjà consultés), petit cache borné
 
 
 class BarcodeError(Exception):
@@ -67,6 +71,18 @@ def _num(v: Any, hi: float) -> float | None:
     return x if 0 <= x <= hi else None
 
 
+def image_url(v: Any) -> str | None:
+    """URL d'image acceptée seulement en https sur openfoodfacts.* (ou l'hôte du miroir configuré) : jamais d'adresse libre, donc pas de SSRF."""
+    if not isinstance(v, str) or len(v) > 300:
+        return None
+    u = urllib.parse.urlsplit(v)
+    host = u.hostname or ""
+    mirror = urllib.parse.urlsplit(base_url()).hostname
+    if u.scheme == "https" and u.username is None and u.port in (None, 443) and (re.fullmatch(r"([a-z0-9-]+\.)*openfoodfacts\.(org|net)", host) or host == mirror):
+        return v
+    return None
+
+
 def parse_product(payload: dict[str, Any]) -> dict[str, Any] | None:
     """Produit normalisé (valeurs pour 100 g) ou None s'il est inconnu ou sans énergie renseignée."""
     p = payload.get("product")
@@ -82,7 +98,10 @@ def parse_product(payload: dict[str, Any]) -> dict[str, Any] | None:
     name = " ".join(str(p.get("product_name") or "").split())[:80] or "Produit emballé"
     brand = str(p.get("brands") or "").split(",")[0].strip()[:40]
     serving = _num(p.get("serving_quantity"), MAX_GRAMS)
-    return {"name": name, "brand": brand, "kcal_100g": round(kcal, 1), "protein_100g": round(_num(n.get("proteins_100g"), 100) or 0, 1),
+    grade = lambda v: str(v).lower() if str(v).lower() in tuple("abcde") else None  # noqa: E731
+    return {"name": name, "brand": brand, "quantity": " ".join(str(p.get("quantity") or "").split())[:40],
+            "nutriscore": grade(p.get("nutriscore_grade")), "ecoscore": grade(p.get("ecoscore_grade")), "_image": image_url(p.get("image_front_small_url")), "kcal_100g": round(kcal, 1),
+            "protein_100g": round(_num(n.get("proteins_100g"), 100) or 0, 1),
             "carbs_100g": round(_num(n.get("carbohydrates_100g"), 100) or 0, 1), "fat_100g": round(_num(n.get("fat_100g"), 100) or 0, 1),
             "serving_g": round(serving) if serving else None}
 
@@ -95,7 +114,29 @@ def lookup(code: str) -> dict[str, Any]:
     product = parse_product(_get_json(f"{base_url()}/api/v2/product/{code}.json?fields={FIELDS}"))
     if not product:
         raise BarcodeError("Produit introuvable ou sans valeurs nutritionnelles : décrivez-le plutôt.", 404)
-    return {"code": code, **product}
+    img = product.pop("_image", None)
+    if img:
+        if len(_images) >= 256:
+            _images.pop(next(iter(_images)))
+        _images[code] = img
+    return {"code": code, **product, "has_image": bool(img)}
+
+
+def fetch_image(code: str) -> tuple[bytes, str]:
+    """Image du produit relayée par le serveur : le navigateur ne contacte jamais Open Food Facts (CSP img-src 'self', vie privée)."""
+    url = _images.get(code)
+    if not url:
+        raise BarcodeError("Image indisponible.", 404)
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310 : https + hôte openfoodfacts vérifiés par image_url()
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:  # noqa: S310
+            ctype = r.headers.get_content_type()
+            data = r.read(MAX_IMAGE_BYTES + 1)
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise BarcodeError("Image indisponible.") from e
+    if ctype not in IMAGE_TYPES or len(data) > MAX_IMAGE_BYTES:
+        raise BarcodeError("Image indisponible.", 404)
+    return data, ctype
 
 
 def analysis_for(product: dict[str, Any], grams: float) -> dict[str, Any]:

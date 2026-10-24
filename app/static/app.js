@@ -93,6 +93,7 @@ if (window.visualViewport) {
 const scrollMemo = {}; // position de défilement à retrouver quand on revient d'un écran de détail
 function show(...nodes) {
   flushActive = null;
+  if (typeof stopScan === "function" && stopScan) stopScan(); // la caméra ne reste jamais allumée quand on change d'écran
   document.body.classList.remove("kb");
   const list = nodes.flat().filter((n) => n && n.nodeType);
   app.className = list.some((n) => n.classList.contains("tabbar")) ? "tabs" : "";
@@ -2073,12 +2074,138 @@ function mealForm(day) {
   );
 }
 
-// Produit emballé (N10) : code saisi ou lu sur une photo (BarcodeDetector si le navigateur l'a), valeurs pour 100 g × quantité, sans IA.
+// Produit emballé (N10) : code scanné à la caméra (BarcodeDetector natif, sinon zxing-wasm auto-hébergé), lu sur une photo ou saisi ; valeurs pour 100 g × quantité, sans IA.
+// La vidéo ne quitte jamais l'appareil ; seul le numéro part vers Open Food Facts (via le serveur).
+const BC_FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e"];
+let detectorReady = null;
+let stopScan = null;
+
+function loadDetector() {
+  detectorReady = detectorReady || (async () => {
+    if (window.BarcodeDetector) {
+      try { const f = await window.BarcodeDetector.getSupportedFormats(); if (BC_FORMATS.every((x) => f.includes(x))) return new window.BarcodeDetector({ formats: BC_FORMATS }); } catch { /* repli sur la bibliothèque */ }
+    }
+    await new Promise((ok, ko) => {
+      const sc = document.createElement("script");
+      sc.src = "/vendor/barcode-detector.js";
+      sc.onload = ok; sc.onerror = () => ko(new Error("decoder"));
+      document.head.appendChild(sc);
+    });
+    const api = window.BarcodeDetectionAPI;
+    await api.prepareZXingModule({ overrides: { locateFile: (f) => `/vendor/${f}` }, fireImmediately: true });
+    return new api.BarcodeDetector({ formats: BC_FORMATS });
+  })();
+  detectorReady.catch(() => { detectorReady = null; });
+  return detectorReady;
+}
+
+// UPC-E (8 chiffres compressés) -> UPC-A (12 chiffres) : seul ce dernier se vérifie et se cherche.
+function upcEtoA(c) {
+  const d = c.split(""), e = d.slice(1, 7), ns = d[0], chk = d[7];
+  const m = { 0: `${e[0]}${e[1]}${e[5]}0000${e[2]}${e[3]}${e[4]}`, 1: `${e[0]}${e[1]}${e[5]}0000${e[2]}${e[3]}${e[4]}`, 2: `${e[0]}${e[1]}${e[5]}0000${e[2]}${e[3]}${e[4]}`,
+    3: `${e[0]}${e[1]}${e[2]}00000${e[3]}${e[4]}`, 4: `${e[0]}${e[1]}${e[2]}${e[3]}00000${e[4]}` };
+  return ns + (m[e[5]] || `${e[0]}${e[1]}${e[2]}${e[3]}${e[4]}0000${e[5]}`) + chk;
+}
+
+function barcodeOk(c) {
+  if (!/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(c)) return false;
+  const dg = c.split("").map(Number);
+  const sum = dg.slice(0, -1).reverse().reduce((t, x, i) => t + x * (i % 2 === 0 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10 === dg[dg.length - 1];
+}
+
+function pickCode(found) {
+  for (const r of found) {
+    const raw = String(r.rawValue || "");
+    const c = r.format === "upc_e" && raw.length === 8 ? upcEtoA(raw) : raw;
+    if (barcodeOk(c)) return c;
+  }
+  return null;
+}
+
 async function readBarcode(file) {
-  const det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
+  const det = await loadDetector();
   const bmp = await createImageBitmap(file);
-  const found = await det.detect(bmp);
-  return found.length ? found[0].rawValue : null;
+  try { return pickCode(await det.detect(bmp)); } finally { bmp.close && bmp.close(); }
+}
+
+// Écran de scan plein cadre. onCode(code) reçoit un code valide ; onPhoto() ouvre le repli « photo » ; onClose() est appelé à la fermeture.
+function openScanner({ onCode, onPhoto }) {
+  if (stopScan) stopScan();
+  const opener = document.activeElement;
+  let stream = null, timer = null, closed = false, torchOn = false;
+  const video = h("video", { class: "scan-video", playsinline: "", muted: "", autoplay: "", "aria-hidden": "true" });
+  video.muted = true;
+  const status = h("p", { class: "scan-status", role: "status", "aria-live": "polite" }, __("Démarrage de la caméra…"));
+  const torch = h("button", { type: "button", class: "btn sm", hidden: true }, __("Lampe"));
+  const stop = h("button", { type: "button", class: "btn primary", onclick: () => close() }, __("Arrêter le scan"));
+  const photo = h("button", { type: "button", class: "btn sm", onclick: () => { close(); onPhoto(); } }, __("Prendre une photo"));
+  const box = h("div", { class: "scan", role: "dialog", "aria-modal": "true", "aria-label": __("Scanner un code-barres") },
+    video, h("div", { class: "scan-frame", "aria-hidden": "true" }), status, h("div", { class: "scan-bar" }, stop, torch, photo));
+  const esc = (e) => { if (e.key === "Escape") close(); };
+  const hidden = () => { if (document.hidden) close(); };
+  function close() {
+    if (closed) return;
+    closed = true; stopScan = null;
+    clearTimeout(timer);
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    video.srcObject = null;
+    document.removeEventListener("keydown", esc); document.removeEventListener("visibilitychange", hidden);
+    box.remove();
+    document.body.classList.remove("scanning");
+    if (opener && opener.isConnected && opener.focus) opener.focus();
+  }
+  stopScan = close;
+  document.addEventListener("keydown", esc); document.addEventListener("visibilitychange", hidden);
+  document.body.classList.add("scanning");
+  document.body.appendChild(box);
+  stop.focus();
+  const fail = (msg) => { status.textContent = msg; status.classList.add("bad"); };
+  (async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return fail(__("Ce navigateur ne donne pas accès à la caméra : prenez une photo ou saisissez les chiffres."));
+    let det;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    } catch (e) {
+      const denied = e && ["NotAllowedError", "SecurityError"].includes(e.name);
+      return fail(denied
+        ? __("Accès à la caméra refusé. Autorisez-la dans les réglages du navigateur, prenez une photo ou saisissez les chiffres.")
+        : __("Caméra introuvable ou occupée : prenez une photo ou saisissez les chiffres."));
+    }
+    if (closed) { stream.getTracks().forEach((t) => t.stop()); return; }
+    video.srcObject = stream;
+    try { await video.play(); } catch { /* lecture auto bloquée : l'image s'affichera au premier geste */ }
+    const track = stream.getVideoTracks()[0];
+    const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.torch) {
+      torch.hidden = false;
+      torch.setAttribute("aria-pressed", "false");
+      torch.addEventListener("click", async () => {
+        torchOn = !torchOn;
+        try { await track.applyConstraints({ advanced: [{ torch: torchOn }] }); torch.setAttribute("aria-pressed", String(torchOn)); } catch { torchOn = false; }
+      });
+    }
+    status.textContent = __("Chargement du lecteur…");
+    try { det = await loadDetector(); } catch { return fail(__("Lecteur de codes-barres indisponible : prenez une photo ou saisissez les chiffres.")); }
+    if (closed) return;
+    status.textContent = __("Placez le code-barres dans le cadre.");
+    const tick = async () => {
+      if (closed) return;
+      let code = null;
+      if (video.readyState >= 2) { try { code = pickCode(await det.detect(video)); } catch { /* image illisible : on réessaie */ } }
+      if (closed) return;
+      if (code) {
+        box.classList.add("hit");
+        status.textContent = __("Code lu : {code}", { code });
+        if (navigator.vibrate) navigator.vibrate(60);
+        const done = () => { close(); onCode(code); };
+        timer = setTimeout(done, 250); // retour visuel bref, et un seul appel même si d'autres images suivent
+        return;
+      }
+      timer = setTimeout(tick, 150);
+    };
+    tick();
+  })();
 }
 
 function barcodeForm(day) {
@@ -2087,8 +2214,8 @@ function barcodeForm(day) {
   const err = h("p", { class: "error", role: "alert" });
   const code = h("input", { id: "bc-code", type: "text", inputmode: "numeric", maxlength: "14", autocomplete: "off", placeholder: "Code-barres (8 à 14 chiffres)", "aria-label": "Code-barres" });
   const grams = h("input", { id: "bc-grams", type: "number", inputmode: "decimal", min: "1", max: "5000", step: "1", placeholder: "Quantité mangée (g)", "aria-label": "Quantité mangée en grammes" });
-  const info = h("div", { class: "stack", hidden: true, "aria-live": "polite" });
-  const go = h("button", { class: "btn primary", disabled: true }, "Enregistrer");
+  const info = h("div", { class: "stack prod", hidden: true, "aria-live": "polite" });
+  const go = h("button", { class: "btn primary", disabled: true }, "Enregistrer comme repas");
   const find = h("button", { class: "btn sm" }, "Chercher");
   const per = (g) => (product ? Math.round((product.kcal_100g * g) / 100) : 0);
   const refresh = () => {
@@ -2097,6 +2224,7 @@ function barcodeForm(day) {
     const out = info.querySelector("[data-out]");
     if (out) out.textContent = g > 0 ? __("≈ {kcal} kcal pour {g} g", { kcal: per(g), g }) : __("Indiquez la quantité mangée.");
   };
+  const badge = (label, grade) => h("span", { class: `grade g-${grade}`, "aria-label": `${label} ${grade.toUpperCase()}` }, `${label} ${grade.toUpperCase()}`);
   const lookup = async () => {
     err.textContent = ""; product = null; info.hidden = true; go.disabled = true;
     const c = code.value.replace(/\s/g, "");
@@ -2105,40 +2233,48 @@ function barcodeForm(day) {
     try {
       product = await api(`/users/${userId}/nutrition/barcode/${encodeURIComponent(c)}`);
       if (product.serving_g && !grams.value) grams.value = product.serving_g;
-      info.replaceChildren(h("strong", null, product.name + (product.brand ? ` · ${product.brand}` : "")),
+      const grades = [product.nutriscore ? badge("Nutri-Score", product.nutriscore) : null, product.ecoscore ? badge("Éco-Score", product.ecoscore) : null].filter(Boolean);
+      const img = product.has_image ? h("img", { class: "prod-img", src: `/users/${userId}/nutrition/barcode/${encodeURIComponent(product.code)}/image`, alt: "", loading: "lazy", width: "96", height: "96" }) : null;
+      if (img) img.addEventListener("error", () => img.remove());
+      info.replaceChildren(
+        h("div", { class: "row", style: "gap:12px;align-items:flex-start" }, img,
+          h("div", { class: "stack grow", style: "gap:4px" }, h("strong", null, product.name), product.brand ? h("span", { class: "muted" }, product.brand) : null,
+            product.quantity ? h("span", { class: "muted" }, product.quantity) : null, grades.length ? h("div", { class: "row", style: "gap:6px;flex-wrap:wrap" }, ...grades) : null)),
         h("p", { class: "muted" }, __("Pour 100 g : {kcal} kcal · P {p} g · G {c} g · L {f} g", { kcal: product.kcal_100g, p: product.protein_100g, c: product.carbs_100g, f: product.fat_100g })),
         h("p", { "data-out": "" }));
       info.hidden = false; refresh();
-    } catch (e) { err.textContent = e.message; }
+      grams.focus({ preventScroll: false });
+    } catch (e) {
+      err.textContent = e.status === 404 || /introuvable/.test(e.message) ? __("Produit inconnu d'Open Food Facts ou sans valeurs nutritionnelles. Vérifiez les chiffres ou saisissez le repas à la main.") : e.message;
+    }
     find.disabled = false; find.textContent = __("Chercher");
   };
   find.addEventListener("click", lookup);
   code.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); lookup(); } });
   grams.addEventListener("input", refresh);
-  let scan = null;
-  if (window.BarcodeDetector) {
-    const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Photographier le code-barres" });
-    cam.addEventListener("change", async () => {
-      const f = cam.files[0]; cam.value = ""; err.textContent = "";
-      if (!f) return;
-      try { const v = await readBarcode(f); if (v) { code.value = v; lookup(); } else err.textContent = __("Code non lu : cadrez-le de près, bien éclairé, ou saisissez les chiffres."); }
-      catch { err.textContent = __("Lecture impossible sur cet appareil : saisissez les chiffres."); }
-    });
-    scan = h("div", null, cam, h("button", { type: "button", class: "photo-btn primary", onclick: () => cam.click() }, icon("camera"), h("span", null, "Scanner le code-barres")));
-  }
+  const cam = h("input", { type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Photographier le code-barres" });
+  cam.addEventListener("change", async () => {
+    const f = cam.files[0]; cam.value = ""; err.textContent = "";
+    if (!f) return;
+    try { const v = await readBarcode(f); if (v) { code.value = v; lookup(); } else err.textContent = __("Code non lu : cadrez-le de près, bien éclairé, ou saisissez les chiffres."); }
+    catch { err.textContent = __("Lecture impossible sur cet appareil : saisissez les chiffres."); }
+  });
+  const live = () => { err.textContent = ""; openScanner({ onCode: (c) => { code.value = c; lookup(); }, onPhoto: () => cam.click() }); };
+  const scan = h("div", { class: "stack", style: "gap:8px" }, cam, h("button", { type: "button", class: "photo-btn primary", onclick: live }, icon("camera"), h("span", null, "Scanner le code-barres")),
+    h("button", { type: "button", class: "btn sm", onclick: () => cam.click() }, __("Lire depuis une photo")));
   go.addEventListener("click", async () => {
     go.disabled = true; go.textContent = "Enregistrement…";
     try {
       await api(`/users/${userId}/nutrition/meals`, { method: "POST", body: { day, slot: sp.get(), barcode: product.code, grams: Number(grams.value) } });
       nutritionScreen(day);
-    } catch (e) { err.textContent = e.message; go.disabled = false; go.textContent = "Enregistrer"; }
+    } catch (e) { err.textContent = e.message; go.disabled = false; go.textContent = "Enregistrer comme repas"; }
   });
   show(
     h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => nutritionScreen(day) }, icon("back"), "Nutrition"), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, dayLabel(day, isoDay(new Date()))),
     h("h1", null, "Produit emballé"),
     h("div", { class: "card stack" }, sp.el, scan, h("div", { class: "row", style: "gap:8px" }, code, find), info, grams,
-      h("p", { class: "muted", style: "font-size:.8125rem" }, "Valeurs de l'emballage (Open Food Facts, base collaborative : elles peuvent être inexactes, corrigez-les au besoin). Seul le code-barres est envoyé ; aucune IA n'intervient."), err),
+      h("p", { class: "muted", style: "font-size:.8125rem" }, "Valeurs de l'emballage (Open Food Facts, base collaborative : elles peuvent être inexactes, corrigez-les au besoin). La caméra reste sur votre téléphone : seul le numéro du code-barres est envoyé ; aucune IA n'intervient."), err),
     actionBar(go),
   );
 }
@@ -2297,7 +2433,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v34";
+const UI_BUILD = "sc-v35";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

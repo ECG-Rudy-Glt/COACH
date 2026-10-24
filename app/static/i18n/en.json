@@ -1673,5 +1673,22 @@
  "Aucun appel ce mois-ci.": "No calls this month.",
  "Modèle : {model}": "Model: {model}",
  "Estimation d'après les tarifs publics du modèle, la facture du fournisseur fait foi.": "Estimate based on the model's public prices; the provider's invoice is authoritative.",
- "Coût indisponible pour le moment.": "Cost unavailable right now."
+ "Coût indisponible pour le moment.": "Cost unavailable right now.",
+ "Démarrage de la caméra…": "Starting the camera…",
+ "Lampe": "Torch",
+ "Arrêter le scan": "Stop scanning",
+ "Scanner un code-barres": "Scan a barcode",
+ "Ce navigateur ne donne pas accès à la caméra : prenez une photo ou saisissez les chiffres.": "This browser cannot access the camera: take a photo or type the digits.",
+ "Accès à la caméra refusé. Autorisez-la dans les réglages du navigateur, prenez une photo ou saisissez les chiffres.": "Camera access denied. Allow it in the browser settings, take a photo or type the digits.",
+ "Caméra introuvable ou occupée : prenez une photo ou saisissez les chiffres.": "Camera not found or in use: take a photo or type the digits.",
+ "Chargement du lecteur…": "Loading the reader…",
+ "Lecteur de codes-barres indisponible : prenez une photo ou saisissez les chiffres.": "Barcode reader unavailable: take a photo or type the digits.",
+ "Placez le code-barres dans le cadre.": "Place the barcode inside the frame.",
+ "Code lu : {code}": "Code read: {code}",
+ "Enregistrer comme repas": "Save as a meal",
+ "Nutri-Score": "Nutri-Score",
+ "Éco-Score": "Eco-Score",
+ "Produit inconnu d'Open Food Facts ou sans valeurs nutritionnelles. Vérifiez les chiffres ou saisissez le repas à la main.": "Product unknown to Open Food Facts or without nutrition values. Check the digits or enter the meal by hand.",
+ "Lire depuis une photo": "Read from a photo",
+ "Valeurs de l'emballage (Open Food Facts, base collaborative : elles peuvent être inexactes, corrigez-les au besoin). La caméra reste sur votre téléphone : seul le numéro du code-barres est envoyé ; aucune IA n'intervient.": "Values from the package (Open Food Facts, a crowd-sourced database: they may be inaccurate, correct them if needed). The camera stays on your phone: only the barcode number is sent; no AI is involved."
 }

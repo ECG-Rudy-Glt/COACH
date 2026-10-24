@@ -18,6 +18,14 @@ COACH is licensed AGPL-3.0-only. It uses the following; please respect their ter
 
 Dev only: pytest (MIT), httpx (BSD-3), ruff (MIT).
 
+## Front-end libraries (self-hosted in `app/static/vendor/`, no CDN, loaded only when the barcode scanner opens)
+| Component | Version / integrity | Licence |
+|---|---|---|
+| [`barcode-detector`](https://github.com/Sec-ant/barcode-detector) (Barcode Detection API ponyfill, `dist/iife/ponyfill.js` -> `barcode-detector.js`, 43 KB) | 3.2.3, npm sha512 `PLinpWGiOQoQH4X+YObWZ6iXeffXKDM3d4vnOD86481SvukIfvkf7jEE/tud9oI4HTDxtDdlHaFilA5Kn7Xa7A==`; file sha256 `915a6febe3edd6dab6a7c5a21f69cadd54e1d095cdde9a3eb62605b3db71bf60` | MIT (`LICENSE-barcode-detector.txt`) |
+| [`zxing-wasm`](https://github.com/Sec-ant/zxing-wasm) reader build (`zxing_reader.wasm`, 947 KB, ~411 KB gzipped), wrapping [zxing-cpp](https://github.com/zxing-cpp/zxing-cpp) | 3.1.6, npm sha512 `mU7UNuvl+hOT+nlSOQTMHZ2tM8lRMsbjDIp5IO/+HmBl/FOq77q0OSZPJ3cm42A9c1MKU6Uve67FiGdkhsrT9g==`; file sha256 `5003fb4b88c4fbd1fd518a2fd8c8ad365c519e183a08c03a322dddfea3cea84e` | MIT wrapper (`LICENSE-zxing-wasm.txt`) + zxing-cpp **Apache-2.0** (compatible with AGPL-3.0) |
+
+The decoder runs entirely on the device: the camera video is never uploaded. Used only when the browser has no native `BarcodeDetector` (Safari on iPhone, desktop Chrome on Linux). To update: download the tarballs from npm, check the integrity above, copy the two files, update this table and bump the service-worker cache.
+
 ## Container images
 PostgreSQL (PostgreSQL licence), Caddy (Apache-2.0), Ollama (MIT, optional profile), Python (PSF).
 

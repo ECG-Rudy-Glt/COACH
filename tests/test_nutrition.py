@@ -405,3 +405,41 @@ def test_estimator_prompts_carry_densities_questions_and_examples_in_both_langua
     for text in (nut_analyze.SYSTEM, prompts.get("meal", nut_analyze.SYSTEM, "en")):
         assert "bourguignon" in text and "poser_des_questions" in text and "reponses" in text and "exemples" in text and '"questions"' in text
     assert "kcal = weight × dish density" in prompts.get("meal", nut_analyze.SYSTEM, "en") and prompts.MARKER in prompts.get("meal", nut_analyze.SYSTEM, "en")
+
+
+def test_barcode_card_fields_and_image_allowlist(monkeypatch):
+    monkeypatch.delenv("OFF_BASE_URL", raising=False)
+    payload = {"status": 1, "product": {"product_name": "Biscuit", "quantity": "  300 g ", "nutriscore_grade": "C", "ecoscore_grade": "z", "nutriments": {"energy-kcal_100g": 480},
+                                        "image_front_small_url": "https://images.openfoodfacts.org/images/products/301/front.200.jpg"}}
+    p = barcode.parse_product(payload)
+    assert p and p["quantity"] == "300 g" and p["nutriscore"] == "c" and p["ecoscore"] is None and p["_image"].startswith("https://images.openfoodfacts.org/")
+    for bad in ("http://images.openfoodfacts.org/a.jpg", "https://evil.example/a.jpg", "https://openfoodfacts.org.evil.example/a.jpg", "https://u@images.openfoodfacts.org/a.jpg",
+                "https://images.openfoodfacts.org:8443/a.jpg", "file:///etc/passwd", None, 5):
+        assert barcode.image_url(bad) is None
+
+
+def test_barcode_image_is_relayed_by_the_server_only_for_looked_up_products(monkeypatch):
+    import io
+
+    monkeypatch.setattr(barcode, "_get_json", lambda url: {"status": 1, "product": {"nutriments": {"energy-kcal_100g": 100}, "image_front_small_url": "https://images.openfoodfacts.org/x.jpg"}})
+    with pytest.raises(barcode.BarcodeError) as e:
+        barcode.fetch_image("3017620422003")  # jamais consulté : aucune URL connue, donc aucune requête sortante
+    assert e.value.status == 404
+    assert barcode.lookup("3017620422003")["has_image"] is True
+
+    class Resp(io.BytesIO):
+        headers = type("H", (), {"get_content_type": staticmethod(lambda: "image/jpeg")})()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    seen = []
+    monkeypatch.setattr(barcode.urllib.request, "urlopen", lambda req, timeout: seen.append(req.full_url) or Resp(b"\xff\xd8jpeg"))
+    assert barcode.fetch_image("3017620422003") == (b"\xff\xd8jpeg", "image/jpeg")
+    assert seen == ["https://images.openfoodfacts.org/x.jpg"]
+    monkeypatch.setattr(barcode.urllib.request, "urlopen", lambda req, timeout: Resp(b"x" * (barcode.MAX_IMAGE_BYTES + 1)))
+    with pytest.raises(barcode.BarcodeError):
+        barcode.fetch_image("3017620422003")

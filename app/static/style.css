@@ -372,3 +372,17 @@ dl.kv dd { margin: 0; text-align: right; font-weight: 600; }
 .wxcard.wx-watch { border-left: 4px solid var(--accent); }
 .wxcard.wx-avoid { border-left: 4px solid var(--danger); }
 .wxcard h3 .wx { font-size: 1rem; }
+
+/* Scan de code-barres : plein écran au-dessus de tout, cadre de visée, retour visuel à la lecture */
+.scan { position: fixed; inset: 0; z-index: 100; background: #000; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; }
+.scan-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scan-frame { position: absolute; left: 50%; top: 40%; width: min(80vw, 420px); aspect-ratio: 3 / 2; transform: translate(-50%, -50%); border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .45); transition: border-color .15s; }
+.scan.hit .scan-frame { border-color: #4cd964; }
+.scan-status { position: relative; margin: 0 16px 12px; padding: 10px 14px; border-radius: 12px; background: rgba(0, 0, 0, .65); text-align: center; }
+.scan-status.bad { background: #8a1f1f; }
+.scan-bar { position: relative; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 16px calc(16px + env(safe-area-inset-bottom)); }
+.scan-bar .btn[aria-pressed="true"] { background: #ffd54a; color: #000; }
+body.scanning { overflow: hidden; }
+.prod-img { width: 96px; height: 96px; object-fit: contain; border-radius: 10px; background: #fff; flex: none; }
+.grade { padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 700; color: #fff; background: #777; }
+.grade.g-a { background: #1e8f4e; } .grade.g-b { background: #5aa02c; } .grade.g-c { background: #9a7b00; } .grade.g-d { background: #c0601a; } .grade.g-e { background: #b8312f; }

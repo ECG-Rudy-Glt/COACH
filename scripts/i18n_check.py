@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NOT_TEXT = {"use strict", "viewBox", "Escape", "PATCH", "GET", "POST", "PUT", "DELETE", "Enter", "INPUT", "Content-Type", "X-Lang", "serviceWorker", "PushManager",
-            "Notification", "noopener noreferrer", "Aa", "{design}", "{pct}%", "{i},{kg}", "lang"}
+            "Notification", "noopener noreferrer", "Aa", "NotAllowedError", "SecurityError", "{design}", "{pct}%", "{i},{kg}", "lang"}
 CSS_START = ("sc-", "f-", "profile-", "bcard", "sess ", "msg ", "btn ", "card ", "stack ", "row ", "grow ", "opt ", "count ", "photo-", "iconbtn", "muted ", "translate",
              "width:", "display:", "border:", "padding:", "align-self", "font-weight", "outline", "text-align", "(")
 UI_FILES = ("app.js", "stats.js")  # un nouvel écran écrit dans son propre fichier s'ajoute ici
