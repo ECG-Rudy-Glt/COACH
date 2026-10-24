@@ -1411,6 +1411,9 @@ async function planScreen(restore = false) {
   const current = data.sessions.filter((x) => weekOf(x.day) === thisMonday);
   const upcomingWeek = data.sessions.filter((x) => weekOf(x.day) > thisMonday);
   const finished = current.length > 0 && current.every((x) => x.status !== "planned" || x.day < data.today);
+  const replanRow = viewWeek !== thisMonday0 ? null : (current.some((x) => x.status === "planned") || data.replan) ? h("div", { class: "stack", style: "gap:4px" },
+    current.some((x) => x.status === "planned") ? h("button", { class: "btn", onclick: () => replanSheet(reload) }, "Replanifier la fin de semaine") : null,
+    data.replan ? h("button", { class: "link", style: "align-self:flex-start", onclick: () => undoReplan(data.replan.id, reload) }, "Annuler la dernière replanification") : null) : null;
   const regen = h("button", { class: "link" }, "Recalculer la semaine prochaine");
   regen.addEventListener("click", () => gen(regen));
   const nextBtn = h("button", { class: "btn primary" }, "Générer la semaine suivante");
@@ -1418,9 +1421,49 @@ async function planScreen(restore = false) {
   const nextCard = finished && !upcomingWeek.length
     ? h("div", { class: "card stack" }, h("h3", null, "Semaine terminée"),
       h("p", { class: "muted" }, "Le plan avance une semaine à la fois : le coach lit d'abord vos retours, puis ajuste la semaine suivante."), nextBtn) : null;
-  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), (data.advice || []).length ? foldCard("plan-advice", "Conseils", (data.advice || []).length > 1 ? __("{n} conseils sur votre plan", { n: data.advice.length }) : "Un conseil sur votre plan", null, data.advice.map((a) => h("p", { class: "muted" }, a))) : null, coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
+  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [replanRow, cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), (data.advice || []).length ? foldCard("plan-advice", "Conseils", (data.advice || []).length > 1 ? __("{n} conseils sur votre plan", { n: data.advice.length }) : "Un conseil sur votre plan", null, data.advice.map((a) => h("p", { class: "muted" }, a))) : null, coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
     h("p", { class: "muted" }, "La semaine en cours n'est jamais modifiée sans votre accord."), upcomingWeek.length ? regen : null, tabbar("plan"));
   if (restore && scrollMemo.plan != null) window.scrollTo(0, scrollMemo.plan);
+}
+
+// ---------- replanifier la fin de semaine (G13 à G17) : aperçu calculé par le moteur, rien n'est modifié avant « Accepter » ----------
+async function replanSheet(reload) {
+  const body = h("div", { class: "stack" }, h("p", { class: "muted" }, "Calcul en cours…"));
+  const close = sheet("Replanifier la fin de semaine", body);
+  let out;
+  try { out = await api(`/users/${userId}/plan/replan/preview`, { method: "POST", body: { explain: true } }); } catch (e) { body.replaceChildren(h("p", { class: "muted" }, e.message)); return; }
+  if (out.empty) { body.replaceChildren(h("p", { class: "muted" }, "Rien à replanifier : plus de séance prévue ou plus de jour restant cette semaine.")); return; }
+  const change = new Map(out.changes.map((c) => [c.session_id, c]));
+  const dropped = out.changes.filter((c) => c.action === "drop");
+  const label = (c) => c.action === "move" ? (c.missed ? __("manquée le {longDay}", { longDay: longDay(c.from) }) : __("déplacée depuis le {longDay}", { longDay: longDay(c.from) }))
+    : c.action === "adjust" ? __("durée ajustée") : "";
+  const days = out.days.map((d) => h("div", { class: "stack", style: "gap:4px" },
+    h("strong", null, longDay(d.day)),
+    d.sessions.length ? d.sessions.map((x) => {
+      const c = change.get(x.session_id);
+      return h("div", { class: "item" }, h("span", { class: "l" }, h("strong", null, x.title), c && label(c) ? h("span", { class: "sub" }, label(c)) : null), h("span", { class: "v" }, __("{duration_min} min", { duration_min: x.duration_min })));
+    }) : h("p", { class: "muted" }, d.blocked ? "Jour bloqué" : "Repos")));
+  const why = fold("Pourquoi ces choix", [
+    ...out.applied.map((a) => h("div", { class: "stack", style: "gap:2px" }, h("p", null, h("strong", null, a.rule + " "), a.text),
+      a.sources && a.sources.length ? h("p", { class: "muted" }, __("Sources : "), a.sources.map((src, i) => [i ? " · " : "", h("a", { href: src.url, target: "_blank", rel: "noopener" }, src.id)])) : null,
+      a.convention ? h("p", { class: "muted" }, a.sources && a.sources.length ? "Les seuils chiffrés sont des conventions de pratique, sans publication." : "Convention de pratique, sans publication qui la fixe.") : null)),
+    ...out.notes.map((n) => h("p", { class: "muted" }, n))]);
+  const accept = h("button", { class: "btn primary" }, "Accepter");
+  accept.addEventListener("click", async () => {
+    accept.disabled = true;
+    try { await api(`/users/${userId}/plan/replan/apply`, { method: "POST", body: { fingerprint: out.fingerprint } }); close(); toast("Fin de semaine replanifiée"); reload(); } catch (e) { accept.disabled = false; toast(e.message); }
+  });
+  body.replaceChildren(
+    out.explanation ? h("p", null, out.explanation) : null,
+    ...days,
+    dropped.length ? h("p", { class: "muted" }, __("Retirée de la semaine : {names}", { names: dropped.map((c) => c.title).join(", ") })) : null,
+    out.volume && out.volume.lost_pct > 0 ? h("p", { class: "muted" }, __("Volume de course : environ {num} % de moins que prévu cette semaine.", { num: out.volume.lost_pct })) : null,
+    why,
+    h("div", { class: "row", style: "gap:8px" }, accept, h("button", { class: "btn", onclick: close }, "Annuler")));
+}
+
+async function undoReplan(id, reload) {
+  try { await api(`/users/${userId}/plan/replan/${id}/undo`, { method: "POST" }); toast("Replanification annulée"); reload(); } catch (e) { toast(e.message); }
 }
 
 // ---------- séance faite hors plan (ajoutée à la main) ----------
@@ -2444,7 +2487,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v37";
+const UI_BUILD = "sc-v38";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

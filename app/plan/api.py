@@ -1,16 +1,20 @@
 """API du plan : génération, lecture, réalisation d'une séance."""
+import hashlib
+import json
 from datetime import date, timedelta
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from app.coach.replan_explain import explain
 from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
 from app.plan.engine import KEY, advice, build_profile, empty_reason, outlook, plan_weeks, warnings
 from app.plan.level import with_estimates
 from app.plan.pain import pain_zones
+from app.plan.replan import replan_rest_of_week
 from app.plan.strength import annotate_history, resolve
 from app.questionnaire.models import current_facts
 from app.repo import Repo
@@ -19,6 +23,69 @@ from app.repo import Repo
 class Generate(BaseModel):
     weeks: int = Field(default=1, ge=1, le=8)  # une semaine à la fois : le coach a lu les retours avant la suivante
     restart_cycle: bool = False  # démarrer un nouveau cycle (sinon le cycle en cours continue)
+
+
+class ReplanIn(BaseModel):
+    include_today: bool = False  # par défaut, la séance d'aujourd'hui est considérée comme non faisable : on replanifie à partir de demain
+    explain: bool = False  # une phrase d'explication par l'IA si elle est configurée (jamais de chiffre)
+
+
+class ReplanApply(BaseModel):
+    include_today: bool = False
+    fingerprint: str = Field(min_length=8, max_length=64)  # empreinte de l'aperçu accepté : si le plan a changé entre-temps, rien n'est appliqué
+
+
+REPLAN_KIND = "replan_week"
+
+
+def load_profile(repo: Repo, user_id: int, today: date) -> tuple[dict[str, Any], list[dict[str, Any]], Any]:
+    """Faits (douleur d'un retour de séance = blessure active, S2), objectifs et profil du moteur, comme pour la génération du plan."""
+    facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
+    zones = pain_zones(repo.list_sessions(user_id, today - timedelta(days=21), today), today)
+    if zones:
+        facts = {**facts, "history.injuries": sorted({*(facts.get("history.injuries") or []), *zones} - {"aucune"})}
+    goals = repo.list_goals(user_id, None)
+    facts = estimated_facts(repo, user_id, facts, goals, today)
+    return facts, goals, build_profile(facts, goals, today)
+
+
+def fingerprint_of(proposal: dict[str, Any]) -> str:
+    keep = {"from": proposal["from"], "changes": [(c["session_id"], c["to"], c["duration_to"]) for c in proposal["changes"]]}
+    return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:24]
+
+
+def compute_replan(repo: Repo, user_id: int, today: date, include_today: bool) -> dict[str, Any]:
+    _, _, prof = load_profile(repo, user_id, today)
+    monday = today - timedelta(days=today.weekday())
+    rows = repo.list_sessions(user_id, monday - timedelta(days=1), monday + timedelta(days=8))
+    acts = [{"day": date.fromisoformat(a["day"]), "minutes": round((a["duration_s"] or 0) / 60), "run": a["sport"] == "run"}
+            for a in week_activities(repo, user_id, monday, [r for r in rows if monday <= r["day"] < monday + timedelta(days=7)])]
+    avoid: set[date] = set()
+    try:  # W7 : météo optionnelle, échec silencieux (W8) ; jamais bloquant
+        from app.weather import service as weather
+        avoid = {date.fromisoformat(i["day"]) for i in weather.outlook(repo, user_id, today)["items"] if i["status"] == "avoid"}
+    except Exception:  # noqa: BLE001
+        avoid = set()
+    out = replan_rest_of_week(prof, rows, acts, today, avoid, include_today)
+    out["fingerprint"] = fingerprint_of(out)
+    return out
+
+
+def with_sources(out: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, Any]:
+    by_id = {e["id"]: e for e in evidence}
+    for a in out["applied"]:
+        a["sources"] = [{"id": i, "citation": by_id[i]["citation"], "url": by_id[i]["url"]} for i in a["ids"] if i in by_id]
+    return out
+
+
+def snapshot(r: dict[str, Any]) -> dict[str, Any]:
+    return {"id": r["id"], "day": r["day"].isoformat(), "duration_min": r["duration_min"], "notes": list(r["notes"] or []), "details": r["details"] or {}, "status": r["status"]}
+
+
+def last_replan(repo: Repo, user_id: int, monday: date) -> dict[str, Any] | None:
+    """Dernière replanification non annulée de la semaine en cours : l'écran propose de l'annuler."""
+    m = next((m for m in repo.list_memory(user_id, REPLAN_KIND, 5) if m["period_start"] == monday and not (m["data"] or {}).get("undone")), None)
+    return {"id": m["id"], "changed": len((m["data"] or {}).get("after", []))} if m else None
 
 
 MOVE_PAST_DAYS = 56  # on ne rattache pas une séance à plus de 8 semaines en arrière
@@ -136,13 +203,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     def generate(body: Generate | None = None, user_id: int = Depends(require_user),
                  repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         today = date.today()
-        facts = {k: v for k, v in current_facts(repo.list_facts(user_id)).items() if v is not None}
-        zones = pain_zones(repo.list_sessions(user_id, today - timedelta(days=21), today), today)
-        if zones:  # douleur signalée dans un retour de séance : traitée comme une blessure active (S2) pour cette génération
-            facts = {**facts, "history.injuries": sorted({*(facts.get("history.injuries") or []), *zones} - {"aucune"})}
-        goals = repo.list_goals(user_id, None)
-        facts = estimated_facts(repo, user_id, facts, goals, today)  # C14/C15 : niveau récent estimé, sans toucher aux saisies
-        profile = build_profile(facts, goals, today)
+        facts, goals, profile = load_profile(repo, user_id, today)
         facts = {**facts, "history.injuries": sorted(profile.injuries)}  # zones normalisées (S2, S7) pour le choix des exercices
         existing = repo.list_sessions(user_id, today - timedelta(days=today.weekday()), None)
         next_monday = today + timedelta(days=7 - today.weekday())
@@ -186,7 +247,66 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         facts = estimated_facts(repo, user_id, facts, goals, today)
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
-                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today)}
+                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start)}
+
+    @router.post("/replan/preview")
+    def replan_preview(request: Request, body: ReplanIn | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Aperçu de la fin de semaine replanifiée (G13 à G17) : ne modifie rien. La phrase d'IA est facultative et ne porte aucun chiffre."""
+        b = body or ReplanIn()
+        out = with_sources(compute_replan(repo, user_id, date.today(), b.include_today), request.app.state.evidence)
+        out["explanation"] = explain(repo, request.app.state.llm, user_id, out, out["fingerprint"]) if b.explain else None
+        return out
+
+    @router.post("/replan/apply")
+    def replan_apply(body: ReplanApply, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Applique la proposition recalculée côté serveur (jamais celle envoyée par le client) si elle est identique à l'aperçu accepté ; trace annulable."""
+        today = date.today()
+        out = compute_replan(repo, user_id, today, body.include_today)
+        if out["empty"]:
+            raise HTTPException(409, "Rien à replanifier.")
+        if out["fingerprint"] != body.fingerprint:
+            raise HTTPException(409, "Le plan a changé depuis l'aperçu : relancez la replanification.")
+        monday = today - timedelta(days=today.weekday())
+        rows = {r["id"]: r for r in repo.list_sessions(user_id, monday, monday + timedelta(days=7))}
+        touched = [c for c in out["changes"] if c["action"] != "keep"]
+        before = [snapshot(rows[c["session_id"]]) for c in touched if c["session_id"] in rows]
+        rule_ids = [a["rule"] for a in out["applied"]]
+        for c in touched:
+            r = rows.get(c["session_id"])
+            if not r or r["status"] != "planned":
+                continue
+            note = f"Replanifiée ({', '.join(rule_ids)})" if c["action"] != "drop" else f"Retirée de la semaine par la replanification ({', '.join(rule_ids)})"
+            changes: dict[str, Any] = {"notes": [*r["notes"], note]}
+            if c["action"] != "drop":
+                changes["duration_min"] = c["duration_to"]
+                if c["to"] != r["day"].isoformat():
+                    changes["day"] = date.fromisoformat(c["to"])
+                    changes["details"] = {**(r["details"] or {}), "moved_from": (r["details"] or {}).get("moved_from") or r["day"].isoformat()}
+            repo.patch_planned(user_id, r["id"], changes)
+            if c["action"] == "drop":
+                repo.update_session(user_id, r["id"], "skipped", None)
+        mem = repo.add_memory(user_id, REPLAN_KIND, (monday, monday + timedelta(days=6)), f"Replanification de la fin de semaine ({', '.join(rule_ids)})",
+                              {"before": before, "after": touched, "rules": rule_ids, "undone": False})
+        return {"id": mem["id"], "changed": len(touched)}
+
+    @router.post("/replan/{memory_id}/undo")
+    def replan_undo(memory_id: int, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        mem = repo.get_memory(user_id, memory_id)
+        if not mem or mem["kind"] != REPLAN_KIND:
+            raise HTTPException(404, "Replanification inconnue.")
+        data = mem["data"] or {}
+        if data.get("undone"):
+            raise HTTPException(409, "Cette replanification est déjà annulée.")
+        monday = mem["period_start"]
+        rows = {r["id"]: r for r in repo.list_sessions(user_id, monday, monday + timedelta(days=7))}
+        if any(s["id"] not in rows or rows[s["id"]]["status"] == "done" for s in data.get("before", [])):
+            raise HTTPException(409, "Une séance a été faite depuis : l'annulation n'est plus possible.")
+        for s in data.get("before", []):
+            if s["status"] == "planned" and rows[s["id"]]["status"] != "planned":
+                repo.update_session(user_id, s["id"], "planned", None)
+            repo.patch_planned(user_id, s["id"], {"day": date.fromisoformat(s["day"]), "duration_min": s["duration_min"], "notes": s["notes"], "details": s["details"]})
+        repo.update_memory_data(user_id, memory_id, {**data, "undone": True})
+        return {"restored": len(data.get("before", []))}
 
     @router.post("/match")
     def match(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, int]:

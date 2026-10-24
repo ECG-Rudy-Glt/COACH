@@ -68,7 +68,7 @@
   design: essai contrôlé randomisé
   finding_fr: "532 coureurs débutants : un programme progressif de 13 semaines fondé sur la règle des 10 % n'a pas réduit les blessures par rapport à un programme standard de 8 semaines (20,8 % contre 20,3 %)."
   limits_fr: "Débutants préparant une course de 6,7 km, durées de programme différentes entre les groupes. Ne prouve pas que les hausses rapides sont sans risque ; la règle des 10 % n'est donc qu'un plafond de prudence."
-  applies_to: [G1]
+  applies_to: [G1, G14]
   confidence: moyenne
   verified_on: "2026-10-18"
 
@@ -82,7 +82,7 @@
   design: étude observationnelle
   finding_fr: "874 coureurs débutants suivis un an : pas de différence significative globale selon la progression hebdomadaire. Une hausse de plus de 30 % sur 2 semaines va avec plus de blessures liées à la distance (rapport de risque 1,59), à la limite de la significativité."
   limits_fr: "Étude exploratoire, intervalle de confiance 0,96 à 2,66 (non significatif), débutants uniquement. Les auteurs demandent des essais randomisés pour confirmer."
-  applies_to: [G1]
+  applies_to: [G1, G14]
   confidence: faible
   verified_on: "2026-10-18"
 
@@ -96,7 +96,7 @@
   design: revue narrative
   finding_fr: "Critique méthodologique : le lien causal entre ratio charge aiguë/chronique et blessure n'est pas établi, la métrique est inexacte (ratio) et ambiguë. Les auteurs concluent qu'aucune preuve ne soutient son usage pour des recommandations de charge."
   limits_fr: "Article de position critique, pas une mesure d'effet ni une revue systématique. Il invalide l'usage causal du ratio, pas forcément son rôle de simple signal d'alerte descriptif."
-  applies_to: [G4]
+  applies_to: [G4, G14]
   confidence: moyenne
   verified_on: "2026-10-18"
 
@@ -236,7 +236,7 @@
   design: méta-analyse
   finding_fr: "21 études : l'entraînement combiné reste meilleur que l'endurance seule pour force et masse, mais l'interférence dépend de la modalité, de la fréquence et de la durée de l'endurance. La course (pas le vélo) en parallèle réduit hypertrophie et force."
   limits_fr: "Analyse de 2012 sur des études anciennes, corrélations sur la fréquence et la durée (non causales). Nuancée par la méta-analyse de Schumann 2022, qui trouve une interférence faible sur la force maximale."
-  applies_to: [I1]
+  applies_to: [I1, G15]
   confidence: moyenne
   verified_on: "2026-10-18"
 
@@ -250,7 +250,7 @@
   design: méta-analyse
   finding_fr: "43 études : l'ajout d'aérobie ne compromet ni l'hypertrophie ni la force maximale. La force explosive est un peu atténuée (écart -0,28), davantage quand les deux séances ont lieu le même jour que séparées d'au moins 3 h."
   limits_fr: "Compare à de la musculation seule, pas à de l'endurance seule ; la perte d'explosivité est modeste et ne vaut que pour la force explosive, à confirmer."
-  applies_to: [I1, I7]
+  applies_to: [I1, I7, G15]
   confidence: élevée
   verified_on: "2026-10-18"
 
