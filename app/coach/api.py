@@ -64,6 +64,11 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         return {"configured": is_configured(request.app.state.llm), "budget": service.budget_state(repo),
                 "latest": _out(latest[0] if latest else None)}
 
+    @router.get("/cost")
+    def cost(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Coût IA estimé du mois (total serveur + part du compte), pour l'écran Profil."""
+        return service.cost_report(repo, user_id)
+
     @router.post("/review")
     def review(request: Request, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
         return _out(service.review(repo, request.app.state.llm, user_id))  # type: ignore[return-value]
