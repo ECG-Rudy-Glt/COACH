@@ -84,3 +84,13 @@ def test_users_cannot_read_each_other(client):
     assert client.get(f"/users/{a}/profile").status_code in (403, 404)
     client.cookies.clear()
     assert client.get(f"/users/{a}/profile").status_code == 401
+
+
+def test_camera_allowed_for_own_origin_only_and_wasm_without_eval(client):
+    r = client.get("/healthz")
+    pp = r.headers["permissions-policy"]
+    assert "camera=(self)" in pp and "microphone=()" in pp and "geolocation=()" in pp  # scan des codes-barres : caméra de l'origine, rien d'autre
+    csp = r.headers["content-security-policy"]
+    assert "script-src 'self' 'wasm-unsafe-eval';" in csp and "unsafe-eval" not in csp.replace("wasm-unsafe-eval", "") and "img-src 'self' data: blob:;" in csp
+    w = client.get("/vendor/zxing_reader.wasm")
+    assert w.status_code == 200 and w.headers["content-type"] == "application/wasm" and w.content[:4] == b"\0asm"

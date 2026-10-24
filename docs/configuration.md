@@ -35,7 +35,7 @@ scripts/init-secrets.sh --vapid    # also generate Web Push (VAPID) keys
 | `ALLOWED_HOSTS` | – | comma list of accepted `Host` headers (`coach.example.org,localhost`); recommended once exposed |
 | `ENABLE_DOCS` | `0` | `1` serves `/docs` and `/openapi.json` (development only) |
 | `LOG_LEVEL` | `info` | |
-| `OFF_ENABLED` | `1` | `0` disables the barcode lookup (Open Food Facts). Only the barcode is sent, with a `COACH-selfhosted` user agent and a 6 s timeout; nothing else leaves your server |
+| `OFF_ENABLED` | `1` | `0` disables the barcode lookup (Open Food Facts). Only the barcode is sent, with a `COACH-selfhosted` user agent and a 6 s timeout; nothing else leaves your server. The camera scan runs on the device (self-hosted decoder in `app/static/vendor/`); the product image is fetched by the server from `openfoodfacts.org` hosts only (or your mirror) and relayed to the app |
 | `OFF_BASE_URL` | `https://world.openfoodfacts.org` | alternative Open Food Facts address (mirror) |
 | `WEATHER_ENABLED` | `1` | `0` disables the weather feature for the whole server (no call to Open-Meteo, whatever users choose). Even when `1`, it stays off for a user until they enter a city in Profile > Preferences |
 | `WEATHER_BASE_URL`, `WEATHER_GEOCODE_URL` | `https://api.open-meteo.com`, `https://geocoding-api.open-meteo.com` | alternative Open-Meteo addresses (self-hosted instance, mirror) |

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from app.coach import service as coach
@@ -292,6 +292,14 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
     @router.get("/barcode/{code}")
     def barcode(code: str, user_id: int = Depends(require_user)) -> dict[str, Any]:
         return _lookup(code.strip())
+
+    @router.get("/barcode/{code}/image")
+    def barcode_image(code: str, user_id: int = Depends(require_user)) -> Response:
+        try:
+            data, ctype = nut_barcode.fetch_image(code.strip())
+        except nut_barcode.BarcodeError as e:
+            raise HTTPException(e.status, str(e)) from e
+        return Response(data, media_type=ctype, headers={"Cache-Control": "private, max-age=86400"})
 
     @router.post("/meals/{meal_id}/estimate")
     def estimate(meal_id: int, request: Request, body: EstimateIn | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

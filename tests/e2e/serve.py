@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 import demo_server  # noqa: E402  (pose l'environnement : mémoire, inscription ouverte, cookie non sécurisé)
 
-os.environ["OFF_ENABLED"] = "0"  # aucun appel à Open Food Facts
+os.environ["OFF_ENABLED"] = "1"  # la recherche par code-barres est simulée plus bas : aucun appel réseau
 os.environ["AUTO_NOTIFY"] = "0"
 
 import uvicorn  # noqa: E402
@@ -36,6 +36,15 @@ def fake_open_meteo(url):
 
 
 weather_client._get_json = fake_open_meteo  # aucun appel réseau réel
+
+from app.nutrition import barcode as nut_barcode  # noqa: E402
+
+PRODUCT = {"status": 1, "product": {"product_name": "Biscuit d'essai", "brands": "Marque d'essai", "quantity": "300 g", "serving_quantity": "30", "nutriscore_grade": "c", "ecoscore_grade": "b",
+                                    "nutriments": {"energy-kcal_100g": 480, "proteins_100g": 6, "carbohydrates_100g": 70, "fat_100g": 18},
+                                    "image_front_small_url": "https://images.openfoodfacts.org/images/products/essai.200.jpg"}}
+PIXEL = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cfc0f01f0005000201a5f645400000000049454e44ae426082")
+nut_barcode._get_json = lambda url: PRODUCT if "/3017620422003.json" in url else {"status": 0}  # un seul produit connu
+nut_barcode.fetch_image = lambda code: (PIXEL, "image/png")  # image relayée : un pixel
 
 ESTIMATE = {
     "items": [{"name": "Poulet, riz", "quantity": "1 assiette", "kcal": 640, "protein_g": 45, "carbs_g": 70, "fat_g": 18}],
