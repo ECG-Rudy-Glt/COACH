@@ -477,10 +477,97 @@ async function renderRadar(box) {
   box.replaceChildren(intro, ...d.axes.map((a) => radarAxisCard(a, weeks)), missing);
 }
 
+
+// ---------- section « Muscles » et schéma d'une séance (règles ST21 à ST24) ----------
+
+// Silhouette dessinée pour ce projet (aucune image tierce). Chaque tracé décrit la moitié gauche de l'image ; l'autre moitié est son miroir autour de x = 50.
+const BODY = {
+  front: { traps: ["M50 27 L50 37 L38 39 Q40 32 47 28 Z"], chest: ["M50 38 L50 62 Q40 66 31 58 Q28 48 33 40 Q42 36 50 38 Z"],
+    shoulders: ["M33 39 Q25 35 20 43 Q17 50 20 57 L28 58 Q30 48 33 39 Z"], biceps: ["M20 59 L28 60 L27 78 L19 77 Q17 68 20 59 Z"],
+    forearms: ["M19 80 L27 81 L24 106 L16 104 Q16 91 19 80 Z"], abs: ["M50 64 L50 96 Q42 97 39 94 Q37 80 38 66 Q44 68 50 64 Z"],
+    quadriceps: ["M36 106 L45 112 Q46 130 47 149 L41 153 Q35 150 33 138 Q32 118 36 106 Z"], adductors: ["M45 112 L50 106 L50 138 L47 149 Q46 130 45 112 Z"],
+    calves: ["M36 157 L45 157 Q47 174 43 192 L38 192 Q34 174 36 157 Z"] },
+  back: { traps: ["M50 27 Q42 32 33 40 Q38 50 50 58 Z"], shoulders: ["M33 39 Q25 35 20 43 Q17 50 20 57 L28 58 Q30 48 33 39 Z"],
+    triceps: ["M20 59 L28 60 L27 78 L19 77 Q17 68 20 59 Z"], forearms: ["M19 80 L27 81 L24 106 L16 104 Q16 91 19 80 Z"],
+    lats: ["M33 48 Q31 66 38 86 L50 88 L50 74 Q40 72 36 62 Q35 54 33 48 Z"], middle_back: ["M50 56 L50 76 Q43 74 39 66 Q40 60 50 56 Z"],
+    lower_back: ["M50 88 L50 104 Q42 104 38 100 Q38 92 41 88 Z"], glutes: ["M50 104 Q40 100 34 106 Q31 118 36 124 Q46 126 50 120 Z"],
+    hamstrings: ["M35 126 Q32 138 34 150 L47 150 Q49 138 48 126 Q42 128 35 126 Z"], calves: ["M36 156 Q33 168 37 184 L44 190 Q47 172 46 156 Z"] },
+};
+const BODY_FILL = "M33 40 L28 60 L33 96 L36 106 L50 106 L50 38 Z"; // tronc : fond neutre derrière les muscles
+const MU_LEVEL = { 0: "", 1: "mu-2nd", 2: "mu-main" };
+
+function muscleFigure(rows, label) {
+  const level = Object.fromEntries(rows.map((r) => [r.group, r.level]));
+  const svg = svgEl("svg", { viewBox: "0 0 232 206", class: "mu-fig", role: "img", "aria-label": label });
+  [["front", 0, "Face"], ["back", 124, "Dos"]].forEach(([side, dx, name]) => {
+    const g = svgEl("g", { transform: `translate(${dx} 0)` });
+    const half = (fn) => { fn(g, ""); fn(g, "translate(100 0) scale(-1 1)"); };
+    half((root, tf) => { const p = svgEl("path", { class: "mu-body", d: BODY_FILL, transform: tf || null }); root.append(p);
+      root.append(svgEl("ellipse", { class: "mu-body", cx: 20, cy: 108, rx: 4, ry: 6, transform: tf || null })); });
+    g.append(svgEl("circle", { class: "mu-body", cx: 50, cy: 14, r: 10 }));
+    for (const [grp, paths] of Object.entries(BODY[side])) {
+      half((root, tf) => paths.forEach((d) => root.append(svgEl("path", { class: `mu ${MU_LEVEL[level[grp] || 0]}`.trim(), d, transform: tf || null, "data-group": grp }))));
+    }
+    g.append(svgEl("text", { class: "st-text", x: 50, y: 204, "text-anchor": "middle" }, __(name)));
+    svg.append(g);
+  });
+  return svg;
+}
+
+const MU_FLAGS = { push_heavy: "Beaucoup plus de poussée que de tirage : à surveiller (pensez aux tirages et à l'arrière des épaules).",
+  pull_heavy: "Beaucoup plus de tirage que de poussée : à surveiller.", legs_low: "Peu de travail des jambes par rapport au reste : à surveiller.",
+  core_low: "Peu de travail du tronc (abdominaux, bas du dos) : à surveiller." };
+
+function muscleLabel(d) {
+  const names = (lvl) => d.rows.filter((r) => r.level === lvl).map((r) => r.label).join(", ");
+  const main = names(2), second = names(1);
+  return __("Schéma des muscles, face et dos. Principaux : {main}. Secondaires : {second}.", { main: main || __("aucun"), second: second || __("aucun") });
+}
+
+function muscleBody(d) {
+  const family = (f) => stFmt(d.balance.families[f], 1);
+  return [
+    h("div", { class: "mu-wrap" }, muscleFigure(d.rows, muscleLabel(d))),
+    h("div", { class: "st-legend" }, h("span", null, h("i", { class: "mu-key mu-main" }), "principal (fort)"), h("span", null, h("i", { class: "mu-key mu-2nd" }), "secondaire (clair)"),
+      h("span", null, h("i", { class: "mu-key" }), "non sollicité")),
+    h("p", { class: "muted" }, __("Séries pondérées : poussée {push}, tirage {pull}, jambes {legs}, tronc {core}.", { push: family("push"), pull: family("pull"), legs: family("legs"), core: family("core") })),
+    d.balance.flags.length ? h("ul", { class: "plain" }, d.balance.flags.map((f) => h("li", null, MU_FLAGS[f]))) : null,
+    d.unknown.length ? h("p", { class: "muted" }, __("Sans muscle connu dans la bibliothèque (non comptés) : {names}.", { names: d.unknown.join(", ") })) : null,
+    valuesTable("Séries pondérées par groupe musculaire", ["Groupe", "Séries pondérées", "Séries principales", "Niveau"],
+      d.rows.map((r) => [r.label, stFmt(r.sets, 1), stFmt(r.primary_sets, 1), ["non sollicité", "secondaire", "principal"][r.level]])),
+    h("p", { class: "st-note" }, "Convention de comptage : une série vaut 1 pour chaque muscle principal de l'exercice et 0,5 pour chaque muscle secondaire. Ce n'est pas une mesure physiologique, seulement un repère de ce que vous avez saisi. Les repères d'équilibre sont indicatifs, jamais un avis médical.")];
+}
+
+// Carte de la fiche d'une séance faite : schéma pour la force, message clair pour le reste. `refresh()` relit le serveur après chaque enregistrement de la saisie.
+function muscleSessionCard(s) {
+  const head = () => h("h3", null, "Muscles travaillés");
+  const box = h("div", { class: "card stack", "aria-live": "polite" }, head(), h("p", { class: "muted" }, "Chargement…"));
+  box.refresh = () => api(`/users/${userId}/plan/sessions/${s.id}/muscles`).then((d) => {
+    if (!d.supported) box.replaceChildren(head(), h("p", { class: "muted" }, "Pas de schéma musculaire pour la course, le vélo, la natation, la marche ni le CrossFit : seule la musculation avec exercices saisis est détaillée."));
+    else if (!d.sets_counted) box.replaceChildren(head(), h("p", { class: "muted" }, d.unknown.length ? __("Aucun exercice saisi n'a de muscle connu dans la bibliothèque : {names}.", { names: d.unknown.join(", ") })
+      : "Saisissez des séries (répétitions) pour voir les muscles travaillés."));
+    else box.replaceChildren(head(), ...muscleBody(d));
+  }).catch((e) => { if (!e.handled) box.replaceChildren(head(), h("p", { class: "muted" }, e.message || "Indisponible.")); });
+  box.refresh();
+  return box;
+}
+
+let muscleWeek = null;
+async function renderMuscles(box) {
+  const d = await api(`/users/${userId}/stats/muscles${muscleWeek ? `?week=${muscleWeek}` : ""}`);
+  const shift = (days) => { const t = new Date(d.week_start + "T12:00:00"); t.setDate(t.getDate() + days); muscleWeek = t.toISOString().slice(0, 10); return renderMuscles(box); };
+  const range = `${stShort(d.week_start)} – ${stShort(d.week_end)}`;
+  const nav = h("div", { class: "row" }, h("button", { type: "button", class: "btn sm", onclick: () => shift(-7) }, "Semaine précédente"), h("strong", { class: "grow", style: "text-align:center" }, range),
+    h("button", { type: "button", class: "btn sm", disabled: d.current, onclick: () => shift(7) }, "Semaine suivante"));
+  const body = !d.sessions ? h("p", { class: "muted" }, "Aucune séance de musculation faite cette semaine-là : rien à afficher.")
+    : [d.current ? h("p", { class: "muted" }, "Semaine en cours, incomplète.") : null, ...muscleBody(d)];
+  box.replaceChildren(stCard("Muscles de la semaine", nav, body));
+}
+
 // ---------- écran ----------
 
 // Sections de l'écran : [id, libellé, rendu, préférence]. Chaque lot en ajoute une ; une section à préférence disparaît quand l'utilisateur la désactive.
-const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress], ["regularity", "Régularité", renderRegularity, "regularity"], ["radar", "Forme", renderRadar]];
+const STATS_SECTIONS = [["daily", "Quotidien", renderDaily], ["progress", "Progression", renderProgress], ["regularity", "Régularité", renderRegularity, "regularity"], ["radar", "Forme", renderRadar], ["muscles", "Muscles", renderMuscles]];
 
 async function statsScreen(section) {
   let prefs = {};

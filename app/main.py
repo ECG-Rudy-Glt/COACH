@@ -23,6 +23,7 @@ from app.garmin import scheduler as garmin_scheduler
 from app.garmin.api import build_router as build_garmin_router
 from app.garmin.api import default_gateway
 from app.goals import build_router as build_goals_router
+from app.muscles.api import build_router as build_muscles_router
 from app.nutrition.api import build_router as build_nutrition_router
 from app.plan.api import build_router as build_plan_router
 from app.plan.level import lift_estimates
@@ -196,6 +197,7 @@ app.include_router(build_goals_router(get_repo, require_user))
 app.include_router(build_plan_router(get_repo, require_user))
 app.include_router(build_nutrition_router(get_repo, require_user))
 app.include_router(build_stats_router(get_repo, require_user))
+app.include_router(build_muscles_router(get_repo, require_user))
 app.include_router(build_weather_router(get_repo, require_user))
 app.state.garmin = default_gateway()
 app.include_router(build_garmin_router(get_repo, require_user))

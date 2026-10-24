@@ -27,6 +27,7 @@ PostgreSQL (PostgreSQL licence), Caddy (Apache-2.0), Ollama (MIT, optional profi
 | Exercise descriptions and media (imported at first start) | [wger](https://wger.de) API | **CC-BY-SA** (per-item author and licence are stored and displayed in the app) |
 | Exercise database | [free-exercise-db](https://github.com/yuhonas/free-exercise-db) | Unlicense (public domain) |
 | Custom exercises | `data/custom_exercises.yaml` | AGPL-3.0 with the project |
+| Muscle diagram (front/back SVG) | Drawn for the project in `app/static/stats.js` | AGPL-3.0 with the project (no third-party image) |
 | Publications metadata and summaries | PubMed / Europe PMC / publishers | Only bibliographic facts and short original summaries are included; cited works remain the property of their authors |
 | Inter typeface (`app/static/fonts`) | Rasmus Andersson | SIL OFL 1.1 |
 
