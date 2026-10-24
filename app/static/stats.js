@@ -79,7 +79,13 @@ function plotChart({ dots = [], line = [], target, fmt = stFmt, snap = false, in
 }
 
 const stLegend = (...items) => h("div", { class: "st-legend" }, items.map(([cls, text]) => h("span", null, h("i", { class: cls }), text)));
-const stCard = (title, ...kids) => h("section", { class: "card stack", "aria-label": title }, h("h3", null, title), ...kids);
+// Les notes de méthode (`.st-note`) d'une carte sont regroupées dans un détail replié : le chiffre clé et le graphique restent seuls visibles.
+const stIsNote = (k) => !!k && k.nodeType === 1 && k.classList.contains("st-note");
+const stCard = (title, ...kids) => {
+  const notes = kids.filter(stIsNote);
+  return h("section", { class: "card stack", "aria-label": title }, h("h3", null, title), ...kids.filter((k) => !stIsNote(k)),
+    notes.length ? fold("Comment lire ces chiffres", notes) : null);
+};
 const stEmpty = (title, text, action) => stCard(title, h("p", { class: "muted" }, text), action || null);
 
 // ---------- section « Quotidien » ----------
@@ -457,7 +463,7 @@ function radarProfileCard() {
       ...(d.chart ? [stLegend(["", "maintenant"], ...(d.compare ? [["before", __("il y a {n} semaines", { n: d.compare_weeks })]] : []))] : []),
       h("button", { class: "btn sm", onclick: () => statsScreen("radar") }, "Voir le détail dans Statistiques"));
   }).catch(() => box.replaceChildren(h("p", { class: "muted" }, "Forme indisponible pour l'instant.")));
-  return fold("profile-radar", "Statistiques", "Ma forme", null, box, true);
+  return foldCard("profile-radar", "Statistiques", "Ma forme", null, box, true);
 }
 
 async function renderRadar(box) {
@@ -535,7 +541,7 @@ function muscleBody(d) {
     d.unknown.length ? h("p", { class: "muted" }, __("Sans muscle connu dans la bibliothèque (non comptés) : {names}.", { names: d.unknown.join(", ") })) : null,
     valuesTable("Séries pondérées par groupe musculaire", ["Groupe", "Séries pondérées", "Séries principales", "Niveau"],
       d.rows.map((r) => [r.label, stFmt(r.sets, 1), stFmt(r.primary_sets, 1), ["non sollicité", "secondaire", "principal"][r.level]])),
-    h("p", { class: "st-note" }, "Convention de comptage : une série vaut 1 pour chaque muscle principal de l'exercice et 0,5 pour chaque muscle secondaire. Ce n'est pas une mesure physiologique, seulement un repère de ce que vous avez saisi. Les repères d'équilibre sont indicatifs, jamais un avis médical.")];
+    fold("Comment lire ces chiffres", h("p", { class: "muted" }, "Convention de comptage : une série vaut 1 pour chaque muscle principal de l'exercice et 0,5 pour chaque muscle secondaire. Ce n'est pas une mesure physiologique, seulement un repère de ce que vous avez saisi. Les repères d'équilibre sont indicatifs, jamais un avis médical."))];
 }
 
 // Carte de la fiche d'une séance faite : schéma pour la force, message clair pour le reste. `refresh()` relit le serveur après chaque enregistrement de la saisie.
@@ -632,8 +638,8 @@ function zonesBlock(z) {
   return h("div", { class: "stack" }, h("div", { class: "cv-zbar", role: "img", "aria-label": __("Temps par zone de FC : {list}.", { list: rows.map((r) => `${r[0]} ${r[3]}`).join(", ") }) },
     z.seconds.map((s, i) => h("i", { class: `cv-z${i}`, style: `flex:${s || 0}` }))),
   valuesTable("Temps par zone de fréquence cardiaque", ["Zone", "bpm", "Temps", "Part"], rows),
-  h("p", { class: "st-note" }, z.basis === "declared" ? __("Zones calculées sur votre FC max déclarée ({hr} bpm) : 60-75 % et 85-92 % comme dans votre plan, les autres bornes sont une convention.", { hr: z.hr_max })
-    : __("Zones calculées sur la plus haute FC mesurée par votre montre ({hr} bpm, estimation) : 60-75 % et 85-92 % comme dans votre plan, les autres bornes sont une convention.", { hr: z.hr_max })));
+  fold("Comment lire ces chiffres", h("p", { class: "muted" }, z.basis === "declared" ? __("Zones calculées sur votre FC max déclarée ({hr} bpm) : 60-75 % et 85-92 % comme dans votre plan, les autres bornes sont une convention.", { hr: z.hr_max })
+    : __("Zones calculées sur la plus haute FC mesurée par votre montre ({hr} bpm, estimation) : 60-75 % et 85-92 % comme dans votre plan, les autres bornes sont une convention.", { hr: z.hr_max }))));
 }
 
 function splitsBlock(d) {
@@ -664,7 +670,7 @@ function curvesBody(d) {
       curveChart({ t: d.t, y: c.y, label, fmt: c.fmt, bands: c.bands, invert: c.invert, area: c.area }), curveTable(c.title, ["Temps", `${c.title} (${__(c.unit)})`], d.t, c.y, c.fmt));
   });
   return [summaryBlock(d.summary), ...charts, d.hr ? h("section", { class: "stack", "aria-label": "Zones de fréquence cardiaque" }, h("h4", null, "Zones de fréquence cardiaque"), zonesBlock(d.zones)) : null, ...splitsBlock(d),
-    h("p", { class: "st-note" }, "Courbes simplifiées (une moyenne tous les quelques instants, 400 points au plus) : aucune position GPS n'est conservée ni affichée. Une mesure absente reste vide, une pause reste un trou. Repères indicatifs, jamais un avis médical.")];
+    fold("Comment lire ces chiffres", h("p", { class: "muted" }, "Courbes simplifiées (une moyenne tous les quelques instants, 400 points au plus) : aucune position GPS n'est conservée ni affichée. Une mesure absente reste vide, une pause reste un trou. Repères indicatifs, jamais un avis médical."))];
 }
 
 // Carte « Courbes de la séance » de la fiche d'une séance reliée à une activité de la montre ou à un fichier importé.

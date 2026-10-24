@@ -11,6 +11,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Security
 - `Permissions-Policy` now allows the camera for the app's own origin only (`camera=(self)`); the CSP gains `'wasm-unsafe-eval'` for the decoder (no `unsafe-eval`).
 ### Changed
+- Less verbose interface: explanations and calculation details are now collapsed by default, with a short summary still visible (native `<details>`, keyboard accessible, 44 px touch target). Collapsed: the coach's reasons for each proposed adjustment, plan tips, trajectory level explanation and phases, per-exercise cues and rationale, session notes and applied rules, the weather rating reasons, the meal estimate commentary, the daily target calculation, the energy balance breakdown, weight tips, the method notes of every statistics card, muscle and curve notes. Nothing was removed; main actions (saving, input) stay visible. UI build `sc-v37`.
 - Sessions added outside the plan now cover runs and other sports: new types (cycling, swimming, walking, other sport), distance, average pace (derived from distance and duration, or typed to deduce the duration) and average heart rate for runs and sports, a free comment, perceived effort (RPE) values bounded server-side, and an exercise picker that searches the library (thumbnail and muscles) instead of a bare suggestion list. Fixed: lift estimates (C15) ignored sessions done today.
 
 ### Fixed
