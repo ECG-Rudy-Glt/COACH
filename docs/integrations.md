@@ -46,6 +46,14 @@ Unknown values are `None`, never `0`. Map the brand's sport names to the six `sp
 
 `app/activity_import/` — `parse.py` holds the pure functions (`parse_activity(raw, tz)`: bytes to an activity row; sport mapping; duplicate rule) and `api.py` the route `POST /users/{id}/activities/import` (JSON `{files: [{name, data: base64}], tz}`, 20 files, 10 MB each). The format is detected from the content (`.FIT` signature, XML root `TrainingCenterDatabase` or `gpx`), never from the extension. FIT is read with [`fitdecode`](https://github.com/polyvertex/fitdecode) (MIT, data CRC checked), TCX/GPX with `defusedxml` (DTD and entities forbidden). Corrupted or unusable files get a per-file message, never a 500. Row `garmin_id` is `<format>:<sha256 prefix of the file>`, `source` is the format; a file is a duplicate if that id exists or if an activity of any source starts within 2 minutes with a similar duration. Only the totals are stored (no GPS track). Afterwards the usual `_derive_facts` and `auto_link` run. User guide: [activity-import.md](activity-import.md).
 
+## Session curves (issue #111, rules ST25 to ST28)
+
+`app/activity_import/streams.py` (pure functions `parse_streams(raw)`: FIT/TCX/GPX bytes to series) and `app/curves/` (`api.py`, `zones.py`). Table `activity_streams` (migration 0015): arrays of time, distance, heart rate, speed, elevation, cadence, power, about 400 points averaged by equal time slices, plus `splits` (kilometres and watch laps) as JSON. **No latitude or longitude is stored or returned**; GPX positions are used only to compute a distance, then dropped. The rows reference `garmin_activities` with `ON DELETE CASCADE`: deleting or pruning the activity (or the account) deletes its curves; the future account export (#28, not built yet) must include this table.
+
+- Imported files fill the table at import time (a file without usable measurements is still imported, only without curves).
+- Garmin synchronised activities: the sync stores totals only. `POST /users/{id}/plan/sessions/{sid}/curves/fetch` downloads on demand the **TCX** of one activity through `garminconnect` (`Garmin.download_activity(id, ActivityDownloadFormat.TCX)`, wrapped by `GarminGateway.download_activity_tcx`), extracts the curves with the same parser and discards the file. At most 12 downloads per user per rate-limit window. This path is covered by tests with a fake gateway only; it has not been exercised against a live Garmin account.
+- `GET /users/{id}/plan/sessions/{sid}/curves` returns the series, HR zones (60/75/85/92 % of the declared or, failing that, highest measured max HR), splits and the planned/done summary.
+
 ## Coros and other brands
 
 Coros does not offer a public API for individual developers (its API is partner-only), so there is no password-based or OAuth connection to copy from Garmin. There are three realistic routes, from most to least robust:

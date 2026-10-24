@@ -1460,6 +1460,7 @@ function sessionScreen(s, today) {
   const manual = !!s.details.manual;
   const logged = s.logged || {};
   const muscleBox = done ? muscleSessionCard(s) : null;
+  const curvesBox = logged.garmin_id ? curvesSessionCard(s) : null;
   const draftKey = `sc-draft-${userId}-${s.id}`;
   const draft = (() => { try { return JSON.parse(store.get(draftKey)); } catch { return null; } })(); // saisie non enregistrée (app fermée, réseau coupé)
   const src = draft || logged;
@@ -1658,6 +1659,7 @@ function sessionScreen(s, today) {
         logged.max_hr ? __("FC max {max_hr}", { max_hr: logged.max_hr }) : null, logged.calories ? __("{calories} kcal", { calories: logged.calories }) : null, logged.training_load ? __("charge {training_load}", { training_load: logged.training_load }) : null]
         .filter(Boolean).map((t) => h("span", { class: "chip" }, t))),
       h("button", { class: "link", style: "align-self:flex-start;padding:2px 0", onclick: unlink }, "Dissocier de cette activité")) : null,
+    curvesBox,
     ...slots,
     ...manualEx,
     muscleBox,
@@ -2433,7 +2435,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v35";
+const UI_BUILD = "sc-v36";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

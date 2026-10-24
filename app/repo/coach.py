@@ -14,6 +14,7 @@ class CoachMemory:
     def prune_activities(self, user_id: int, before: date) -> None:
         for k in [k for k, a in self._g()[1].items() if k[0] == user_id and a["day"] < before]:
             del self._g()[1][k]
+            self._streams().pop(k, None)
         for k in [k for k in self._metrics() if k[0] == user_id and k[2] < before]:
             del self._metrics()[k]
 

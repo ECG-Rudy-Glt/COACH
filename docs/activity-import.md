@@ -10,7 +10,7 @@ COACH can read workout files from any brand. Imported activities behave like Gar
 - FIT is preferred (complete data). TCX is fine. GPX has no calories and often no heart rate; a GPX route without timestamps cannot be dated and is refused.
 - A workout is a **duplicate** if the same file was imported before, or if an activity from Garmin or another import starts within 2 minutes with a similar duration (so the same session exported as FIT and TCX is counted once).
 - Activities older than 2 years or dated in the future are refused.
-- Only the totals are kept: sport, start, duration, distance, elevation gain, average and max heart rate, calories. The GPS track is **not** stored and nothing is sent to a third party. Missing values stay empty (never 0).
+- The totals are kept (sport, start, duration, distance, elevation gain, average and max heart rate, calories) with **simplified curves** of the session (heart rate, speed, elevation, cadence, power when the file has them; about 400 points) shown on the session page. The GPS track is **not** stored: no latitude or longitude is kept or shown, and nothing is sent to a third party. Missing values stay empty (never 0). Curves are deleted with the activity.
 - Times in files are UTC; they are converted to the time zone of your browser.
 - Disconnecting Garmin with "delete my activities" removes only Garmin activities, not imported ones.
 

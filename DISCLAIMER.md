@@ -16,7 +16,7 @@ You (or whoever hosts your instance) control the data. COACH has **no telemetry*
 |---|---|---|
 | Account: name, e-mail, password hash | PostgreSQL | never |
 | Questionnaire answers, goals, plan, session logs, weight, meals (+ optional photos) | PostgreSQL / media volume | an LLM provider is configured and the feature runs (see below) |
-| Garmin tokens (encrypted); activities and metrics | PostgreSQL | you connect Garmin — the app then talks to Garmin |
+| Garmin tokens (encrypted); activities and metrics; simplified activity curves (heart rate, speed, elevation, cadence, power; about 400 points, **never a GPS position**) | PostgreSQL | you connect Garmin — the app then talks to Garmin |
 | AI call log (model, tokens, cost) | PostgreSQL | never |
 
 **LLM providers.** If you configure one, the context of the call (a JSON snapshot of your training, goals, body data, notes and — for meal estimates — the description or photo) is sent to that provider under *its* terms. Name and e-mail are not sent. Choose `ollama`/a self-hosted model to keep everything on your machine, or `none` to disable AI.

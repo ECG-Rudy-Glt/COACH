@@ -564,6 +564,135 @@ async function renderMuscles(box) {
   box.replaceChildren(stCard("Muscles de la semaine", nav, body));
 }
 
+
+// ---------- courbes d'une séance reliée à une activité (règles ST25 à ST28) ----------
+
+const cvClock = (s) => { const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h}:${String(m % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`; };
+const cvPercentile = (vals, p) => { const a = vals.slice().sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.max(0, Math.round(p * (a.length - 1))))]; };
+
+// Courbe d'une série mesurée au fil du temps : un trou d'enregistrement (pause) coupe le trait au lieu d'être comblé ; `bands` = bandes de zones de FC.
+function curveChart({ t, y, label, fmt, bands, invert, area }) {
+  const W = 320, H = 124, PL = 36, PR = 6, PT = 8, PB = 20;
+  const vals = y.filter((v) => v != null);
+  const clip = invert || area ? [cvPercentile(vals, invert ? 0.03 : 0), cvPercentile(vals, invert ? 0.97 : 1)] : [Math.min(...vals), Math.max(...vals)];
+  let lo = clip[0], hi = clip[1];
+  if (bands) { lo = Math.min(lo, bands.edges[0]); hi = Math.max(hi, bands.edges[3]); }
+  const pad = (hi - lo || 1) * 0.06;
+  lo -= pad; hi += pad;
+  const end = t[t.length - 1] || 1;
+  const x = (s) => PL + (W - PL - PR) * (s / end);
+  const yy = (v) => { const c = Math.min(hi, Math.max(lo, v)), r = (c - lo) / (hi - lo); return PT + (H - PT - PB) * (invert ? r : 1 - r); };
+  const svg = svgRoot(W, H, label);
+  if (bands) {
+    const edges = [lo, ...bands.edges, hi].map((v) => Math.min(hi, Math.max(lo, v)));
+    for (let i = 0; i < 5; i++) {
+      const a = yy(edges[i + 1]), b = yy(edges[i]);
+      if (b - a > 0.5) svg.append(svgEl("rect", { class: `cv-band cv-z${i}`, x: PL, y: a, width: W - PL - PR, height: b - a }), svgEl("text", { class: "st-text cv-zl", x: PL + 3, y: a + 9, "text-anchor": "start" }, `Z${i + 1}`));
+    }
+  }
+  svg.append(svgEl("line", { class: "st-base", x1: PL, x2: W - PR, y1: H - PB, y2: H - PB }));
+  [lo + pad, (lo + hi) / 2, hi - pad].forEach((v) => svg.append(svgEl("text", { class: "st-text", x: PL - 4, y: yy(v) + 3, "text-anchor": "end" }, fmt(v))));
+  [0, 0.5, 1].forEach((f, i) => svg.append(svgEl("text", { class: "st-text", x: x(end * f), y: H - 6, "text-anchor": i === 0 ? "start" : i === 2 ? "end" : "middle" }, cvClock(Math.round(end * f)))));
+  const steps = t.slice(1).map((v, i) => v - t[i]).sort((a, b) => a - b), gap = Math.max(30, (steps[Math.floor(steps.length / 2)] || 1) * 2.5);
+  let d = "", prev = null;
+  t.forEach((s, i) => {
+    if (y[i] == null) { prev = null; return; }
+    d += `${prev == null || s - prev > gap ? "M" : "L"}${x(s).toFixed(1)} ${yy(y[i]).toFixed(1)} `;
+    prev = s;
+  });
+  if (area) svg.append(svgEl("path", { class: "cv-area", d: `${d} L${x(t[t.length - 1]).toFixed(1)} ${H - PB} L${x(t[0]).toFixed(1)} ${H - PB} Z` }));
+  svg.append(svgEl("path", { class: "st-line", d: d.trim() }));
+  return svg;
+}
+
+// Le tableau reprend la courbe en une vingtaine de lignes régulières : l'alternative texte du graphique.
+function curveTable(caption, head, t, y, fmt) {
+  const idx = Array.from({ length: Math.min(20, t.length) }, (_, i) => Math.round((i * (t.length - 1)) / Math.max(1, Math.min(20, t.length) - 1)));
+  return valuesTable(caption, head, idx.map((i) => [cvClock(t[i]), y[i] == null ? "–" : fmt(y[i])]));
+}
+
+const cvSeries = (d) => {
+  const run = d.sport === "run" || d.sport === "walk";
+  const out = [];
+  if (d.hr) out.push({ key: "hr", title: "Fréquence cardiaque", unit: "bpm", y: d.hr, fmt: (v) => String(Math.round(v)), bands: d.zones });
+  if (d.speed) {
+    out.push(run ? { key: "pace", title: "Allure", unit: "/km", y: d.speed.map((v) => (v != null && v > 0.3 ? 1000 / v / 60 : null)), fmt: (v) => stPace(v), invert: true }
+      : { key: "speed", title: "Vitesse", unit: "km/h", y: d.speed.map((v) => (v == null ? null : v * 3.6)), fmt: (v) => stFmt(v, 1) });
+  }
+  if (d.alt) out.push({ key: "alt", title: "Altitude", unit: "m", y: d.alt, fmt: (v) => stFmt(v, 0), area: true });
+  if (d.cad) out.push({ key: "cad", title: "Cadence", unit: run ? "pas/min" : "tr/min", y: d.cad, fmt: (v) => String(Math.round(v)) });
+  if (d.power) out.push({ key: "power", title: "Puissance", unit: "W", y: d.power, fmt: (v) => String(Math.round(v)) });
+  return out;
+};
+
+function zonesBlock(z) {
+  if (!z) return h("p", { class: "muted" }, "Pas de bandes de zones : indiquez votre FC max dans votre profil (ou faites quelques sorties mesurées par la montre).");
+  const total = z.seconds.reduce((a, b) => a + b, 0) || 1;
+  const rows = z.names.map((n, i) => [n, [`${i ? z.edges[i - 1] : 0}`, i < 4 ? `${z.edges[i]}` : "+"].join("–").replace("–+", "+"), cvClock(z.seconds[i]), `${Math.round((z.seconds[i] / total) * 100)} %`]);
+  return h("div", { class: "stack" }, h("div", { class: "cv-zbar", role: "img", "aria-label": __("Temps par zone de FC : {list}.", { list: rows.map((r) => `${r[0]} ${r[3]}`).join(", ") }) },
+    z.seconds.map((s, i) => h("i", { class: `cv-z${i}`, style: `flex:${s || 0}` }))),
+  valuesTable("Temps par zone de fréquence cardiaque", ["Zone", "bpm", "Temps", "Part"], rows),
+  h("p", { class: "st-note" }, z.basis === "declared" ? __("Zones calculées sur votre FC max déclarée ({hr} bpm) : 60-75 % et 85-92 % comme dans votre plan, les autres bornes sont une convention.", { hr: z.hr_max })
+    : __("Zones calculées sur la plus haute FC mesurée par votre montre ({hr} bpm, estimation) : 60-75 % et 85-92 % comme dans votre plan, les autres bornes sont une convention.", { hr: z.hr_max })));
+}
+
+function splitsBlock(d) {
+  const run = d.sport === "run" || d.sport === "walk";
+  const sp = d.splits.laps.length >= 2 ? [["Tours de la montre", d.splits.laps]] : [];
+  if (d.splits.km.length) sp.push(["Kilomètres", d.splits.km]);
+  return sp.map(([title, rows]) => h("details", { class: "st-table", open: title === "Kilomètres" || null }, h("summary", null, title),
+    h("table", null, h("caption", null, title === "Kilomètres" ? "Temps et FC par kilomètre" : "Temps et FC par tour"),
+      h("thead", null, h("tr", null, ["N°", "Distance", "Durée", run ? "Allure" : "Vitesse", "FC"].map((c) => h("th", { scope: "col" }, c)))),
+      h("tbody", null, rows.map((r) => h("tr", null, h("th", { scope: "row" }, String(r.i)), h("td", null, r.dist_m ? `${stFmt(r.dist_m / 1000, 2)} km` : "–"), h("td", null, cvClock(r.dur_s)),
+        h("td", null, r.dist_m && r.dur_s ? (run ? `${stPace(r.dur_s / (r.dist_m / 1000) / 60)} /km` : `${stFmt((r.dist_m / r.dur_s) * 3.6, 1)} km/h`) : "–"), h("td", null, r.hr ? String(r.hr) : "–")))))));
+}
+
+function summaryBlock(s) {
+  const pl = s.planned, dn = s.done, num = (v, unit) => (v == null ? "–" : `${stFmt(v, Number.isInteger(v) ? 0 : 1)}${unit}`);
+  const rows = [["Durée", pl ? num(pl.minutes, " min") : "–", num(dn.minutes, " min")], ["Distance", pl ? num(pl.distance_km, " km") : "–", num(dn.distance_km, " km")],
+    ["Allure moyenne", "–", dn.pace_s_km ? `${stPace(dn.pace_s_km / 60)} /km` : "–"], ["FC moyenne", "–", num(dn.avg_hr, " bpm")], ["FC max", "–", num(dn.max_hr, " bpm")], ["Dénivelé positif", "–", num(dn.elevation_m, " m")]]
+    .filter((r) => r[1] !== "–" || r[2] !== "–");
+  return h("div", { class: "stack" }, h("table", { class: "cv-sum" }, h("caption", null, s.manual ? "Fait (séance ajoutée hors plan : rien n'était prévu)" : "Prévu et fait"),
+    h("thead", null, h("tr", null, ["", "Prévu", "Fait"].map((c) => h("th", { scope: "col" }, c)))), h("tbody", null, rows.map((r) => h("tr", null, h("th", { scope: "row" }, r[0]), h("td", null, r[1]), h("td", null, r[2]))))),
+  s.gap_minutes == null ? null : h("p", { class: "muted" }, s.gap_minutes === 0 ? "Durée identique à la prévision." : __("Écart de durée : {sign}{m} min par rapport au prévu.", { sign: s.gap_minutes > 0 ? "+" : "−", m: Math.abs(s.gap_minutes) })));
+}
+
+function curvesBody(d) {
+  const charts = cvSeries(d).map((c) => {
+    const label = __("{title} au fil de la séance, de {lo} à {hi} {unit}", { title: __(c.title), lo: c.fmt(Math.min(...c.y.filter((v) => v != null))), hi: c.fmt(Math.max(...c.y.filter((v) => v != null))), unit: __(c.unit) });
+    return h("section", { class: "stack cv-chart", "aria-label": c.title }, h("h4", null, c.title, " ", h("span", { class: "muted" }, `(${__(c.unit)})`)),
+      curveChart({ t: d.t, y: c.y, label, fmt: c.fmt, bands: c.bands, invert: c.invert, area: c.area }), curveTable(c.title, ["Temps", `${c.title} (${__(c.unit)})`], d.t, c.y, c.fmt));
+  });
+  return [summaryBlock(d.summary), ...charts, d.hr ? h("section", { class: "stack", "aria-label": "Zones de fréquence cardiaque" }, h("h4", null, "Zones de fréquence cardiaque"), zonesBlock(d.zones)) : null, ...splitsBlock(d),
+    h("p", { class: "st-note" }, "Courbes simplifiées (une moyenne tous les quelques instants, 400 points au plus) : aucune position GPS n'est conservée ni affichée. Une mesure absente reste vide, une pause reste un trou. Repères indicatifs, jamais un avis médical.")];
+}
+
+// Carte « Courbes de la séance » de la fiche d'une séance reliée à une activité de la montre ou à un fichier importé.
+function curvesSessionCard(s) {
+  const head = () => h("h3", null, "Courbes de la séance");
+  const box = h("div", { class: "card stack", "aria-live": "polite" }, head(), h("p", { class: "muted" }, "Chargement…"));
+  const show = (d) => {
+    if (d.available) { box.replaceChildren(head(), ...curvesBody(d)); return; }
+    const kids = [head()];
+    if (d.summary) kids.push(summaryBlock(d.summary));
+    if (d.reason === "no_streams") {
+      kids.push(h("p", { class: "muted" }, d.can_fetch ? "Cette activité n'a pas encore de courbes : elles se téléchargent à la demande depuis Garmin (fréquence cardiaque, allure, altitude…), sans position GPS."
+        : "Pas de courbes pour cette activité : le fichier importé ne contient pas de mesures au fil du temps, ou l'activité vient d'une source qui n'en fournit pas."));
+      if (d.can_fetch) {
+        const err = h("p", { class: "error", role: "alert" });
+        const btn = h("button", { class: "btn sm", style: "align-self:flex-start", onclick: async () => {
+          btn.disabled = true; err.textContent = "";
+          try { show(await api(`/users/${userId}/plan/sessions/${s.id}/curves/fetch`, { method: "POST" })); } catch (e) { btn.disabled = false; if (!e.handled) err.textContent = __(e.message); }
+        } }, "Afficher les courbes");
+        kids.push(btn, err);
+      }
+    }
+    box.replaceChildren(...kids);
+  };
+  api(`/users/${userId}/plan/sessions/${s.id}/curves`).then(show).catch((e) => { if (!e.handled) box.replaceChildren(head(), h("p", { class: "muted" }, e.message || "Indisponible.")); });
+  return box;
+}
+
 // ---------- écran ----------
 
 // Sections de l'écran : [id, libellé, rendu, préférence]. Chaque lot en ajoute une ; une section à préférence disparaît quand l'utilisateur la désactive.

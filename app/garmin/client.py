@@ -192,6 +192,21 @@ class GarminGateway:
             raise GarminAuthError(str(e)) from e
         return rows, client.client.dumps()
 
+    def download_activity_tcx(self, tokens: str, garmin_id: str) -> tuple[bytes, str]:
+        """Fichier TCX d'une activité (détail à la demande) : l'appelant en extrait les courbes et n'en garde ni les positions ni le fichier."""
+        g = self._lib()
+        client = g.Garmin()
+        try:
+            client.login(tokenstore=tokens)
+            raw = client.download_activity(garmin_id, dl_fmt=g.Garmin.ActivityDownloadFormat.TCX)
+        except g.GarminConnectAuthenticationError as e:
+            raise GarminAuthError(str(e)) from e
+        except g.GarminConnectTooManyRequestsError as e:
+            raise GarminRateLimited(str(e)) from e
+        except g.GarminConnectConnectionError as e:
+            raise GarminUnavailable(str(e)) from e
+        return bytes(raw), client.client.dumps()
+
     def fetch_activities(self, tokens: str, start: date, end: date) -> tuple[list[dict[str, Any]], str]:
         """Retourne (activités normalisées, jeton éventuellement rafraîchi)."""
         g = self._lib()
