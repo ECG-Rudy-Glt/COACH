@@ -1,7 +1,7 @@
 """Import d'activités depuis des fichiers FIT, TCX et GPX (toutes marques) : les lignes rejoignent celles de la montre Garmin.
 
 Envoi en JSON/base64 (comme la photo d'un repas, sans dépendance multipart). Les traces GPS ne quittent jamais le serveur et ne sont pas
-conservées : seuls les totaux de la séance sont gardés.
+conservées : seuls les totaux de la séance et des courbes simplifiées (FC, vitesse, altitude, cadence, puissance, sans latitude ni longitude) sont gardés.
 """
 import base64
 import binascii
@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.activity_import.parse import MAX_FILE_BYTES, ImportRejected, is_duplicate, parse_activity, too_old
+from app.activity_import.streams import parse_streams
 from app.garmin.api import HISTORY_DAYS, SYNC_DAYS, _derive_facts
 from app.garmin.match import auto_link
 from app.repo import Repo
@@ -77,6 +78,9 @@ def import_files(repo: Repo, user_id: int, files: list[FileIn], tz: tzinfo = UTC
             res["message"] = "Déjà présente (même fichier ou même séance)."
             continue
         repo.upsert_activities(user_id, [row])
+        streams = parse_streams(raw)  # courbes simplifiées sans position GPS (ST25) ; l'absence de courbe n'empêche jamais l'import
+        if streams:
+            repo.save_streams(user_id, row["garmin_id"], streams)
         existing.append({**row, "user_id": user_id})
         res["status"] = "imported"
     imported = sum(r["status"] == "imported" for r in results)

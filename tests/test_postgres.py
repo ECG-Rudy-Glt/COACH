@@ -78,6 +78,15 @@ def test_garmin_storage_roundtrip():
     assert repo.upsert_activities(uid, [row]) == 1
     assert repo.upsert_activities(uid, [{**row, "distance_m": 9100.0}]) == 0  # mise à jour, pas de doublon
     assert repo.list_activities(uid, date(2026, 9, 1), 10)[0]["distance_m"] == 9100.0
+    streams = {"n": 3, "duration_s": 2, "t": [0, 1, 2], "dist": [0.0, 3.5, 7.0], "hr": [140, None, 142], "speed": None, "alt": [10.5, 10.5, 11.0], "cad": None, "power": None,
+               "splits": {"km": [{"i": 1, "t0": 0, "dur_s": 300, "dist_m": 1000, "hr": 150}], "laps": []}}
+    assert repo.save_streams(uid, "1", streams) is True and repo.save_streams(uid, "inconnue", streams) is False  # courbes seulement pour une activité existante
+    assert repo.save_streams(uid, "1", {**streams, "hr": [150, 151, 152]}) is True  # remplacement
+    got = repo.get_streams(uid, "1")
+    assert got["t"] == [0, 1, 2] and got["hr"] == [150, 151, 152] and got["speed"] is None and got["alt"] == [10.5, 10.5, 11.0] and got["splits"]["km"][0]["dur_s"] == 300
+    repo.prune_activities(uid, date(2026, 12, 1))  # supprimées avec l'activité (cascade)
+    assert repo.get_streams(uid, "1") is None
+    assert repo.upsert_activities(uid, [row]) == 1
     repo.touch_garmin(uid, None, "expiré")
     assert repo.get_garmin(uid)["last_error"] == "expiré"
     repo.delete_garmin(uid, True)

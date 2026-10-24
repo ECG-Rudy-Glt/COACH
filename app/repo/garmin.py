@@ -1,6 +1,10 @@
 """Montre : compte, activités : version mémoire et version Postgres du domaine (mêlées dans MemoryRepo / PostgresRepo par héritage)."""
+import json
 from datetime import UTC, date, datetime
 from typing import Any
+
+STREAM_FIELDS = ("n", "duration_s", "t", "dist", "hr", "speed", "alt", "cad", "power", "splits")
+ARRAY_TYPES = {"t": "int[]", "dist": "real[]", "hr": "smallint[]", "speed": "real[]", "alt": "real[]", "cad": "smallint[]", "power": "smallint[]"}
 
 
 class GarminMemory:
@@ -30,6 +34,7 @@ class GarminMemory:
         if purge:
             for k in [k for k, a in self._g()[1].items() if k[0] == user_id and a["source"] == "garmin"]:  # les fichiers importés restent
                 del self._g()[1][k]
+                self._streams().pop(k, None)  # les courbes suivent l'activité (cascade côté Postgres)
             for k in [k for k in self._metrics() if k[0] == user_id]:
                 del self._metrics()[k]
 
@@ -44,6 +49,22 @@ class GarminMemory:
     def list_activities(self, user_id: int, since: date, limit: int) -> list[dict[str, Any]]:
         rows = [a for (u, _), a in self._g()[1].items() if u == user_id and a["day"] >= since]
         return sorted(rows, key=lambda a: a["started_at"], reverse=True)[:limit]
+
+
+    def _streams(self) -> dict[tuple[int, str], dict[str, Any]]:
+        if not hasattr(self, "_st"):
+            self._st: dict[tuple[int, str], dict[str, Any]] = {}
+        return self._st
+
+    def save_streams(self, user_id: int, garmin_id: str, streams: dict[str, Any]) -> bool:
+        if (user_id, garmin_id) not in self._g()[1]:
+            return False  # des courbes sans activité n'existent pas (clé étrangère côté Postgres)
+        self._streams()[(user_id, garmin_id)] = {k: streams[k] for k in STREAM_FIELDS}
+        return True
+
+    def get_streams(self, user_id: int, garmin_id: str) -> dict[str, Any] | None:
+        s = self._streams().get((user_id, garmin_id))
+        return {**s} if s else None
 
 
 class GarminPostgres:
@@ -92,3 +113,20 @@ class GarminPostgres:
         with self._conn() as c:
             return c.execute("SELECT * FROM garmin_activities WHERE user_id = %s AND day >= %s ORDER BY started_at DESC LIMIT %s",
                              (user_id, since, limit)).fetchall()
+
+    def save_streams(self, user_id: int, garmin_id: str, streams: dict[str, Any]) -> bool:
+        cols = ", ".join(ARRAY_TYPES)
+        marks = ", ".join(f"%({k})s::{ty}" for k, ty in ARRAY_TYPES.items())
+        sets = ", ".join(f"{k} = EXCLUDED.{k}" for k in ("n", "duration_s", "splits", *ARRAY_TYPES))
+        with self._conn() as c:
+            if not c.execute("SELECT 1 FROM garmin_activities WHERE user_id = %s AND garmin_id = %s", (user_id, garmin_id)).fetchone():
+                return False
+            c.execute(f"INSERT INTO activity_streams (user_id, garmin_id, n, duration_s, {cols}, splits) VALUES (%(u)s, %(g)s, %(n)s, %(duration_s)s, {marks}, %(splits)s::jsonb) "
+                      f"ON CONFLICT (user_id, garmin_id) DO UPDATE SET {sets}",
+                      {**{k: streams[k] for k in STREAM_FIELDS if k != "splits"}, "splits": json.dumps(streams["splits"]), "u": user_id, "g": garmin_id})
+        return True
+
+    def get_streams(self, user_id: int, garmin_id: str) -> dict[str, Any] | None:
+        with self._conn() as c:
+            row = c.execute("SELECT n, duration_s, t, dist, hr, speed, alt, cad, power, splits FROM activity_streams WHERE user_id = %s AND garmin_id = %s", (user_id, garmin_id)).fetchone()
+        return dict(row) if row else None

@@ -48,3 +48,16 @@
 .st-legend i.mu-key.mu-main { border-color: var(--accent); }
 .st-legend i.mu-key.mu-2nd { border-color: var(--accent); }
 .mu-fig .st-text { stroke: none; fill: var(--muted); font: 10px var(--body); }
+/* Courbes d'une séance : bandes de zones de FC par opacité de --accent (le texte Z1 à Z5 et le tableau portent l'information) */
+.cv-band { stroke: none; fill: var(--accent); }
+.cv-band.cv-z0 { fill-opacity: .03; } .cv-band.cv-z1 { fill-opacity: .09; } .cv-band.cv-z2 { fill-opacity: .16; } .cv-band.cv-z3 { fill-opacity: .24; } .cv-band.cv-z4 { fill-opacity: .34; }
+.st-chart .cv-zl { fill: var(--muted); font-size: 8px; }
+.st-chart .cv-area { fill: var(--accent); fill-opacity: .16; stroke: none; }
+.cv-chart h4 { margin: 0; }
+.cv-zbar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.cv-zbar i { display: block; background: var(--accent); min-width: 0; }
+.cv-zbar i.cv-z0 { opacity: .12; } .cv-zbar i.cv-z1 { opacity: .3; } .cv-zbar i.cv-z2 { opacity: .5; } .cv-zbar i.cv-z3 { opacity: .75; } .cv-zbar i.cv-z4 { opacity: 1; }
+.cv-sum { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.cv-sum caption { text-align: left; color: var(--muted); padding-bottom: 4px; }
+.cv-sum th, .cv-sum td { text-align: left; padding: 5px 6px 5px 0; border-top: .5px solid var(--line); font-variant-numeric: tabular-nums; }
+.cv-sum thead th { font-weight: 600; color: var(--muted); border-top: 0; }

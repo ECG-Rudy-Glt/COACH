@@ -18,6 +18,7 @@ from app.coach import notify as coach_notify
 from app.coach.api import build_router as build_coach_router
 from app.coach.llm import describe, is_configured, make_llm
 from app.config import VERSION, load_settings
+from app.curves.api import build_router as build_curves_router
 from app.exercises.api import build_router as build_exercises_router
 from app.garmin import scheduler as garmin_scheduler
 from app.garmin.api import build_router as build_garmin_router
@@ -198,6 +199,7 @@ app.include_router(build_plan_router(get_repo, require_user))
 app.include_router(build_nutrition_router(get_repo, require_user))
 app.include_router(build_stats_router(get_repo, require_user))
 app.include_router(build_muscles_router(get_repo, require_user))
+app.include_router(build_curves_router(get_repo, require_user))
 app.include_router(build_weather_router(get_repo, require_user))
 app.state.garmin = default_gateway()
 app.include_router(build_garmin_router(get_repo, require_user))
