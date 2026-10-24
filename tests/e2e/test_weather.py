@@ -25,6 +25,9 @@ def test_weather_setting_badge_and_detail(page: Page, base_url: str):
     badge = page.locator(".wx").first
     expect(badge).to_contain_text("Météo déconseillée")
     badge.click()
+    expect(page.get_by_text("Rafales prévues jusqu'à 70 km/h")).not_to_be_visible()  # explication repliée par défaut
+    page.get_by_text("Pourquoi cette météo").click()
+    page.get_by_text("À savoir", exact=True).click()
     expect(page.get_by_text("Rafales prévues jusqu'à 70 km/h")).to_be_visible()
     expect(page.get_by_text("(W2)")).to_be_visible()
     expect(page.get_by_text("jamais un avis médical")).to_be_visible()
