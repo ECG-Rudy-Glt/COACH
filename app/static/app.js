@@ -1299,8 +1299,8 @@ async function planScreen(restore = false) {
     h("strong", null, labelOf(viewWeek)),
     h("button", { class: "iconbtn", "aria-label": "Semaine suivante", disabled: viewWeek >= lastW, onclick: () => goWeek(shiftDay(viewWeek, 7)) }, icon("next")));
   const present = viewWeek >= thisMonday0;
-  const addBtn = viewWeek <= thisMonday0 && shiftDay(viewWeek, 6) >= shiftDay(data.today, -56)
-    ? h("button", { class: "btn", onclick: () => addSessionSheet(data.today, viewWeek === thisMonday0 ? data.today : shiftDay(viewWeek, 6)) }, icon("plus"), "Ajouter une séance faite") : null;
+  const addBtn = shiftDay(viewWeek, 6) >= shiftDay(data.today, -56)  // aussi quand la semaine suivante est affichée (le week-end) : la séance se date au plus tard aujourd'hui
+    ? h("button", { class: "btn", onclick: () => addSessionSheet(data.today, viewWeek >= thisMonday0 ? data.today : shiftDay(viewWeek, 6)) }, icon("plus"), "Ajouter une séance faite") : null;
   const SPORT_LBL = { run: "Course", bike: "Vélo", strength: "Musculation", swim: "Natation", walk: "Marche", other: "Autre" };
   const reload = () => { planScreen(true); };
   const linkSheet = (a) => {
@@ -2271,7 +2271,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v31";
+const UI_BUILD = "sc-v32";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";
