@@ -61,7 +61,7 @@ def test_rules_digest_matches_rules_document():
     import re
 
     doc = (service.ROOT / "docs" / "rules.md").read_text(encoding="utf-8")
-    assert set(re.findall(r"^\| ((?:ST|[SGCMIRN])\d+) \|", doc, re.M)) == set(yaml.safe_load((service.ROOT / "data" / "rules_digest.yaml").read_text()))
+    assert set(re.findall(r"^\| ((?:ST|[SGCMIRNW])\d+) \|", doc, re.M)) == set(yaml.safe_load((service.ROOT / "data" / "rules_digest.yaml").read_text()))
 
 
 def test_review_stores_memory_and_prompt_has_no_identity(ctx):

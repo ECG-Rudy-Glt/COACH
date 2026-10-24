@@ -706,6 +706,7 @@ async function profile() {
       goalsCard(goalsData), link("Mes performances", benchmarks)]),
     fold("profile-prefs", "Préférences", "Statistiques, Garmin, import, bibliothèque", null, [
       typeof statsPrefCard === "function" ? statsPrefCard() : null,
+      weatherPrefCard(),
       link("Garmin : importer mes activités", garminScreen), link("Importer des fichiers FIT, TCX, GPX", importScreen), link("Bibliothèque d'exercices", () => library()), link("Sources scientifiques", () => evidenceScreen())]),
     fold("profile-account", "Compte et sécurité", "Mot de passe et déconnexion", null, [
       link("Changer mon mot de passe", passwordScreen),
@@ -717,6 +718,46 @@ async function profile() {
       h("button", { class: "btn sm", onclick: questionnaireScreen }, "Ouvrir")),
     tabbar("user"),
   );
+}
+
+// Réglage de la météo des séances (facultative, désactivée tant qu'aucune ville n'est choisie). Seule la ville arrondie à 0,1° est conservée et envoyée.
+function weatherPrefCard() {
+  const body = h("div", { class: "stack" }, h("p", { class: "muted" }, "Chargement…"));
+  const put = (path, method, payload) => api(`/users/${userId}/weather/${path}`, { method, body: payload });
+  const draw = (st) => {
+    if (!st.server_enabled) return body.replaceChildren(h("p", { class: "muted" }, "La météo est désactivée sur ce serveur."));
+    const status = h("p", { class: "muted", role: "status", "aria-live": "polite" });
+    const q = h("input", { id: "wx-city", type: "search", autocomplete: "off", maxlength: 80, placeholder: "Ex. : Lyon" });
+    const results = h("div", { class: "stack" });
+    const search = async () => {
+      status.textContent = "";
+      try {
+        const r = await api(`/users/${userId}/weather/geocode?q=${encodeURIComponent(q.value.trim())}`);
+        results.replaceChildren(...(r.results.length ? r.results.map((c) => h("button", { class: "opt", onclick: async () => {
+          try { draw(await put("place", "PUT", { name: c.name, lat: c.lat, lon: c.lon })); toast("Météo activée"); } catch (e) { status.textContent = __(e.message); }
+        } }, h("strong", null, c.name), h("span", { class: "muted" }, [c.admin, c.country].filter(Boolean).join(", "))))
+          : [h("p", { class: "muted" }, "Aucune ville trouvée.")]));
+      } catch (e) { status.textContent = __(e.message); }
+    };
+    q.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); search(); } });
+    const box = h("input", { type: "checkbox", id: "wx-on", checked: st.enabled, disabled: !st.place });
+    box.addEventListener("change", async () => {
+      try { draw(await put("settings", "PUT", { enabled: box.checked })); } catch (e) { box.checked = !box.checked; status.textContent = __(e.message); }
+    });
+    const hour = h("select", { id: "wx-hour" }, Array.from({ length: 24 }, (_, i) => h("option", { value: i, selected: i === st.hour }, `${i} h`)));
+    hour.addEventListener("change", async () => { try { draw(await put("settings", "PUT", { hour: Number(hour.value) })); toast("Heure enregistrée"); } catch (e) { status.textContent = __(e.message); } });
+    body.replaceChildren(
+      h("label", { class: "row", for: "wx-on" }, box, h("span", { class: "grow" }, "Prévoir mes sorties selon la météo")),
+      st.place ? h("p", null, __("Ville : {name} (position arrondie à 0,1°, environ 11 km)", { name: st.place.name })) : h("p", { class: "muted" }, "Choisissez votre ville pour activer la météo."),
+      h("div", { class: "field" }, h("label", { for: "wx-city" }, st.place ? "Changer de ville" : "Ville"), q),
+      h("button", { class: "btn sm", style: "align-self:flex-start", onclick: search }, "Chercher"), results,
+      h("div", { class: "field" }, h("label", { for: "wx-hour" }, "Heure habituelle de mes sorties"), hour),
+      st.place ? h("button", { class: "link", style: "align-self:flex-start", onclick: async () => { try { draw(await put("place", "DELETE")); toast("Ville effacée, météo désactivée"); } catch (e) { status.textContent = __(e.message); } } }, "Effacer ma ville et désactiver") : null,
+      status,
+      h("p", { class: "muted" }, "Open-Meteo reçoit uniquement la ville tapée (recherche) puis la position arrondie à 0,1° (prévision), sans nom, compte ni cookie. Les séances ne sont jamais modifiées sans votre accord."));
+  };
+  api(`/users/${userId}/weather/settings`).then(draw).catch(() => body.replaceChildren(h("p", { class: "muted" }, "Réglage indisponible pour l'instant.")));
+  return h("div", { class: "card stack" }, h("h3", null, "Météo des sorties"), body);
 }
 
 // Les domaines de questions et les réponses déjà données (édition d'une réponse, reprise du questionnaire).
@@ -1197,6 +1238,20 @@ function planCard() {
 }
 
 const planView = { week: null, matchedAt: 0 };
+const weatherBySession = new Map();  // séance -> prévision (règles W1 à W8) ; vide si la météo est désactivée ou injoignable
+
+const WX_LABEL = { ok: "Météo favorable", watch: "Météo à surveiller", avoid: "Météo déconseillée" };
+const WX_MARK = { ok: "✓", watch: "!", avoid: "×" };
+const wxBadge = (w) => w ? h("span", { class: `wx wx-${w.status}`, title: w.reasons.map((r) => `${r.rule} : ${r.text}`).join(" ") || undefined },
+  h("span", { "aria-hidden": "true" }, WX_MARK[w.status]), " ", __(WX_LABEL[w.status])) : null;
+
+async function loadWeather() {
+  weatherBySession.clear();
+  try {
+    const o = await api(`/users/${userId}/weather/outlook`);
+    for (const i of o.items || []) weatherBySession.set(i.session_id, i);
+  } catch { /* la météo est facultative : le plan s'affiche sans elle */ }
+}
 const mondayOf = (iso) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoDay(d); };
 
 async function planScreen(restore = false) {
@@ -1205,7 +1260,7 @@ async function planScreen(restore = false) {
     planView.matchedAt = Date.now();
     try { await api(`/users/${userId}/plan/match`, { method: "POST" }); } catch { /* le plan s'affiche quand même */ }
   }
-  try { [data, coach] = await Promise.all([api(`/users/${userId}/plan?weeks=2`), api(`/users/${userId}/coach`)]); } catch (e) { return fail(e); }
+  try { [data, coach] = await Promise.all([api(`/users/${userId}/plan?weeks=2`), api(`/users/${userId}/coach`), loadWeather()]); } catch (e) { return fail(e); }
   const gen = async (btn) => {
     btn.disabled = true;
     try {
@@ -1244,8 +1299,8 @@ async function planScreen(restore = false) {
     h("strong", null, labelOf(viewWeek)),
     h("button", { class: "iconbtn", "aria-label": "Semaine suivante", disabled: viewWeek >= lastW, onclick: () => goWeek(shiftDay(viewWeek, 7)) }, icon("next")));
   const present = viewWeek >= thisMonday0;
-  const addBtn = viewWeek <= thisMonday0 && shiftDay(viewWeek, 6) >= shiftDay(data.today, -56)
-    ? h("button", { class: "btn", onclick: () => addSessionSheet(data.today, viewWeek === thisMonday0 ? data.today : shiftDay(viewWeek, 6)) }, icon("plus"), "Ajouter une séance faite") : null;
+  const addBtn = shiftDay(viewWeek, 6) >= shiftDay(data.today, -56)  // aussi quand la semaine suivante est affichée (le week-end) : la séance se date au plus tard aujourd'hui
+    ? h("button", { class: "btn", onclick: () => addSessionSheet(data.today, viewWeek >= thisMonday0 ? data.today : shiftDay(viewWeek, 6)) }, icon("plus"), "Ajouter une séance faite") : null;
   const SPORT_LBL = { run: "Course", bike: "Vélo", strength: "Musculation", swim: "Natation", walk: "Marche", other: "Autre" };
   const reload = () => { planScreen(true); };
   const linkSheet = (a) => {
@@ -1288,6 +1343,7 @@ async function planScreen(restore = false) {
         ...list.map((s) => {
           const card = h("button", { class: `bcard ${s.status} ${isRun(s.kind) ? "k-run" : "k-str"}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
             h("span", { class: "bt" }, s.title), h("span", { class: "bm" }, __("{duration_min} min{v}", { duration_min: s.duration_min, v: s.details.manual ? __(" · ajoutée") : s.details.moved_from ? __(" · déplacée") : "" })),
+            wxBadge(weatherBySession.get(s.id)),
             s.status === "done" ? h("span", { class: "bdone" }, icon("check")) : null);
           if (s.status !== "skipped") attachLongPress(card, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); }, wrap);
           return card;
@@ -1311,7 +1367,7 @@ async function planScreen(restore = false) {
       const sub = [__("{duration_min} min", { duration_min: s.duration_min }), s.details.zone, s.details.format, s.details.manual ? "ajoutée" : s.details.moved_from ? "déplacée" : null].filter(Boolean).join(" · ");
       const row = h("button", { class: `sess ${s.status}`, onclick: () => { scrollMemo.plan = window.scrollY; sessionScreen(s, data.today); } },
         h("span", { class: "dot" }, s.status === "done" ? icon("check") : isRun(s.kind) ? "C" : s.kind.startsWith("sport_") ? "S" : "M"),
-        h("span", { class: "grow" }, h("strong", null, s.title), h("span", { class: "sub" }, sub)),
+        h("span", { class: "grow" }, h("strong", null, s.title), h("span", { class: "sub" }, sub), wxBadge(weatherBySession.get(s.id))),
         icon("next"));
       if (s.status !== "skipped") attachLongPress(row, weekDays(s), async (d) => { if (d !== s.day && await moveSession(s, d)) reload(); });
       return row;
@@ -1540,6 +1596,23 @@ function sessionScreen(s, today) {
         h("span", null, I18N.weekday((new Date(d + "T12:00:00").getDay() + 6) % 7, "narrow")), h("strong", null, String(Number(d.slice(8))))))),
       h("div", { class: "field" }, h("label", null, "Autre date"), dateInput));
   };
+
+  const wxCard = (() => {
+    const w = weatherBySession.get(s.id);
+    if (!w || s.status !== "planned") return null;
+    const f = w.forecast, sug = w.suggestion;
+    const facts = [f.temp_c != null ? __("{temp} °C", { temp: f.temp_c }) : null, f.feels_c != null && f.feels_c !== f.temp_c ? __("ressenti {feels} °C", { feels: f.feels_c }) : null,
+      f.gust_kmh != null ? __("rafales {gust} km/h", { gust: f.gust_kmh }) : null, __("pluie {prob} %, {mm} mm", { prob: f.rain_prob, mm: f.rain_mm })].filter(Boolean).join(" · ");
+    return h("section", { class: `card stack wxcard wx-${w.status}`, "aria-labelledby": "wx-h" },
+      h("h3", { id: "wx-h" }, wxBadge(w)),
+      h("p", null, __("Prévision à {hour} h : {facts}", { hour: f.hour, facts })),
+      w.reasons.length ? h("ul", { class: "plain" }, w.reasons.map((r) => h("li", null, r.text, " ", h("span", { class: "muted" }, `(${r.rule})`)))) : h("p", { class: "muted" }, "Aucune règle météo déclenchée."),
+      w.reasons.length ? h("p", { class: "muted" }, w.reasons[0].adapt) : null,
+      sug ? h("button", { class: "btn", onclick: async () => { if (await moveSession(s, sug.day)) { await persist(false); planScreen(true); } } },
+        __("Déplacer à {weekday}", { weekday: I18N.weekday((new Date(sug.day + "T12:00:00").getDay() + 6) % 7) })) : null,
+      w.status !== "ok" && !sug ? h("p", { class: "muted" }, "Aucun autre jour de la semaine ne convient mieux : adaptez la séance ou gardez-la telle quelle.") : null,
+      h("p", { class: "muted" }, "Prévision indicative, jamais un avis médical : c'est vous qui décidez de déplacer ou d'adapter la séance. Le plan ne change jamais tout seul."));
+  })();
   const unlink = async () => {
     try { await api(`/users/${userId}/plan/sessions/${s.id}/link`, { method: "DELETE" }); toast("Activité dissociée"); planScreen(true); } catch (e) { toast(e.message); }
   };
@@ -1553,6 +1626,7 @@ function sessionScreen(s, today) {
     s.status === "skipped" ? null : h("div", { class: "card row" }, h("div", { class: "grow stack", style: "gap:2px" }, h("strong", null, "Jour de la séance"),
       h("span", { class: "muted" }, longDay(s.day) + (s.details.moved_from ? __(" · prévue le {longDay}", { longDay: longDay(s.details.moved_from) }) : ""))),
       h("button", { class: "btn sm", onclick: moveDialog }, "Changer de jour")),
+    wxCard,
     logged.garmin_id ? h("div", { class: "card stack" }, h("h3", null, "Mesuré par la montre"),
       h("div", { class: "chips" }, [logged.minutes ? __("{minutes} min", { minutes: logged.minutes }) : null, logged.distance_km ? `${logged.distance_km} km` : null, logged.avg_hr ? __("FC moy {avg_hr}", { avg_hr: logged.avg_hr }) : null,
         logged.max_hr ? __("FC max {max_hr}", { max_hr: logged.max_hr }) : null, logged.calories ? __("{calories} kcal", { calories: logged.calories }) : null, logged.training_load ? __("charge {training_load}", { training_load: logged.training_load }) : null]
@@ -2197,7 +2271,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v30";
+const UI_BUILD = "sc-v32";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

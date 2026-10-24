@@ -137,7 +137,7 @@ def build_context(repo: Repo, user_id: int, today: date, evidence_digest: dict[s
              if c in ("douleur", "trop dur", "plus léger", "séries en moins")]
     memory = [{"date": m["created_at"].date().isoformat(), "resume": m["body"][:500], "questions": (m["data"] or {}).get("questions", [])}
               for m in repo.list_memory(user_id, "weekly_review", 3)]
-    return {
+    ctx = {
         "aujourdhui": today.isoformat(), "jour": DAYS[today.weekday()], "profil": profile, "performances": perf, "precisions_declarees": precisions, "objectifs": goals,
         "seances_passees": [{"id": s["id"], "jour": s["day"].isoformat(), "type": s["kind"], "prevu_min": s["duration_min"],
                              "statut": s["status"], "fait": {k: (s["logged"] or {}).get(k) for k in DONE_KEYS}}
@@ -159,6 +159,12 @@ def build_context(repo: Repo, user_id: int, today: date, evidence_digest: dict[s
         "regles": rules(),
         "sources": evidence_digest if evidence_digest is not None else dict(_EVIDENCE),
     }
+    from app.weather.service import coach_summary  # import local : la météo lit le plan, pas l'inverse
+
+    meteo = coach_summary(repo, user_id, today)  # seulement si l'utilisateur l'a activée (règles W1 à W8)
+    if meteo is not None:
+        ctx["meteo_semaine"] = meteo
+    return ctx
 
 
 def garmin_history(repo: Repo, user_id: int, today: date) -> dict[str, Any]:

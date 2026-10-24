@@ -33,6 +33,7 @@ from app.questionnaire.engine import next_questions, progress
 from app.questionnaire.models import Fact, Question, current_facts
 from app.repo import MemoryRepo, PostgresRepo, Repo
 from app.stats.api import build_router as build_stats_router
+from app.weather.api import build_router as build_weather_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 ROOT = Path(__file__).resolve().parent.parent
@@ -195,6 +196,7 @@ app.include_router(build_goals_router(get_repo, require_user))
 app.include_router(build_plan_router(get_repo, require_user))
 app.include_router(build_nutrition_router(get_repo, require_user))
 app.include_router(build_stats_router(get_repo, require_user))
+app.include_router(build_weather_router(get_repo, require_user))
 app.state.garmin = default_gateway()
 app.include_router(build_garmin_router(get_repo, require_user))
 app.include_router(build_import_router(get_repo, require_user))

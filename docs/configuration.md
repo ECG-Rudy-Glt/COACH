@@ -37,7 +37,25 @@ scripts/init-secrets.sh --vapid    # also generate Web Push (VAPID) keys
 | `LOG_LEVEL` | `info` | |
 | `OFF_ENABLED` | `1` | `0` disables the barcode lookup (Open Food Facts). Only the barcode is sent, with a `COACH-selfhosted` user agent and a 6 s timeout; nothing else leaves your server |
 | `OFF_BASE_URL` | `https://world.openfoodfacts.org` | alternative Open Food Facts address (mirror) |
+| `WEATHER_ENABLED` | `1` | `0` disables the weather feature for the whole server (no call to Open-Meteo, whatever users choose). Even when `1`, it stays off for a user until they enter a city in Profile > Preferences |
+| `WEATHER_BASE_URL`, `WEATHER_GEOCODE_URL` | `https://api.open-meteo.com`, `https://geocoding-api.open-meteo.com` | alternative Open-Meteo addresses (self-hosted instance, mirror) |
 | `APP_BIND`, `APP_PORT` | `127.0.0.1`, `8000` | host port mapping (compose) |
+
+### Weather of outdoor sessions (optional, rules W1 to W8)
+
+Outdoor sessions (runs, cycling, walking) of the next 7 days get a weather status (good / to watch / not advised) from the free [Open-Meteo](https://open-meteo.com) forecast, with the rule cited and, when useful, a better day of the same week that keeps the spacing rules. It only **suggests**: the plan never changes without the user pressing *Move to <day>* (the existing move). Not a medical advice. Open-Meteo's free API is for non-commercial use.
+
+What leaves your server, and nothing else:
+
+| Call | Sent to Open-Meteo | Never sent |
+|---|---|---|
+| City search (Profile > Preferences > *Outing weather*) | the city name typed by the user | account, name, e-mail, session data |
+| Forecast | latitude and longitude **rounded to 0.1°** (about 11 km) by the server before the call, hourly variables requested | precise GPS position, identifiers, cookies; the user agent is `COACH-selfhosted/<version>` |
+
+- Off by default: a user must pick a city (the stored position is the rounded one). They can switch it off or delete the city at any time; `WEATHER_ENABLED=0` forbids it server-wide.
+- The forecast is cached on the server for 2 h per rounded position; a failure is cached 10 minutes and silent (the plan stays usable, no weather opinion is shown).
+- The AI coach receives a short weather summary of the week only if the user enabled the feature.
+- Thresholds, sources and known gaps: [rules W1 to W8](rules.md).
 
 ### AI coach — providers and models
 
