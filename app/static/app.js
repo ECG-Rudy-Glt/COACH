@@ -2297,7 +2297,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v33";
+const UI_BUILD = "sc-v34";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";
