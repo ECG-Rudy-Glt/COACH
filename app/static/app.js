@@ -1455,7 +1455,7 @@ async function planScreen(restore = false) {
   const nextCard = finished && !upcomingWeek.length
     ? h("div", { class: "card stack" }, h("h3", null, "Semaine terminée"),
       h("p", { class: "muted" }, "Le plan avance une semaine à la fois : le coach lit d'abord vos retours, puis ajuste la semaine suivante."), nextBtn) : null;
-  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [missedCard, replanRow, absenceRow, logCard, cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), (data.advice || []).length ? foldCard("plan-advice", "Conseils", (data.advice || []).length > 1 ? __("{n} conseils sur votre plan", { n: data.advice.length }) : "Un conseil sur votre plan", null, data.advice.map((a) => h("p", { class: "muted" }, a))) : null, coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
+  show(h("div", { class: "head" }, h("span", { class: "eyebrow" }, "Plan"), themeToggle()), h("h1", null, "Mon plan"), weekNav, modeSwitch, emptyWeek, ...(present ? [viewWeek === thisMonday0 && data.readiness ? readinessCard(data.readiness, reload) : null, missedCard, replanRow, absenceRow, logCard, cycleCard(data.cycle), outlookCard(data.outlook), trajectoryCard(data.trajectory), (data.advice || []).length ? foldCard("plan-advice", "Conseils", (data.advice || []).length > 1 ? __("{n} conseils sur votre plan", { n: data.advice.length }) : "Un conseil sur votre plan", null, data.advice.map((a) => h("p", { class: "muted" }, a))) : null, coachCard(coach), nextCard] : []), ...(planMode === "board" ? [buildBoard()] : nodes), addBtn, actsCard,
     h("p", { class: "muted" }, "La semaine en cours n'est jamais modifiée sans votre accord."), upcomingWeek.length ? regen : null, tabbar("plan"));
   if (restore && scrollMemo.plan != null) window.scrollTo(0, scrollMemo.plan);
 }
@@ -1494,6 +1494,39 @@ async function replanSheet(reload) {
     out.volume && out.volume.lost_pct > 0 ? h("p", { class: "muted" }, __("Volume de course : environ {num} % de moins que prévu cette semaine.", { num: out.volume.lost_pct })) : null,
     why,
     h("div", { class: "row", style: "gap:8px" }, accept, h("button", { class: "btn", onclick: close }, "Annuler")));
+}
+
+// ---------- bilan de forme du jour (R1, R2, R4, R6) : trois réponses, une proposition d'allègement que l'utilisateur confirme ----------
+function readinessCard(r, reload) {
+  const picks = { energy: 3, sleep: 3, soreness: 2 };
+  const scale = (key, label, lo, hi) => h("div", { class: "stack", style: "gap:4px" }, h("strong", null, label),
+    h("div", { class: "chips", role: "group", "aria-label": label }, [1, 2, 3, 4, 5].map((n) => {
+      const b = h("button", { class: "chip" + (picks[key] === n ? " on" : ""), "aria-pressed": String(picks[key] === n), onclick: () => { picks[key] = n; b.parentNode.querySelectorAll("button").forEach((x, i) => { x.classList.toggle("on", i + 1 === n); x.setAttribute("aria-pressed", String(i + 1 === n)); }); } }, String(n));
+      return b;
+    })), h("span", { class: "muted" }, lo + " → " + hi));
+  const pain = h("input", { type: "checkbox", id: "ck-pain" });
+  const result = (st) => {
+    const props = st.proposals.map((p) => {
+      const label = p.action === "swap_easy" ? __("Remplacer « {title} » par un footing facile", { title: p.title }) : __("Raccourcir « {title} » de {duration_from} à {duration_to} min", { title: p.title, duration_from: p.duration_from, duration_to: p.duration_to });
+      const box = h("div", { class: "form" }, h("p", null, label));
+      box.append(h("div", { class: "row" }, h("button", { class: "btn sm primary", onclick: async () => { try { await api(`/users/${userId}/plan/readiness/apply`, { method: "POST", body: { session_id: p.session_id } }); toast("Ajustement appliqué"); reload(); } catch (e) { toast(e.message); } } }, "Appliquer"),
+        h("button", { class: "btn sm", onclick: () => box.remove() }, "Garder la séance")));
+      return box;
+    });
+    return h("div", { class: "stack" }, h("p", null, st.state && st.state.degraded ? "Le bilan montre une journée plus difficile : vous pouvez alléger, jamais alourdir." : "Bilan enregistré : rien à changer aujourd'hui."),
+      ...props, st.week_alert ? h("p", { class: "muted" }, "Plusieurs jours difficiles cette semaine (R2) : parlez-en au coach ou replanifiez la fin de semaine.") : null,
+      st.pain_note ? h("p", { class: "muted" }, st.pain_note) : null);
+  };
+  if (r.state) return foldCard("plan-readiness", "Forme du jour", r.state.degraded ? "Journée plus difficile" : "Bilan du jour enregistré", null, [result(r)]);
+  const ok = h("button", { class: "btn primary" }, "Enregistrer le bilan");
+  const body = h("div", { class: "stack" }, scale("energy", "Énergie", "très basse", "excellente"), scale("sleep", "Sommeil ressenti", "très mauvais", "très bon"), scale("soreness", "Courbatures", "aucune", "très fortes"),
+    h("label", { class: "row", for: "ck-pain" }, pain, h("span", null, "Douleur localisée")), ok);
+  ok.addEventListener("click", async () => {
+    ok.disabled = true;
+    try { const st = await api(`/users/${userId}/plan/readiness`, { method: "POST", body: { ...picks, pain: pain.checked } }); body.replaceChildren(result(st)); }
+    catch (e) { toast(e.message); ok.disabled = false; }
+  });
+  return foldCard("plan-readiness", "Forme du jour", "Comment allez-vous ce matin ?", null, [body], true);
 }
 
 // ---------- période d'absence (G20) : voyage, maladie, blessure, matériel ----------
@@ -2543,7 +2576,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v42";
+const UI_BUILD = "sc-v43";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

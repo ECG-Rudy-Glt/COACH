@@ -66,6 +66,7 @@ R2: "Check-in dégradé 3 jours sur 7 : semaine allégée et question de clarifi
 R3: "Douleur localisée : règle S2."
 R4: "Le check-in peut seulement alléger un jour, jamais l'alourdir."
 R5: "FC de repos et charge Garmin : signaux secondaires, jamais décisifs seuls."
+R6: "Bilan du jour : dégradé si au moins 2 signaux faibles sur 3 (énergie ≤ 2, sommeil ≤ 2, courbatures ≥ 4) ; seuils de convention ; HRV non décisive ; confirmation de l'utilisateur obligatoire ; douleur : professionnel."
 G7: "Périodisation : blocs 3+1 dont la position est conservée d'une génération du plan à l'autre ; phases base, développement, pic (2 à 4 semaines avant l'objectif), affûtage, semaine de l'objectif."
 M8: "Surcharge progressive : séries et répétitions montent dans le bloc, le bloc suivant démarre plus haut (+1 série sur les mouvements clés, +1 répétition de qualité) ; charges par double progression."
 M9: "Séance hybride hebdomadaire (CrossFit/Hyrox déclaré) à la place de la 3e séance de muscu : WOD qui monte d'un bloc à l'autre, allégée en décharge, jamais collée à la sortie longue ni le jour d'une séance clé, supprimée près de l'objectif."

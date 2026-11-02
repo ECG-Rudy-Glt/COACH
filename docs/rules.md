@@ -131,6 +131,7 @@ objectives (Saw et al. 2016, B).
 | R3 | Douleur localisée déclarée | Règle S2 |
 | R4 | Le check-in ne peut **qu'alléger** un jour, jamais l'alourdir | |
 | R5 | FC de repos de jour et charge Garmin utilisées comme signaux secondaires | Alerte douce, jamais décisive seule |
+| R6 | Seuils du bilan du jour (convention de pratique : aucune étude lue ne fixe de seuil) : dégradé = au moins 2 signaux faibles sur 3 (énergie ≤ 2 sur 5, sommeil ressenti ≤ 2 sur 5, courbatures ≥ 4 sur 5) ; la HRV et la FC de repos ne servent pas à décider ; aucun changement sans confirmation ; douleur déclarée : renvoi vers un professionnel (S1, S2) | 2 sur 3 | C |
 
 ## G. Alimentation (cibles et suggestions)
 
