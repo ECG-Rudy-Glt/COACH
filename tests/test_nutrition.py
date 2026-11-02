@@ -132,11 +132,11 @@ def test_meal_with_photo_is_estimated_stored_and_summed(ctx, tmp_path):
     r = c.post(f"/users/{uid}/nutrition/meals", json={"slot": "déjeuner", "description": "poulet et riz", "photo_b64": JPEG})
     assert r.status_code == 201 and r.json()["analysis_error"] is None
     m = r.json()["meal"]
-    assert m["has_photo"] and m["analysis"]["kcal"] == 650 and m["analysis"]["estimated"] is True
+    assert m["has_photo"] and m["analysis"]["kcal"] == 747 and m["analysis"]["estimated"] is True
     assert llm.calls[0][1] is True  # la photo est transmise à l'IA
     assert c.get(f"/users/{uid}/nutrition/meals/{m['id']}/photo").status_code == 200
     day = c.get(f"/users/{uid}/nutrition/day").json()
-    assert day["totals"]["kcal"] == 650 and day["remaining"]["kcal"] == day["targets"]["kcal"] - 650 and day["targets"]["protein_g"] == 134
+    assert day["totals"]["kcal"] == 747 and day["remaining"]["kcal"] == day["targets"]["kcal"] - 747 and day["targets"]["protein_g"] == 134
     assert c.delete(f"/users/{uid}/nutrition/meals/{m['id']}").json() == {"ok": True}
     assert not list((tmp_path / "meals" / str(uid)).glob("*"))  # la photo est supprimée avec le repas
     assert c.get(f"/users/{uid}/nutrition/day").json()["meals"] == []
@@ -443,3 +443,23 @@ def test_barcode_image_is_relayed_by_the_server_only_for_looked_up_products(monk
     monkeypatch.setattr(barcode.urllib.request, "urlopen", lambda req, timeout: Resp(b"x" * (barcode.MAX_IMAGE_BYTES + 1)))
     with pytest.raises(barcode.BarcodeError):
         barcode.fetch_image("3017620422003")
+
+
+def test_photo_only_estimate_is_boosted_n12_and_declared_quantity_wins():
+    from app.nutrition import analyze as na
+
+    class L:
+        def complete(self, *a, **k):
+            from app.coach.llm import LLMResult
+            item = {"name": "pâtes", "quantity": "1 assiette", "kcal": 600, "protein_g": 20, "carbs_g": 90, "fat_g": 15}
+            tot = {"kcal_min": 550, "kcal_max": 650, "protein_g": 20, "carbs_g": 90, "fat_g": 15}
+            return LLMResult(json.dumps({"items": [item], "totals": tot, "confidence": "moyenne"}), 1, 1, "m")
+
+    photo = ("image/jpeg", "AAAA")
+    seule, _ = na.analyze(L(), "", photo, "m", ask=False)
+    assert seule["photo_boost"] == 1.15 and seule["kcal"] == round(600 * 1.15) and "N12" in seule["note"] and seule["items"][0]["kcal"] == 690
+    declared, _ = na.analyze(L(), "430 g de pâtes", photo, "m", ask=False)
+    assert "photo_boost" not in declared and declared["kcal"] == 600  # une quantité déclarée prime (N10)
+    text, _ = na.analyze(L(), "des pâtes", None, "m", ask=False)
+    assert "photo_boost" not in text
+    assert na.calibrate_photo({"kcal": 0})["kcal"] == 0

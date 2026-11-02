@@ -2,6 +2,10 @@
 
 COACH is one FastAPI process, one PostgreSQL database and a static vanilla-JS PWA served by the same process. There is no message bus, no worker fleet and no build step for the front end.
 
+## Place in the suite
+
+COACH is the first tool of a planned suite for health and sport in general. The rule engine, the rule/evidence format and the optional-LLM boundary are built to be reused by the next tools; keep them free of COACH-specific assumptions where it costs nothing.
+
 ## Design principles
 
 1. **Deterministic core.** Plans, volumes, intensities and nutrition targets are pure functions of the user's *facts* and *goals*. Same input → same output, testable without a model.

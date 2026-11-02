@@ -1783,5 +1783,9 @@
  "Un jour de repos complet est gardé dans la semaine (G5).": "One full rest day is kept in the week (G5).",
  "Trop peu de jours restants : le moteur retire les séances les moins prioritaires plutôt que de tout caser, et le dit (G9).": "Too few days left: the engine drops the lowest-priority sessions rather than cramming everything in, and says so (G9).",
  "« {title} » est retirée de cette semaine : aucun jour restant ne la place sans entasser les séances dures ni enfreindre vos limites (G15, G17).": "“{title}” is dropped from this week: no remaining day fits it without stacking hard sessions or breaking your limits (G15, G17).",
- "Volume de course de la semaine réduit d'environ {num} % par rapport au plan : le rattraper en entier demanderait d'entasser des séances (G14).": "This week's running volume is cut by about {num} % compared with the plan: making it all up would mean cramming sessions in (G14)."
+ "Volume de course de la semaine réduit d'environ {num} % par rapport au plan : le rattraper en entier demanderait d'entasser des séances (G14).": "This week's running volume is cut by about {num} % compared with the plan: making it all up would mean cramming sessions in (G14).",
+ "appliqué": "applied",
+ "ignoré": "dismissed",
+ "Je n'ai pas pu m'entraîner : adapte ma semaine": "I couldn't train: adapt my week",
+ "Photo seule : estimation majorée de {num} % (N12), car les photos sous-estiment en général.": "Photo only: estimate increased by {num}% (N12), because photos usually underestimate."
 }
