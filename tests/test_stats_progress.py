@@ -21,8 +21,8 @@ def ex(name, *sets):
     return {"name": name, "sets": [{"kg": kg, "reps": reps} for kg, reps in sets]}
 
 
-def run(gid, days_ago, km, minutes, hr=150, sport="run"):
-    d = TODAY - timedelta(days=days_ago)
+def run(gid, days_ago, km, minutes, hr=150, sport="run", today=TODAY):
+    d = today - timedelta(days=days_ago)
     return {"garmin_id": str(gid), "day": d, "started_at": datetime(d.year, d.month, d.day, 7), "sport": sport, "type_key": "running", "name": "Sortie", "duration_s": int(minutes * 60),
             "distance_m": km * 1000, "elevation_m": 0.0, "avg_hr": hr, "max_hr": 170, "calories": 500, "training_load": 80.0}
 
@@ -170,7 +170,7 @@ def test_progress_api_with_data(ctx):
     repo.add_sessions(uid, [{"day": today - timedelta(days=7 * i), "kind": "strength_upper", "title": "Haut", "duration_min": 55, "details": {}, "rules": [], "notes": []} for i in range(3)])
     for i, row in enumerate(repo.list_sessions(uid, today - timedelta(days=30), today + timedelta(days=1))):
         repo.update_session(uid, row["id"], "done", {"exercises": [ex("Squat", (80 + 5 * i, 5))]})
-    repo.upsert_activities(uid, [run(1, 2, 10.5, 58)])
+    repo.upsert_activities(uid, [run(1, 0, 10.5, 58, today=today)])  # l'API lit la date du jour : l'activité est d'aujourd'hui (dans la dernière semaine quel que soit le jour), pas figée au 21/10
     repo.upsert_metrics(uid, [{"day": today - timedelta(days=3), "metric": "race_10k", "value": 2700.0}])
     d = c.get(f"/users/{uid}/stats/progress").json()
     assert d["trajectory"]["target"]["time"] == "40:00" and d["volume"]["weekly_km_target"] == 50 and d["trajectory"]["measured"][0]["minutes"] == 45.0
