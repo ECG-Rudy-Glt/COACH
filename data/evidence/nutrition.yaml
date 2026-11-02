@@ -248,7 +248,7 @@
   design: "étude observationnelle"
   finding_fr: "ChatGPT-4 sur 114 photos de repas : identifie bien les aliments (93 %) et classe les repas par teneur en nutriments, mais estime mal les poids de portions moyennes et grandes et sous-estime 11 nutriments sur 16 ; accord avec les diététiciens faible à modéré (ICC 0,31-0,67)."
   limits_fr: "Un seul modèle, évalué début 2025 sur des repas de référence aux poids connus ; les outils évoluent vite. Ne valide pas l'estimation en vie courante."
-  applies_to: [N6]
+  applies_to: [N6, N12]
   confidence: "faible"
   verified_on: "2026-10-18"
 
@@ -262,7 +262,7 @@
   design: "étude observationnelle"
   finding_fr: "48 nutritionnistes du sport ont estimé l'énergie de 8 repas photographiés : sous-estimation, erreur typique ≈ 9-10 % (repas simples) et ≈ 14-18 % (repas complexes à ingrédients cachés) ; fiabilité entre praticiens généralement faible."
   limits_fr: "Estimateurs humains, pas d'outil automatique ; 8 repas sur 2 jours seulement. Montre l'ordre de grandeur de l'erreur même avec des experts : estimation à présenter en fourchette."
-  applies_to: [N6]
+  applies_to: [N6, N12]
   confidence: "faible"
   verified_on: "2026-10-18"
 

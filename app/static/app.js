@@ -1050,10 +1050,31 @@ function bubble(m) {
   const mine = m.role === "user";
   return h("div", { class: "msg " + (mine ? "mine" : "coach") },
     ...m.body.split("\n").map((l, i) => h("p", { style: i ? "margin-top:6px" : "" }, l)),
+    ...(mine ? [] : chatAdjustments(m)),
     h("span", { class: "when" }, new Date(m.created_at).toLocaleString(langTag(), { weekday: "short", hour: "2-digit", minute: "2-digit" })));
 }
 
-const SUGGESTIONS = ["Fais le point sur ma semaine", "Je suis fatigué : j'allège ?", "Explique-moi ma prochaine séance"];
+// Ajustements de la semaine proposés dans la discussion : le serveur les a déjà validés, l'utilisateur décide d'un bouton.
+function chatAdjustments(m) {
+  const meta = m.meta || {};
+  const rows = (meta.proposals || []).map((p, i) => {
+    const label = p.action === "reduce" ? __("Raccourcir « {session_title} » de {duration_min} à {new_duration_min} min", { session_title: p.session_title, duration_min: p.duration_min, new_duration_min: p.new_duration_min })
+      : p.action === "swap_easy" ? __("Remplacer « {session_title} » par un footing facile", { session_title: p.session_title })
+        : __("Déplacer « {session_title} » au {toLocaleDateString}", { session_title: p.session_title, toLocaleDateString: new Date(p.to_day + "T12:00:00").toLocaleDateString(langTag(), { weekday: "long", day: "numeric", month: "long" }) });
+    if (p.status !== "proposed") return h("div", { class: "muted" }, label + " — " + (p.status === "applied" ? __("appliqué") : __("ignoré")));
+    const box = h("div", { class: "form" }, h("p", null, label), h("p", { class: "muted" }, p.reason));
+    const decide = async (kind) => {
+      try { await api(`/users/${userId}/coach/proposals/${meta.memory_id}/${i}/${kind}`, { method: "POST" }); toast(kind === "apply" ? "Ajustement appliqué" : "Proposition ignorée"); box.replaceChildren(h("p", { class: "muted" }, label + " — " + (kind === "apply" ? __("appliqué") : __("ignoré")))); }
+      catch (e) { toast(e.message); }
+    };
+    box.append(h("div", { class: "row" }, h("button", { class: "btn sm primary", onclick: () => decide("apply") }, "Appliquer"), h("button", { class: "btn sm", onclick: () => decide("dismiss") }, "Ignorer")));
+    return box;
+  });
+  if (meta.replan) rows.push(h("button", { class: "btn sm", onclick: () => replanSheet(() => {}) }, "Replanifier la fin de semaine"));
+  return rows;
+}
+
+const SUGGESTIONS = ["Fais le point sur ma semaine", "Je suis fatigué : j'allège ?", "Je n'ai pas pu m'entraîner : adapte ma semaine", "Explique-moi ma prochaine séance"];
 const reducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const coarsePointer = () => window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
@@ -1560,7 +1581,7 @@ function sessionScreen(s, today) {
           slot.last ? h("span", { class: "muted" }, __("Dernière fois ({toLocaleDateString}) : {lastTxt}", { toLocaleDateString: new Date(slot.last.day + "T12:00:00").toLocaleDateString(langTag(), { day: "numeric", month: "short" }), lastTxt })) : null,
           slot.target ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, slot.target.text)
             : slot.suggested_kg ? h("span", { class: "chip", style: "align-self:flex-start;margin-top:4px" }, __("Charge de départ conseillée : {suggested_kg} kg", { suggested_kg: slot.suggested_kg })) : null),
-        slot.exercise ? h("button", { class: "link", onclick: () => exerciseDetail(slot.exercise.id) }, "Fiche") : null),
+        slot.exercise ? h("button", { class: "link", onclick: () => exerciseDetail(slot.exercise.id, () => sessionScreen(s, today)) }, "Fiche") : null),
       fold("Consigne et pourquoi", [slot.cue ? h("p", { class: "muted" }, slot.cue) : null,
         slot.why ? h("p", { class: "muted", style: "font-style:italic" }, __("Pourquoi : {why}", { why: slot.why })) : null]),
       h("div", { class: "sets" }, h("span", null, ""), h("span", null, "kg"), h("span", null, "reps"),
@@ -1801,7 +1822,7 @@ async function library(restore = false) {
   }
 }
 
-async function exerciseDetail(id) {
+async function exerciseDetail(id, back) {  // `back` : écran d'où l'on vient (séance du jour) ; sans lui, la grille des exercices
   let e;
   try { e = await api(`/exercises/${id}`); } catch (err) { return fail(err); }
   const meta = libMeta || { muscles: {}, equipment: {}, kinds: {} };
@@ -1811,7 +1832,7 @@ async function exerciseDetail(id) {
   const credit = (m, what) => h("li", null, `${what} : ${m.author || "auteur non indiqué"}, `,
     m.license_url ? h("a", { href: m.license_url, target: "_blank", rel: "noopener noreferrer" }, m.license) : m.license);
   show(
-    h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => library(true) }, icon("back")), h("span", { class: "grow" })),
+    h("div", { class: "top" }, h("button", { class: "iconbtn", "aria-label": "Retour", onclick: () => (back ? back() : library(true)) }, icon("back")), h("span", { class: "grow" })),
     h("span", { class: "eyebrow" }, meta.kinds[e.kind] || e.kind),
     h("h1", null, e.name),
     e.name_en && e.name_en !== e.name ? h("p", { class: "muted" }, e.name_en) : null,
@@ -2487,7 +2508,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v38";
+const UI_BUILD = "sc-v39";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";

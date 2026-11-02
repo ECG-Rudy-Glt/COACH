@@ -537,10 +537,10 @@ def _enforce_caps(p: Profile, sessions: list[Session]) -> list[Session]:
     kept: list[Session] = []
     cut = False
     for s in sessions:
-        cap = _cap(p, s.date)
+        cap = _cap(p, s.date)  # durée non saisie : le défaut de 60 min raccourcit la course mais ne supprime aucune séance de force
         if s.duration_min > cap and s.kind.startswith("run_"):
             s.duration_min = cap
-        elif s.kind == "strength_crossfit" and s.duration_min > cap or s.kind.startswith("strength_") and s.duration_min > cap * CAP_TOLERANCE:
+        elif p.caps_declared and (s.kind == "strength_crossfit" and s.duration_min > cap or s.kind.startswith("strength_") and s.duration_min > cap * CAP_TOLERANCE):
             cut = True  # le minimum d'une séance utile ne tient pas dans une durée si courte
             continue
         kept.append(s)

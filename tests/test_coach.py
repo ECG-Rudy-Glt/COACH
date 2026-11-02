@@ -379,3 +379,26 @@ def test_chat_context_carries_the_nutrition_data_for_food_questions(ctx):
     assert '"nutrition"' in llm.system and "bourguignon" not in llm.system.split('"nutrition"')[0]
     assert "cibles_jour" in llm.system and "sept_jours" in llm.system and "720" in llm.system
     assert "Questions d'alimentation" in llm.system
+
+
+def test_chat_proposes_validated_adjustments_and_user_applies_them(ctx):
+    c, uid, repo, llm = ctx
+    sid = ids(repo, uid)["run_quality"]
+    good = {"session_id": sid, "action": "reduce", "factor": 0.7, "reason": "Fatigue annoncée", "rule_ids": ["G1"]}
+    bad_up = {"session_id": sid, "action": "reduce", "factor": 1.3, "reason": "plus de charge", "rule_ids": ["G1"]}
+    bad_rule = {"session_id": sid, "action": "swap_easy", "reason": "x", "rule_ids": ["ZZ99"]}
+    llm.out = {"reply": "Je vous propose d'alléger.", "motivation": "ok", "remember": "", "proposals": [good, bad_up, bad_rule], "replan": True}
+    meta = c.post(f"/users/{uid}/coach/chat", json={"message": "Je suis crevé, allège ma semaine"}).json()["messages"][1]["meta"]
+    assert [p["action"] for p in meta["proposals"]] == ["reduce"] and meta["proposals"][0]["new_duration_min"] == 42 and meta["replan"] is True  # le serveur refuse hausse et règle inconnue
+    assert c.post(f"/users/{uid}/coach/proposals/{meta['memory_id']}/0/apply").status_code == 200
+    assert next(s for s in repo.list_sessions(uid, TODAY, TODAY + timedelta(days=15)) if s["id"] == sid)["duration_min"] == 42
+    stored = c.get(f"/users/{uid}/coach/chat").json()["messages"][-1]["meta"]["proposals"][0]["status"]
+    assert stored == "applied"  # l'état relu à l'ouverture de la discussion
+    assert c.post(f"/users/{uid}/coach/proposals/{meta['memory_id']}/0/apply").status_code == 409
+
+
+def test_chat_without_proposals_stays_plain(ctx):
+    c, uid, _repo, llm = ctx
+    llm.out = {"reply": "Tout va bien.", "motivation": "ok", "remember": "", "proposals": "n'importe quoi", "replan": "oui"}
+    meta = c.post(f"/users/{uid}/coach/chat", json={"message": "Salut"}).json()["messages"][1]["meta"]
+    assert "proposals" not in meta and "replan" not in meta

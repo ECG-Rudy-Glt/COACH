@@ -6,6 +6,10 @@
 
 > 🌍 The UI, the questionnaire and the LLM prompts are currently **in French**. Translating them is an open, well-scoped task — see the [issue board](https://github.com/ECG-Rudy-Glt/COACH/issues) and `skills/add-language/`. The code, docs and APIs are in English.
 
+## Part of a bigger plan: a suite for health and sport
+
+COACH is the **first tool of a planned suite** of self-hosted, privacy-first tools for health and sport in general (training today; nutrition, recovery, sleep and long-term health follow-up are the natural next steps). The suite shares the same principles: deterministic rules with cited evidence, an optional and bounded LLM, and data that stays on your machine. COACH is the foundation: its engine, rule format and data model are meant to be reused by the next tools. The logo (a heart whose pulse turns into a climb) reflects that wider scope: health first, sport as one of its expressions.
+
 ## Why this exists
 
 | Goal | How |
