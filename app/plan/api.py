@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.coach.replan_explain import explain
 from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
+from app.plan import absence as AB
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
 from app.plan.engine import KEY, advice, build_profile, empty_reason, outlook, plan_weeks, warnings
@@ -28,6 +29,12 @@ class Generate(BaseModel):
 class ReplanIn(BaseModel):
     include_today: bool = False  # par défaut, la séance d'aujourd'hui est considérée comme non faisable : on replanifie à partir de demain
     explain: bool = False  # une phrase d'explication par l'IA si elle est configurée (jamais de chiffre)
+
+
+class AbsenceIn(BaseModel):
+    start: date
+    end: date
+    reason: str = Field(max_length=20)
 
 
 class ReplanApply(BaseModel):
@@ -108,6 +115,14 @@ def change_log(repo: Repo, user_id: int, limit: int = 12) -> list[dict[str, Any]
                     out.append({"at": m["created_at"].isoformat(), "source": source, "text": f"« {p.get('session_title', '')} » : {ACTION_TEXT.get(p.get('action'), 'modifiée')}",
                                 "reason": p.get("reason", ""), "rules": p.get("rule_ids", []), "undone": False})
     return sorted(out, key=lambda x: x["at"], reverse=True)[:limit]
+
+
+ABSENCE_KIND = "absence"
+
+
+def active_absences(repo: Repo, user_id: int, today: date) -> list[dict[str, Any]]:
+    return [{"id": m["id"], "start": m["period_start"].isoformat(), "end": m["period_end"].isoformat(), "reason": (m["data"] or {}).get("reason", "")}
+            for m in repo.list_memory(user_id, ABSENCE_KIND, 10) if not (m["data"] or {}).get("undone") and m["period_end"] >= today]
 
 
 def last_replan(repo: Repo, user_id: int, monday: date) -> dict[str, Any] | None:
@@ -276,7 +291,50 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
                 "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start),
-                "missed": missed_sessions(rows, today), "changelog": change_log(repo, user_id)}
+                "missed": missed_sessions(rows, today), "changelog": change_log(repo, user_id), "absences": active_absences(repo, user_id, today)}
+
+    @router.post("/absences", status_code=201)
+    def absence_create(body: AbsenceIn, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """G20 : passe les séances de la période et allège la semaine de reprise ; la trace permet de tout annuler."""
+        today = date.today()
+        why = AB.validate(body.start, body.end, body.reason, today)
+        if why:
+            raise HTTPException(422, why)
+        rows = repo.list_sessions(user_id, today, body.end + timedelta(days=AB.RETURN_DAYS + 1))
+        eff = AB.effects(rows, body.start, body.end, body.reason, today)
+        by_id = {r["id"]: r for r in rows}
+        before = [snapshot(by_id[e["session_id"]]) for e in eff]
+        note = f"Période d'absence ({body.reason}, G20)"
+        for e in eff:
+            r = by_id[e["session_id"]]
+            if e["action"] == "skip":
+                repo.patch_planned(user_id, r["id"], {"notes": [*r["notes"], f"Passée : {note}"]})
+                repo.update_session(user_id, r["id"], "skipped", None)
+            else:
+                extra = [AB.HEALTH_NOTE] if body.reason in ("maladie", "blessure") else []
+                repo.patch_planned(user_id, r["id"], {"duration_min": e["duration_to"], "notes": [*r["notes"], f"Reprise allégée : {note}", *extra]})
+        mem = repo.add_memory(user_id, ABSENCE_KIND, (body.start, body.end), f"Absence {body.reason} du {body.start.isoformat()} au {body.end.isoformat()}",
+                              {"reason": body.reason, "before": before, "changes": eff, "undone": False})
+        return {"id": mem["id"], "skipped": sum(e["action"] == "skip" for e in eff), "reduced": sum(e["action"] == "reduce" for e in eff)}
+
+    @router.post("/absences/{memory_id}/undo")
+    def absence_undo(memory_id: int, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        mem = repo.get_memory(user_id, memory_id)
+        if not mem or mem["kind"] != ABSENCE_KIND:
+            raise HTTPException(404, "Période inconnue.")
+        data = mem["data"] or {}
+        if data.get("undone"):
+            raise HTTPException(409, "Cette période est déjà annulée.")
+        lo = min((date.fromisoformat(s["day"]) for s in data.get("before", [])), default=mem["period_start"])
+        rows = {r["id"]: r for r in repo.list_sessions(user_id, lo, mem["period_end"] + timedelta(days=AB.RETURN_DAYS + 1))}
+        if any(s["id"] not in rows or rows[s["id"]]["status"] == "done" for s in data.get("before", [])):
+            raise HTTPException(409, "Une séance a été faite depuis : l'annulation n'est plus possible.")
+        for s in data.get("before", []):
+            if s["status"] == "planned" and rows[s["id"]]["status"] != "planned":
+                repo.update_session(user_id, s["id"], "planned", None)
+            repo.patch_planned(user_id, s["id"], {"day": date.fromisoformat(s["day"]), "duration_min": s["duration_min"], "notes": s["notes"], "details": s["details"]})
+        repo.update_memory_data(user_id, memory_id, {**data, "undone": True})
+        return {"restored": len(data.get("before", []))}
 
     @router.post("/replan/preview")
     def replan_preview(request: Request, body: ReplanIn | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

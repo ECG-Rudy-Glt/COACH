@@ -26,6 +26,7 @@ G16: "Replanification : au moins un jour de repos complet dans la semaine, sinon
 G17: "Replanification : trop peu de jours restants = les séances les moins prioritaires sont retirées et dites (ordre de G9) plutôt que de tout caser ; annulable."
 G18: "Séance manquée : jamais rattrapée ni doublée ; l'écran demande « Avez-vous fait … ? » pour une séance dont le jour est passé sans statut (7 jours au plus) ; rééquilibrage seulement par la replanification (G13 à G17)."
 G19: "Journal des modifications du plan : replanifications et ajustements appliqués (bilan, discussion) avec date, raison et règles ; une replanification annulée est marquée."
+G20: "Période d'absence (voyage, maladie, blessure, matériel ; 90 jours au plus) : séances de la période passées sans rattrapage ; semaine de reprise allégée (×0,85 voyage, ×0,7 maladie ou blessure) ; annulable ; renvoi vers un professionnel si la gêne persiste (S1)."
 C1: "Environ 80 % du temps de course en facile, 20 % en intensité ; au plus 2 séances de qualité par semaine."
 C2: "Une sortie longue par semaine, au plus 30 % du volume hebdomadaire de course."
 C3: "Zones calculées sur la FC max, sinon sur l'allure du meilleur 10 km récent."

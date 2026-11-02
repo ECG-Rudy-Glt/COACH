@@ -1797,5 +1797,21 @@
  "Séance passée (non rattrapée)": "Session skipped (not made up)",
  "Journal des modifications": "Change log",
  "{n} modification(s) récente(s) du plan": "{n} recent change(s) to the plan",
- "annulée": "undone"
+ "annulée": "undone",
+ "Déclarer une absence (voyage, maladie, blessure)": "Declare an absence (travel, illness, injury)",
+ "Déclarer une absence": "Declare an absence",
+ "Déclarer l'absence": "Declare the absence",
+ "Les séances de la période sont passées sans rattrapage et la semaine de reprise est allégée. Vous pouvez annuler ensuite.": "Sessions in the period are skipped without being made up and the return week is lighter. You can undo it afterwards.",
+ "Du": "From",
+ "Au": "To",
+ "Raison": "Reason",
+ "Début": "Start",
+ "Fin": "End",
+ "voyage": "travel",
+ "maladie": "illness",
+ "blessure": "injury",
+ "matériel": "equipment",
+ "{skipped} séance(s) passée(s), {reduced} allégée(s)": "{skipped} session(s) skipped, {reduced} lightened",
+ "Absence annulée": "Absence undone",
+ "Absence ({reason}) du {start} au {end}": "Absence ({reason}) from {start} to {end}"
 }
