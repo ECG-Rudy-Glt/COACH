@@ -91,6 +91,25 @@ def missed_sessions(rows: list[dict[str, Any]], today: date) -> list[dict[str, A
             if r["status"] == "planned" and today - timedelta(days=MISSED_DAYS) <= r["day"] < today and not (r.get("logged") or {}).get("garmin_id")]
 
 
+ACTION_TEXT = {"reduce": "séance raccourcie", "swap_easy": "séance de qualité remplacée par un footing facile", "move": "séance déplacée"}
+
+
+def change_log(repo: Repo, user_id: int, limit: int = 12) -> list[dict[str, Any]]:
+    """G19 : journal des modifications du plan, avec la raison et les règles qui les justifient : replanifications, ajustements du bilan et de la discussion appliqués."""
+    out: list[dict[str, Any]] = []
+    for m in repo.list_memory(user_id, REPLAN_KIND, 20):
+        d = m["data"] or {}
+        out.append({"at": m["created_at"].isoformat(), "source": "replan", "text": f"Fin de semaine replanifiée : {len(d.get('after', []))} séance(s) touchée(s)",
+                    "rules": d.get("rules", []), "undone": bool(d.get("undone"))})
+    for kind, source in (("weekly_review", "review"), ("chat_adjust", "chat")):
+        for m in repo.list_memory(user_id, kind, 20):
+            for p in (m["data"] or {}).get("proposals", []):
+                if p.get("status") == "applied":
+                    out.append({"at": m["created_at"].isoformat(), "source": source, "text": f"« {p.get('session_title', '')} » : {ACTION_TEXT.get(p.get('action'), 'modifiée')}",
+                                "reason": p.get("reason", ""), "rules": p.get("rule_ids", []), "undone": False})
+    return sorted(out, key=lambda x: x["at"], reverse=True)[:limit]
+
+
 def last_replan(repo: Repo, user_id: int, monday: date) -> dict[str, Any] | None:
     """Dernière replanification non annulée de la semaine en cours : l'écran propose de l'annuler."""
     m = next((m for m in repo.list_memory(user_id, REPLAN_KIND, 5) if m["period_start"] == monday and not (m["data"] or {}).get("undone")), None)
@@ -257,7 +276,7 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
                 "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start),
-                "missed": missed_sessions(rows, today)}
+                "missed": missed_sessions(rows, today), "changelog": change_log(repo, user_id)}
 
     @router.post("/replan/preview")
     def replan_preview(request: Request, body: ReplanIn | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

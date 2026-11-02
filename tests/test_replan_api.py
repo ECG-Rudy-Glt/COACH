@@ -121,3 +121,18 @@ def test_llm_sentence_is_optional_cached_and_digit_free(env):
     bad = FakeLLM("Footing de 45 minutes demain.")
     assert replan_explain.explain(repo, bad, uid, out, "autre-empreinte") is None  # un chiffre : rejetée
     assert replan_explain.clean("x" * 300) is None
+
+
+def test_g19_change_log_lists_applied_changes_with_reasons():
+
+    from app.plan.api import change_log
+    from app.repo import MemoryRepo
+
+    repo = MemoryRepo()
+    repo.add_memory(1, "chat_adjust", (None, None), "x", {"proposals": [{"status": "applied", "action": "reduce", "session_title": "Footing", "reason": "Fatigue", "rule_ids": ["G1"]},
+                                                                         {"status": "dismissed", "action": "move", "session_title": "Autre", "reason": "-", "rule_ids": ["G5"]}]})
+    repo.add_memory(1, "replan_week", (None, None), "r", {"after": [1, 2], "rules": ["G13"], "undone": True})
+    log = change_log(repo, 1)
+    assert len(log) == 2 and {e["source"] for e in log} == {"chat", "replan"}  # une proposition ignorée n'y figure pas
+    assert next(e for e in log if e["source"] == "chat")["reason"] == "Fatigue" and next(e for e in log if e["source"] == "replan")["undone"] is True
+    assert change_log(repo, 2) == []

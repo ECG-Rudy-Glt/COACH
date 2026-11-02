@@ -57,6 +57,7 @@ Preuve : C (principe de précaution). Ces règles ne sont pas désactivables.
 | G16 | Au moins un jour de repos complet dans la semaine replanifiée, séances faites et activités non reliées comprises ; sinon la séance la moins prioritaire est retirée | 1 jour | C (G5) |
 | G17 | Trop peu de jours restants pour tout placer sans enfreindre G14 à G16 : le moteur retire les séances les moins prioritaires (ordre de G9 : sortie longue, qualité, jambes, footing, haut du corps) plutôt que de tout caser, et dit lesquelles et pourquoi ; une séance retirée est marquée « passée » (statut ignorée) et reste visible, et l'annulation la rétablit | | C. Prolonge G9 à la replanification |
 | G18 | Séance manquée : elle n'est jamais rattrapée ni doublée ; l'écran du plan demande « Avez-vous fait … ? » pour toute séance prévue dont le jour est passé depuis 7 jours au plus sans statut (faite, passée), et le volume restant n'est rééquilibré que par la replanification (G13 à G17), jamais au-delà de G1 | 7 jours | C |
+| G19 | Journal des modifications : chaque changement du plan fait après coup (replanification, ajustement du bilan ou de la discussion appliqué) est listé avec sa date, sa raison et les identifiants de règles qui le justifient ; une replanification annulée est marquée comme telle | 12 dernières | C |
 
 ## C. Course à pied et trail
 
