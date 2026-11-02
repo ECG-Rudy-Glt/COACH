@@ -121,3 +121,48 @@ def test_llm_sentence_is_optional_cached_and_digit_free(env):
     bad = FakeLLM("Footing de 45 minutes demain.")
     assert replan_explain.explain(repo, bad, uid, out, "autre-empreinte") is None  # un chiffre : rejetée
     assert replan_explain.clean("x" * 300) is None
+
+
+def test_g19_change_log_lists_applied_changes_with_reasons():
+
+    from app.plan.api import change_log
+    from app.repo import MemoryRepo
+
+    repo = MemoryRepo()
+    repo.add_memory(1, "chat_adjust", (None, None), "x", {"proposals": [{"status": "applied", "action": "reduce", "session_title": "Footing", "reason": "Fatigue", "rule_ids": ["G1"]},
+                                                                         {"status": "dismissed", "action": "move", "session_title": "Autre", "reason": "-", "rule_ids": ["G5"]}]})
+    repo.add_memory(1, "replan_week", (None, None), "r", {"after": [1, 2], "rules": ["G13"], "undone": True})
+    log = change_log(repo, 1)
+    assert len(log) == 2 and {e["source"] for e in log} == {"chat", "replan"}  # une proposition ignorée n'y figure pas
+    assert next(e for e in log if e["source"] == "chat")["reason"] == "Fatigue" and next(e for e in log if e["source"] == "replan")["undone"] is True
+    assert change_log(repo, 2) == []
+
+
+def test_g20_absence_skips_the_period_lightens_the_return_and_undoes(env):
+    c, repo, uid = env
+    repo.add_sessions(uid, [{"day": WED + timedelta(days=9), "kind": "run_easy", "title": "Reprise", "duration_min": 60, "details": {}, "rules": [], "notes": []}])
+    r = c.post(f"/users/{uid}/plan/absences", json={"start": (WED + timedelta(days=1)).isoformat(), "end": (WED + timedelta(days=5)).isoformat(), "reason": "maladie"})
+    assert r.status_code == 201 and r.json()["skipped"] == 1 and r.json()["reduced"] == 1  # la sortie longue (+3 j) est passée, la séance de reprise (+9 j) allégée
+    rows = {s["title"]: s for s in repo.list_sessions(uid, WED, WED + timedelta(days=15))}
+    assert rows["Sortie longue"]["status"] == "skipped" and rows["Reprise"]["duration_min"] == 42 and rows["Footing"]["status"] == "planned"  # aujourd'hui n'est pas touché
+    assert any("S1" in n for n in rows["Reprise"]["notes"])  # maladie : renvoi vers un professionnel
+    plan = c.get(f"/users/{uid}/plan").json()
+    assert plan["absences"][0]["reason"] == "maladie"
+    aid = r.json()["id"]
+    assert c.post(f"/users/{uid}/plan/absences/{aid}/undo").status_code == 200
+    back = {s["title"]: s for s in repo.list_sessions(uid, WED, WED + timedelta(days=15))}
+    assert back["Sortie longue"]["status"] == "planned" and back["Reprise"]["duration_min"] == 60
+    assert c.post(f"/users/{uid}/plan/absences/{aid}/undo").status_code == 409
+
+
+def test_g20_absence_validation_and_isolation(env):
+    c, repo, uid = env
+    ok = {"start": WED.isoformat(), "end": (WED + timedelta(days=3)).isoformat(), "reason": "voyage"}
+    assert c.post(f"/users/{uid}/plan/absences", json={**ok, "reason": "caprice"}).status_code == 422
+    assert c.post(f"/users/{uid}/plan/absences", json={**ok, "end": (WED - timedelta(days=1)).isoformat()}).status_code == 422
+    assert c.post(f"/users/{uid}/plan/absences", json={**ok, "end": (WED + timedelta(days=120)).isoformat()}).status_code == 422
+    aid = c.post(f"/users/{uid}/plan/absences", json=ok).json()["id"]
+    c.post("/auth/logout")
+    other = c.post("/auth/register", json={"name": "E", "email": "o@example.org", "password": PW}).json()["id"]
+    assert c.post(f"/users/{other}/plan/absences/{aid}/undo").status_code == 404  # l'absence d'un autre compte est introuvable
+    assert c.post(f"/users/{uid}/plan/absences", json=ok).status_code == 403

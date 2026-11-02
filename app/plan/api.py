@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 from app.coach.replan_explain import explain
 from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
+from app.plan import absence as AB
+from app.plan import readiness as RD
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
 from app.plan.engine import KEY, advice, build_profile, empty_reason, outlook, plan_weeks, warnings
@@ -28,6 +30,23 @@ class Generate(BaseModel):
 class ReplanIn(BaseModel):
     include_today: bool = False  # par défaut, la séance d'aujourd'hui est considérée comme non faisable : on replanifie à partir de demain
     explain: bool = False  # une phrase d'explication par l'IA si elle est configurée (jamais de chiffre)
+
+
+class CheckinIn(BaseModel):
+    energy: int = Field(ge=1, le=5)
+    sleep: int = Field(ge=1, le=5)
+    soreness: int = Field(ge=1, le=5)
+    pain: bool = False
+
+
+class CheckinApply(BaseModel):
+    session_id: int
+
+
+class AbsenceIn(BaseModel):
+    start: date
+    end: date
+    reason: str = Field(max_length=20)
 
 
 class ReplanApply(BaseModel):
@@ -80,6 +99,42 @@ def with_sources(out: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[st
 
 def snapshot(r: dict[str, Any]) -> dict[str, Any]:
     return {"id": r["id"], "day": r["day"].isoformat(), "duration_min": r["duration_min"], "notes": list(r["notes"] or []), "details": r["details"] or {}, "status": r["status"]}
+
+
+MISSED_DAYS = 7
+
+
+def missed_sessions(rows: list[dict[str, Any]], today: date) -> list[dict[str, Any]]:
+    """G18 : séances prévues dont le jour est passé sans statut (ni faite, ni passée) : l'écran demande « Avez-vous fait … ? ». Rien n'est rattrapé automatiquement."""
+    return [{"id": r["id"], "day": r["day"].isoformat(), "title": r["title"], "kind": r["kind"]} for r in rows
+            if r["status"] == "planned" and today - timedelta(days=MISSED_DAYS) <= r["day"] < today and not (r.get("logged") or {}).get("garmin_id")]
+
+
+ACTION_TEXT = {"reduce": "séance raccourcie", "swap_easy": "séance de qualité remplacée par un footing facile", "move": "séance déplacée"}
+
+
+def change_log(repo: Repo, user_id: int, limit: int = 12) -> list[dict[str, Any]]:
+    """G19 : journal des modifications du plan, avec la raison et les règles qui les justifient : replanifications, ajustements du bilan et de la discussion appliqués."""
+    out: list[dict[str, Any]] = []
+    for m in repo.list_memory(user_id, REPLAN_KIND, 20):
+        d = m["data"] or {}
+        out.append({"at": m["created_at"].isoformat(), "source": "replan", "text": f"Fin de semaine replanifiée : {len(d.get('after', []))} séance(s) touchée(s)",
+                    "rules": d.get("rules", []), "undone": bool(d.get("undone"))})
+    for kind, source in (("weekly_review", "review"), ("chat_adjust", "chat")):
+        for m in repo.list_memory(user_id, kind, 20):
+            for p in (m["data"] or {}).get("proposals", []):
+                if p.get("status") == "applied":
+                    out.append({"at": m["created_at"].isoformat(), "source": source, "text": f"« {p.get('session_title', '')} » : {ACTION_TEXT.get(p.get('action'), 'modifiée')}",
+                                "reason": p.get("reason", ""), "rules": p.get("rule_ids", []), "undone": False})
+    return sorted(out, key=lambda x: x["at"], reverse=True)[:limit]
+
+
+ABSENCE_KIND = "absence"
+
+
+def active_absences(repo: Repo, user_id: int, today: date) -> list[dict[str, Any]]:
+    return [{"id": m["id"], "start": m["period_start"].isoformat(), "end": m["period_end"].isoformat(), "reason": (m["data"] or {}).get("reason", "")}
+            for m in repo.list_memory(user_id, ABSENCE_KIND, 10) if not (m["data"] or {}).get("undone") and m["period_end"] >= today]
 
 
 def last_replan(repo: Repo, user_id: int, monday: date) -> dict[str, Any] | None:
@@ -247,7 +302,84 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         facts = estimated_facts(repo, user_id, facts, goals, today)
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
-                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start)}
+                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start),
+                "missed": missed_sessions(rows, today), "changelog": change_log(repo, user_id), "absences": active_absences(repo, user_id, today), "readiness": readiness_view(repo, user_id, today)}
+
+    def readiness_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
+        metrics = repo.list_metrics(user_id, None, today - timedelta(days=RD.WEEK_DAYS), today)
+        metrics = [m for m in metrics if m["metric"] in RD.METRICS]
+        state = RD.state_on(metrics, today)
+        todays = [r for r in repo.list_sessions(user_id, today, today + timedelta(days=1)) if r["day"] == today]
+        return {"state": state, "proposals": RD.proposals(state, todays), "week_alert": RD.week_alert(metrics, today), "pain_note": RD.PAIN_NOTE if state and state["pain"] else None}
+
+    @router.get("/readiness")
+    def readiness_get(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        return readiness_view(repo, user_id, date.today())
+
+    @router.post("/readiness")
+    def readiness_post(body: CheckinIn, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """R1, R2, R4 : enregistre le bilan du jour et propose d'alléger la séance du jour ; rien n'est modifié avant la confirmation."""
+        today = date.today()
+        repo.upsert_metrics(user_id, RD.rows(today, body.energy, body.sleep, body.soreness, body.pain))
+        return readiness_view(repo, user_id, today)
+
+    @router.post("/readiness/apply")
+    def readiness_apply(body: CheckinApply, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Revalide côté serveur (jamais la valeur envoyée par le client) : la proposition doit exister pour le bilan d'aujourd'hui."""
+        today = date.today()
+        prop = next((p for p in readiness_view(repo, user_id, today)["proposals"] if p["session_id"] == body.session_id), None)
+        if not prop:
+            raise HTTPException(409, "Aucun allègement n'est proposé pour cette séance.")
+        r = next(x for x in repo.list_sessions(user_id, today, today + timedelta(days=1)) if x["id"] == body.session_id)
+        note = f"{RD.APPLIED_NOTE} ({', '.join(prop['rules'])})"
+        if prop["action"] == "swap_easy":
+            repo.patch_planned(user_id, r["id"], {"kind": "run_easy", "title": "Footing facile", "details": {"zone": (r["details"] or {}).get("zone", "")}, "notes": [*r["notes"], note]})
+        else:
+            repo.patch_planned(user_id, r["id"], {"duration_min": prop["duration_to"], "notes": [*r["notes"], note]})
+        return {"applied": prop["action"]}
+
+    @router.post("/absences", status_code=201)
+    def absence_create(body: AbsenceIn, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """G20 : passe les séances de la période et allège la semaine de reprise ; la trace permet de tout annuler."""
+        today = date.today()
+        why = AB.validate(body.start, body.end, body.reason, today)
+        if why:
+            raise HTTPException(422, why)
+        rows = repo.list_sessions(user_id, today, body.end + timedelta(days=AB.RETURN_DAYS + 1))
+        eff = AB.effects(rows, body.start, body.end, body.reason, today)
+        by_id = {r["id"]: r for r in rows}
+        before = [snapshot(by_id[e["session_id"]]) for e in eff]
+        note = f"Période d'absence ({body.reason}, G20)"
+        for e in eff:
+            r = by_id[e["session_id"]]
+            if e["action"] == "skip":
+                repo.patch_planned(user_id, r["id"], {"notes": [*r["notes"], f"Passée : {note}"]})
+                repo.update_session(user_id, r["id"], "skipped", None)
+            else:
+                extra = [AB.HEALTH_NOTE] if body.reason in ("maladie", "blessure") else []
+                repo.patch_planned(user_id, r["id"], {"duration_min": e["duration_to"], "notes": [*r["notes"], f"Reprise allégée : {note}", *extra]})
+        mem = repo.add_memory(user_id, ABSENCE_KIND, (body.start, body.end), f"Absence {body.reason} du {body.start.isoformat()} au {body.end.isoformat()}",
+                              {"reason": body.reason, "before": before, "changes": eff, "undone": False})
+        return {"id": mem["id"], "skipped": sum(e["action"] == "skip" for e in eff), "reduced": sum(e["action"] == "reduce" for e in eff)}
+
+    @router.post("/absences/{memory_id}/undo")
+    def absence_undo(memory_id: int, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        mem = repo.get_memory(user_id, memory_id)
+        if not mem or mem["kind"] != ABSENCE_KIND:
+            raise HTTPException(404, "Période inconnue.")
+        data = mem["data"] or {}
+        if data.get("undone"):
+            raise HTTPException(409, "Cette période est déjà annulée.")
+        lo = min((date.fromisoformat(s["day"]) for s in data.get("before", [])), default=mem["period_start"])
+        rows = {r["id"]: r for r in repo.list_sessions(user_id, lo, mem["period_end"] + timedelta(days=AB.RETURN_DAYS + 1))}
+        if any(s["id"] not in rows or rows[s["id"]]["status"] == "done" for s in data.get("before", [])):
+            raise HTTPException(409, "Une séance a été faite depuis : l'annulation n'est plus possible.")
+        for s in data.get("before", []):
+            if s["status"] == "planned" and rows[s["id"]]["status"] != "planned":
+                repo.update_session(user_id, s["id"], "planned", None)
+            repo.patch_planned(user_id, s["id"], {"day": date.fromisoformat(s["day"]), "duration_min": s["duration_min"], "notes": s["notes"], "details": s["details"]})
+        repo.update_memory_data(user_id, memory_id, {**data, "undone": True})
+        return {"restored": len(data.get("before", []))}
 
     @router.post("/replan/preview")
     def replan_preview(request: Request, body: ReplanIn | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

@@ -278,7 +278,7 @@
   design: revue systématique
   finding_fr: "56 études : les mesures subjectives (humeur, stress, bien-être) reflètent la charge aiguë et chronique avec plus de sensibilité et de constance que les mesures objectives, et les deux ne sont généralement pas corrélées."
   limits_fr: "Recherche arrêtée en mai 2014, populations très variées, essentiellement des athlètes ; ne dit pas quel seuil de questionnaire doit déclencher un allègement du plan."
-  applies_to: [R1, R5]
+  applies_to: [R1, R5, R6]
   confidence: moyenne
   verified_on: "2026-10-18"
 

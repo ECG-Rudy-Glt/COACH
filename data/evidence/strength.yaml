@@ -192,7 +192,7 @@
   design: "revue systématique"
   finding_fr: "56 études : les mesures subjectives (humeur, stress perçu) réagissent à la charge d'entraînement aiguë et chronique avec plus de sensibilité et de régularité que les mesures objectives (sang, FC), et peuvent suffire seules."
   limits_fr: "Études hétérogènes, populations d'athlètes surtout, recherche close en 2014. Ne démontre pas qu'adapter la charge sur ces mesures améliore la performance ou réduit les blessures."
-  applies_to: ["R1", "R2", "R4"]
+  applies_to: ["R1", "R2", "R4", "R6"]
   confidence: "moyenne"
   verified_on: "2026-10-18"
 - id: REC-002

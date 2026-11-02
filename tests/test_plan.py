@@ -577,3 +577,15 @@ def test_event_day_and_the_day_before_are_protected():
             if gap == 1:
                 assert s.kind not in ("strength_lower", "run_quality"), "veille : ni jambes ni intensité"
                 assert not s.kind.startswith("run_") or s.duration_min <= 30, "veille : 30 min de course au plus"
+
+
+def test_g18_missed_sessions_are_asked_about_never_made_up():
+    from app.plan.api import missed_sessions
+
+    today = date(2026, 11, 4)
+
+    def row(i, day, status, logged=None):
+        return {"id": i, "day": day, "title": f"S{i}", "kind": "run_easy", "status": status, "logged": logged}
+    rows = [row(1, date(2026, 11, 2), "planned"), row(2, date(2026, 11, 3), "done"), row(3, date(2026, 11, 3), "skipped"), row(4, today, "planned"), row(5, date(2026, 10, 20), "planned"),
+            row(6, date(2026, 11, 3), "planned", {"garmin_id": "9"})]
+    assert [m["id"] for m in missed_sessions(rows, today)] == [1]  # ni faite, ni passée, ni aujourd'hui, ni trop ancienne, ni reliée à une activité

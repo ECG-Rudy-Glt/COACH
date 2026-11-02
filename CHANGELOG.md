@@ -8,6 +8,9 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Rule N12: a meal estimated from a photo alone (no quantity, no answer) is raised by 15 % (25 % from 700 kcal) because photos underestimate; the note says so and a declared quantity overrides it. The estimation prompt now asks to account for hidden fats and sauces.
 - Level validation tests (`tests/test_levels.py`): beginner, amateur, experienced and high-level profiles keep the safety invariants and scale in volume; the chat prompt adapts tone to the level.
 - New logo (heart with a pulse turning into a climb) and a README/architecture section stating COACH is the first tool of a planned suite for health and sport.
+- Missed-session policy (rule G18, issue #80): a past planned session with no status is never made up; the plan screen asks "Did you do it?" (done / skipped).
+- Plan change log with reason and rule ids (G19) and absence periods (G20, issue #81): declare travel, illness, injury or missing equipment; sessions in the period are skipped, the return week is lightened, and everything can be undone. Migration 0018.
+- Daily check-in (issue #85, rules R1, R2, R4, R6): three answers (energy, felt sleep, soreness) plus a pain checkbox on the plan screen; a degraded day proposes lightening today's session (quality session to easy run, otherwise -30 %), never heavier, and nothing changes without your confirmation. 3 degraded days out of 7 raise a week alert. Thresholds are a practice convention; HRV and resting HR are deliberately not used.
 ### Fixed
 - Strength-only plans no longer lose sessions silently when no maximum session duration was entered (the 60 min default cut upper-body and leg sessions).
 - Back from an exercise sheet opened from a session returns to that session instead of the full exercise grid.

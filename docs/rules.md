@@ -56,6 +56,9 @@ Preuve : C (principe de précaution). Ces règles ne sont pas désactivables.
 | G15 | Séances dures replacées : jamais deux le même jour, jamais la veille ou le lendemain d'une autre (y compris celles déjà faites cette semaine et la veille de la semaine), jambes jamais collées à une course clé (G5, I1, I2, M14) ; jours bloqués, durées maximales (G6, G12), jour et veille d'un objectif (C6) et jours de météo déconseillée pour la course en extérieur (W1 à W7) respectés. Deux séances le même jour seulement : footing et haut du corps (I3) | 48 h | Espacement : C (G5). Interférence jambes et endurance : HYB-001 (Wilson 2012, méta-analyse), HYB-002 (Schumann 2022, méta-analyse, interférence faible sur la force maximale) |
 | G16 | Au moins un jour de repos complet dans la semaine replanifiée, séances faites et activités non reliées comprises ; sinon la séance la moins prioritaire est retirée | 1 jour | C (G5) |
 | G17 | Trop peu de jours restants pour tout placer sans enfreindre G14 à G16 : le moteur retire les séances les moins prioritaires (ordre de G9 : sortie longue, qualité, jambes, footing, haut du corps) plutôt que de tout caser, et dit lesquelles et pourquoi ; une séance retirée est marquée « passée » (statut ignorée) et reste visible, et l'annulation la rétablit | | C. Prolonge G9 à la replanification |
+| G18 | Séance manquée : elle n'est jamais rattrapée ni doublée ; l'écran du plan demande « Avez-vous fait … ? » pour toute séance prévue dont le jour est passé depuis 7 jours au plus sans statut (faite, passée), et le volume restant n'est rééquilibré que par la replanification (G13 à G17), jamais au-delà de G1 | 7 jours | C |
+| G19 | Journal des modifications : chaque changement du plan fait après coup (replanification, ajustement du bilan ou de la discussion appliqué) est listé avec sa date, sa raison et les identifiants de règles qui le justifient ; une replanification annulée est marquée comme telle | 12 dernières | C |
+| G20 | Période d'absence déclarée (voyage, maladie, blessure, matériel ; 90 jours au plus) : les séances prévues pendant la période sont passées et jamais rattrapées (G18) ; la semaine qui suit est allégée de 15 % (voyage) ou 30 % (maladie, blessure), sans allègement pour le matériel ; maladie ou blessure : renvoi vers un professionnel si la gêne persiste (S1) ; tout s'annule tant qu'aucune séance touchée n'a été faite | 0,85 ; 0,7 | C |
 
 ## C. Course à pied et trail
 
@@ -128,6 +131,7 @@ objectives (Saw et al. 2016, B).
 | R3 | Douleur localisée déclarée | Règle S2 |
 | R4 | Le check-in ne peut **qu'alléger** un jour, jamais l'alourdir | |
 | R5 | FC de repos de jour et charge Garmin utilisées comme signaux secondaires | Alerte douce, jamais décisive seule |
+| R6 | Seuils du bilan du jour (convention de pratique : aucune étude lue ne fixe de seuil) : dégradé = au moins 2 signaux faibles sur 3 (énergie ≤ 2 sur 5, sommeil ressenti ≤ 2 sur 5, courbatures ≥ 4 sur 5) ; la HRV et la FC de repos ne servent pas à décider ; aucun changement sans confirmation ; douleur déclarée : renvoi vers un professionnel (S1, S2) | 2 sur 3 | C |
 
 ## G. Alimentation (cibles et suggestions)
 
