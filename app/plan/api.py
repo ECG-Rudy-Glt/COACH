@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.coach.replan_explain import explain
 from app.garmin.match import auto_link, link_fields, suggestions, unlink_fields
 from app.plan import absence as AB
+from app.plan import readiness as RD
 from app.plan import trajectory
 from app.plan.cycles import continue_anchor, describe
 from app.plan.engine import KEY, advice, build_profile, empty_reason, outlook, plan_weeks, warnings
@@ -29,6 +30,17 @@ class Generate(BaseModel):
 class ReplanIn(BaseModel):
     include_today: bool = False  # par défaut, la séance d'aujourd'hui est considérée comme non faisable : on replanifie à partir de demain
     explain: bool = False  # une phrase d'explication par l'IA si elle est configurée (jamais de chiffre)
+
+
+class CheckinIn(BaseModel):
+    energy: int = Field(ge=1, le=5)
+    sleep: int = Field(ge=1, le=5)
+    soreness: int = Field(ge=1, le=5)
+    pain: bool = False
+
+
+class CheckinApply(BaseModel):
+    session_id: int
 
 
 class AbsenceIn(BaseModel):
@@ -291,7 +303,40 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
                 "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start),
-                "missed": missed_sessions(rows, today), "changelog": change_log(repo, user_id), "absences": active_absences(repo, user_id, today)}
+                "missed": missed_sessions(rows, today), "changelog": change_log(repo, user_id), "absences": active_absences(repo, user_id, today), "readiness": readiness_view(repo, user_id, today)}
+
+    def readiness_view(repo: Repo, user_id: int, today: date) -> dict[str, Any]:
+        metrics = repo.list_metrics(user_id, None, today - timedelta(days=RD.WEEK_DAYS), today)
+        metrics = [m for m in metrics if m["metric"] in RD.METRICS]
+        state = RD.state_on(metrics, today)
+        todays = [r for r in repo.list_sessions(user_id, today, today + timedelta(days=1)) if r["day"] == today]
+        return {"state": state, "proposals": RD.proposals(state, todays), "week_alert": RD.week_alert(metrics, today), "pain_note": RD.PAIN_NOTE if state and state["pain"] else None}
+
+    @router.get("/readiness")
+    def readiness_get(user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        return readiness_view(repo, user_id, date.today())
+
+    @router.post("/readiness")
+    def readiness_post(body: CheckinIn, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """R1, R2, R4 : enregistre le bilan du jour et propose d'alléger la séance du jour ; rien n'est modifié avant la confirmation."""
+        today = date.today()
+        repo.upsert_metrics(user_id, RD.rows(today, body.energy, body.sleep, body.soreness, body.pain))
+        return readiness_view(repo, user_id, today)
+
+    @router.post("/readiness/apply")
+    def readiness_apply(body: CheckinApply, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
+        """Revalide côté serveur (jamais la valeur envoyée par le client) : la proposition doit exister pour le bilan d'aujourd'hui."""
+        today = date.today()
+        prop = next((p for p in readiness_view(repo, user_id, today)["proposals"] if p["session_id"] == body.session_id), None)
+        if not prop:
+            raise HTTPException(409, "Aucun allègement n'est proposé pour cette séance.")
+        r = next(x for x in repo.list_sessions(user_id, today, today + timedelta(days=1)) if x["id"] == body.session_id)
+        note = f"{RD.APPLIED_NOTE} ({', '.join(prop['rules'])})"
+        if prop["action"] == "swap_easy":
+            repo.patch_planned(user_id, r["id"], {"kind": "run_easy", "title": "Footing facile", "details": {"zone": (r["details"] or {}).get("zone", "")}, "notes": [*r["notes"], note]})
+        else:
+            repo.patch_planned(user_id, r["id"], {"duration_min": prop["duration_to"], "notes": [*r["notes"], note]})
+        return {"applied": prop["action"]}
 
     @router.post("/absences", status_code=201)
     def absence_create(body: AbsenceIn, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:
