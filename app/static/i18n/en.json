@@ -1787,5 +1787,12 @@
  "appliqué": "applied",
  "ignoré": "dismissed",
  "Je n'ai pas pu m'entraîner : adapte ma semaine": "I couldn't train: adapt my week",
- "Photo seule : estimation majorée de {num} % (N12), car les photos sous-estiment en général.": "Photo only: estimate increased by {num}% (N12), because photos usually underestimate."
+ "Photo seule : estimation majorée de {num} % (N12), car les photos sous-estiment en général.": "Photo only: estimate increased by {num}% (N12), because photos usually underestimate.",
+ "Séances à confirmer": "Sessions to confirm",
+ "{n} séance(s) passée(s) sans statut": "{n} past session(s) without a status",
+ "Avez-vous fait « {title} » ?": "Did you do \"{title}\"?",
+ "Oui, faite": "Yes, done",
+ "Non, passée": "No, skipped",
+ "Séance notée comme faite": "Session marked as done",
+ "Séance passée (non rattrapée)": "Session skipped (not made up)"
 }

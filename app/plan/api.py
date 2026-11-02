@@ -82,6 +82,15 @@ def snapshot(r: dict[str, Any]) -> dict[str, Any]:
     return {"id": r["id"], "day": r["day"].isoformat(), "duration_min": r["duration_min"], "notes": list(r["notes"] or []), "details": r["details"] or {}, "status": r["status"]}
 
 
+MISSED_DAYS = 7
+
+
+def missed_sessions(rows: list[dict[str, Any]], today: date) -> list[dict[str, Any]]:
+    """G18 : séances prévues dont le jour est passé sans statut (ni faite, ni passée) : l'écran demande « Avez-vous fait … ? ». Rien n'est rattrapé automatiquement."""
+    return [{"id": r["id"], "day": r["day"].isoformat(), "title": r["title"], "kind": r["kind"]} for r in rows
+            if r["status"] == "planned" and today - timedelta(days=MISSED_DAYS) <= r["day"] < today and not (r.get("logged") or {}).get("garmin_id")]
+
+
 def last_replan(repo: Repo, user_id: int, monday: date) -> dict[str, Any] | None:
     """Dernière replanification non annulée de la semaine en cours : l'écran propose de l'annuler."""
     m = next((m for m in repo.list_memory(user_id, REPLAN_KIND, 5) if m["period_start"] == monday and not (m["data"] or {}).get("undone")), None)
@@ -247,7 +256,8 @@ def build_router(get_repo: Any, require_user: Any) -> APIRouter:
         facts = estimated_facts(repo, user_id, facts, goals, today)
         prof = build_profile(facts, goals, today)
         return {"today": today.isoformat(), "sessions": [serialize(r) for r in rows], "bounds": bounds_of(repo, user_id, today), "outlook": outlook(prof, today), "advice": advice(prof),
-                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start)}
+                "cycle": describe(rows, today), "trajectory": trajectory.describe(prof.target, facts, goals, today), "replan": last_replan(repo, user_id, start),
+                "missed": missed_sessions(rows, today)}
 
     @router.post("/replan/preview")
     def replan_preview(request: Request, body: ReplanIn | None = None, user_id: int = Depends(require_user), repo: Repo = Depends(get_repo)) -> dict[str, Any]:

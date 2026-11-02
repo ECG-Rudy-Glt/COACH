@@ -24,6 +24,7 @@ G14: "Replanification : volume de course (fait + à venir) jamais au-dessus du v
 G15: "Replanification : pas de séance dure la veille, le lendemain ou le même jour d'une autre (faites comprises), jambes jamais collées à une course clé, jours bloqués, durées maximales, objectif et météo déconseillée respectés ; footing + haut du corps seuls à partager un jour. Sources HYB-001, HYB-002 ; espacement de 48 h = convention (G5)."
 G16: "Replanification : au moins un jour de repos complet dans la semaine, sinon la séance la moins prioritaire est retirée."
 G17: "Replanification : trop peu de jours restants = les séances les moins prioritaires sont retirées et dites (ordre de G9) plutôt que de tout caser ; annulable."
+G18: "Séance manquée : jamais rattrapée ni doublée ; l'écran demande « Avez-vous fait … ? » pour une séance dont le jour est passé sans statut (7 jours au plus) ; rééquilibrage seulement par la replanification (G13 à G17)."
 C1: "Environ 80 % du temps de course en facile, 20 % en intensité ; au plus 2 séances de qualité par semaine."
 C2: "Une sortie longue par semaine, au plus 30 % du volume hebdomadaire de course."
 C3: "Zones calculées sur la FC max, sinon sur l'allure du meilleur 10 km récent."
