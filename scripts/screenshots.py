@@ -58,7 +58,9 @@ def run() -> None:
                 page.wait_for_selector(".tabbar")
                 tab(page, "Nutrition")
                 shot(page, "nutrition-light")
-                tab(page, "Profil")
+                tab(page, "Accueil")
+                page.locator(".avatar").first.click()  # le profil s'ouvre par la pastille ronde de l'accueil
+                page.wait_for_timeout(700)
                 shot(page, "profile-light")
             if theme == "dark":
                 tab(page, "Plan")
