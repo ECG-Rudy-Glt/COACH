@@ -18,6 +18,12 @@
       budget: "Budget mensuel d'IA (€)", budget_help: "COACH arrête d'appeler l'IA quand ce budget est atteint dans le mois. Fixez aussi un plafond chez le fournisseur (voir le guide).",
       start: "Démarrer COACH", save: "Enregistrer et redémarrer", cancel: "Annuler",
       other: "English", saving: "Enregistrement…", starting: "Démarrage du serveur local…", need_key: "Saisissez la clé d'API de ce fournisseur, ou choisissez « Aucun ».",
+      notify: "Rappels par ntfy ou e-mail (facultatif)", notify_help: "Le serveur de COACH peut envoyer des rappels et un résumé hebdomadaire. Laissez vide pour ne rien activer. Les mots de passe et jetons vont dans le trousseau du système.",
+      ntfy_url: "Adresse du serveur ntfy", ntfy_public: "Adresse ntfy saisie dans l'application du téléphone (si différente)", ntfy_token: "Jeton d'accès ntfy (nécessaire : COACH n'envoie sur ntfy qu'avec un jeton)",
+      secret_stored: "Déjà enregistré. Laissez vide pour le garder.", smtp_host: "Serveur SMTP (nom seul)", smtp_port: "Port SMTP", smtp_user: "Utilisateur SMTP", smtp_password: "Mot de passe SMTP",
+      smtp_from: "Adresse d'expédition (vide = l'utilisateur SMTP)", notify_auto: "Envoyer automatiquement les rappels et le résumé hebdomadaire", notify_hour: "Heure d'envoi (0 à 23, heure de cet ordinateur)",
+      clear_secrets: "Supprimer le jeton ntfy et le mot de passe SMTP enregistrés", notify_after: "Ensuite, chaque personne choisit son sujet ntfy ou active l'e-mail dans Profil, Notifications. Les notifications push du navigateur ne sont pas disponibles dans l'application de bureau.",
+      secrets_cleared: "Jeton et mot de passe supprimés à l'enregistrement.",
       data_hint: "Vos données : ", key_cleared: "Clé supprimée. Choisissez « Aucun » ou saisissez une nouvelle clé."
     },
     en: {
@@ -34,6 +40,12 @@
       budget: "Monthly AI budget (€)", budget_help: "COACH stops calling the AI once this budget is reached in the month. Also set a spending cap with your provider (see the guide).",
       start: "Start COACH", save: "Save and restart", cancel: "Cancel",
       other: "Français", saving: "Saving…", starting: "Starting the local server…", need_key: "Enter this provider's API key, or choose “None”.",
+      notify: "Reminders by ntfy or e-mail (optional)", notify_help: "The COACH server can send reminders and a weekly digest. Leave empty to enable nothing. Passwords and tokens go to the system keychain.",
+      ntfy_url: "ntfy server address", ntfy_public: "ntfy address typed in the phone app (if different)", ntfy_token: "ntfy access token (required: COACH only sends to ntfy with a token)",
+      secret_stored: "Already stored. Leave empty to keep it.", smtp_host: "SMTP server (name only)", smtp_port: "SMTP port", smtp_user: "SMTP user", smtp_password: "SMTP password",
+      smtp_from: "Sender address (empty = the SMTP user)", notify_auto: "Send reminders and the weekly digest automatically", notify_hour: "Send hour (0 to 23, this computer's time)",
+      clear_secrets: "Delete the stored ntfy token and SMTP password", notify_after: "Then each person picks their ntfy topic or turns e-mail on in Profile, Notifications. Browser push notifications are not available in the desktop app.",
+      secrets_cleared: "Token and password deleted when you save.",
       data_hint: "Your data: ", key_cleared: "Key deleted. Choose “None” or enter a new key."
     }
   };
@@ -50,7 +62,7 @@
   if (!T[lang]) lang = "en";
 
   var $ = function (id) { return document.getElementById(id); };
-  var state = null, editing = false, keyCleared = false, hadKey = false;
+  var state = null, editing = false, keyCleared = false, hadKey = false, secretsCleared = false;
 
   function tr(k) { return T[lang][k]; }
   function apply() {
@@ -91,6 +103,13 @@
     if (s) {
       $("provider").value = s.provider; $("model").value = s.model || ""; $("base-url").value = s.base_url || ""; $("budget").value = String(s.budget);
     }
+    var n = (s && s.notify) || {};
+    $("ntfy-url").value = n.ntfy_url || ""; $("ntfy-public-url").value = n.ntfy_public_url || ""; $("smtp-host").value = n.smtp_host || "";
+    $("smtp-port").value = n.smtp_port || ""; $("smtp-user").value = n.smtp_user || ""; $("smtp-from").value = n.smtp_from || "";
+    $("notify-auto").checked = !!n.auto; $("notify-hour").value = n.hour || "";
+    $("ntfy-stored").hidden = !state.has_ntfy_token; $("smtp-stored").hidden = !state.has_smtp_password;
+    $("clear-secrets").hidden = !(state.has_ntfy_token || state.has_smtp_password);
+    $("notify-block").open = !!(n.ntfy_url || n.smtp_host);
     $("cancel").hidden = !(editing && state.running);
     apply(); refreshFields();
   }
@@ -116,6 +135,9 @@
   $("clear-key").addEventListener("click", function () {
     keyCleared = true; hadKey = false; $("key-stored").hidden = true; $("clear-key").hidden = true; say(tr("key_cleared"), "ok");
   });
+  $("clear-secrets").addEventListener("click", function () {
+    secretsCleared = true; $("ntfy-stored").hidden = true; $("smtp-stored").hidden = true; $("clear-secrets").hidden = true; say(tr("secrets_cleared"), "ok");
+  });
   $("cancel").addEventListener("click", function () { launch(false); });
   $("retry").addEventListener("click", function () { launch(true); });
   $("to-settings").addEventListener("click", function () { editing = true; showForm(); });
@@ -128,9 +150,16 @@
     invoke("save_settings", {
       input: {
         provider: p, api_key: key, clear_key: keyCleared && !key.trim(), model: $("model").value, base_url: p === "ollama" ? $("base-url").value : "",
-        budget: parseFloat($("budget").value.replace(",", ".")) || 0
+        budget: parseFloat($("budget").value.replace(",", ".")) || 0,
+        notify: {
+          ntfy_url: $("ntfy-url").value, ntfy_public_url: $("ntfy-public-url").value, smtp_host: $("smtp-host").value, smtp_port: $("smtp-port").value,
+          smtp_user: $("smtp-user").value, smtp_from: $("smtp-from").value, auto: $("notify-auto").checked, hour: $("notify-hour").value
+        },
+        ntfy_token: $("ntfy-token").value, clear_ntfy_token: secretsCleared && !$("ntfy-token").value.trim(),
+        smtp_password: $("smtp-password").value, clear_smtp_password: secretsCleared && !$("smtp-password").value.trim()
       }
     }).then(function () {
+      $("ntfy-token").value = ""; $("smtp-password").value = ""; secretsCleared = false;
       keyField.value = ""; // la clé est dans le trousseau : on ne la garde pas dans la page
       say(tr("starting"), "ok");
       launch(true);

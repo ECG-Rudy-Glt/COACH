@@ -69,6 +69,35 @@
           <p class="hint" data-i18n="budget_help">COACH arrête d'appeler l'IA quand ce budget est atteint dans le mois. Fixez aussi un plafond chez le fournisseur (voir le guide).</p>
         </div>
 
+
+        <details id="notify-block">
+          <summary data-i18n="notify">Rappels par ntfy ou e-mail (facultatif)</summary>
+          <p class="hint" data-i18n="notify_help">Le serveur de COACH peut envoyer des rappels et un résumé hebdomadaire. Laissez vide pour ne rien activer. Les mots de passe et jetons vont dans le trousseau du système.</p>
+          <label for="ntfy-url" data-i18n="ntfy_url">Adresse du serveur ntfy</label>
+          <input id="ntfy-url" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://ntfy.example.org">
+          <label for="ntfy-public-url" data-i18n="ntfy_public">Adresse ntfy saisie dans l'application du téléphone (si différente)</label>
+          <input id="ntfy-public-url" type="text" inputmode="url" autocomplete="off" spellcheck="false">
+          <label for="ntfy-token" data-i18n="ntfy_token">Jeton d'accès ntfy (nécessaire : COACH n'envoie sur ntfy qu'avec un jeton)</label>
+          <input id="ntfy-token" type="password" autocomplete="off" spellcheck="false">
+          <p class="hint ok" id="ntfy-stored" hidden data-i18n="secret_stored">Déjà enregistré. Laissez vide pour le garder.</p>
+          <label for="smtp-host" data-i18n="smtp_host">Serveur SMTP (nom seul)</label>
+          <input id="smtp-host" type="text" autocomplete="off" spellcheck="false" placeholder="smtp.example.org">
+          <label for="smtp-port" data-i18n="smtp_port">Port SMTP</label>
+          <input id="smtp-port" type="text" inputmode="numeric" autocomplete="off" placeholder="587">
+          <label for="smtp-user" data-i18n="smtp_user">Utilisateur SMTP</label>
+          <input id="smtp-user" type="text" autocomplete="off" spellcheck="false">
+          <label for="smtp-password" data-i18n="smtp_password">Mot de passe SMTP</label>
+          <input id="smtp-password" type="password" autocomplete="off" spellcheck="false">
+          <p class="hint ok" id="smtp-stored" hidden data-i18n="secret_stored">Déjà enregistré. Laissez vide pour le garder.</p>
+          <label for="smtp-from" data-i18n="smtp_from">Adresse d'expédition (vide = l'utilisateur SMTP)</label>
+          <input id="smtp-from" type="text" autocomplete="off" spellcheck="false">
+          <label class="check"><input id="notify-auto" type="checkbox"> <span data-i18n="notify_auto">Envoyer automatiquement les rappels et le résumé hebdomadaire</span></label>
+          <label for="notify-hour" data-i18n="notify_hour">Heure d'envoi (0 à 23, heure de cet ordinateur)</label>
+          <input id="notify-hour" type="number" min="0" max="23" step="1" placeholder="18">
+          <p class="links"><button type="button" class="link" id="clear-secrets" data-i18n="clear_secrets">Supprimer le jeton ntfy et le mot de passe SMTP enregistrés</button></p>
+          <p class="hint" data-i18n="notify_after">Ensuite, chaque personne choisit son sujet ntfy ou active l'e-mail dans Profil, Notifications. Les notifications push du navigateur ne sont pas disponibles dans l'application de bureau.</p>
+        </details>
+
         <p id="msg" class="msg" role="status"></p>
         <div class="row">
           <button type="submit" id="go" data-i18n="start">Démarrer COACH</button>

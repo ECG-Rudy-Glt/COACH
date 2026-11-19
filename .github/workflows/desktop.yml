@@ -1,6 +1,6 @@
 name: Desktop app
 
-# Construit l'application de bureau COACH (desktop/) : Windows (msi + exe NSIS) et Linux (AppImage + deb). macOS : non fourni.
+# Construit l'application de bureau COACH (desktop/) : Windows (msi + exe NSIS), Linux (AppImage + deb) et macOS (dmg, Apple Silicon et Intel, non signés).
 # Chaque installateur embarque le serveur COACH figé avec PyInstaller (desktop/build-sidecar.py).
 # Déclenchement : tag `desktop-v*` (publie une Release GitHub avec les sommes SHA-256) ou lancement manuel
 # (construit les installateurs et les garde en artefacts ; case « publier » pour créer la Release).
@@ -9,6 +9,7 @@ name: Desktop app
 on:
   push:
     tags: ["desktop-v*"]
+    branches: ["feat/desktop-app"]  # TEMPORAIRE : validation avant fusion (workflow_dispatch exige le fichier sur main)
   workflow_dispatch:
     inputs:
       publish:
@@ -38,6 +39,10 @@ jobs:
         include:
           - { name: Windows, os: windows-2022, bundles: "msi,nsis", target: "" }
           - { name: Linux, os: ubuntu-22.04, bundles: "appimage,deb", target: "" }
+          # macOS, non signé (Gatekeeper : voir docs/desktop.md). Apple Silicon sur macos-latest, Intel sur macos-15-intel (runner natif :
+          # le serveur figé par PyInstaller n'est pas multi-architecture).
+          - { name: macOS Apple Silicon, os: macos-latest, bundles: "dmg", target: aarch64-apple-darwin }
+          - { name: macOS Intel, os: macos-15-intel, bundles: "dmg", target: x86_64-apple-darwin }
     steps:
       - uses: actions/checkout@v7
 
@@ -99,6 +104,11 @@ jobs:
             Set-Content -Path (Join-Path $env:RUNNER_TEMP 'sign.json') -Value $conf
             "Signature Windows activée."
           } else { "Pas de certificat Windows : installateur non signé." }
+
+      - name: Tests Rust (Linux)
+        if: runner.os == 'Linux'
+        working-directory: desktop/src-tauri
+        run: cargo test --lib
 
       - name: Construire
         working-directory: desktop

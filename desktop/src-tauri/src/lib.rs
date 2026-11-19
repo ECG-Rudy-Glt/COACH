@@ -23,7 +23,7 @@ use tauri::{
     menu::{AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
     AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindowBuilder,
 };
-use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
 use tauri_plugin_opener::OpenerExt;
 
 const WINDOW: &str = "main";
@@ -60,6 +60,30 @@ struct Settings {
     base_url: String,
     #[serde(default = "default_budget")]
     budget: f64,
+    #[serde(default)]
+    notify: Notify,
+}
+
+/// Rappels (facultatifs) : ntfy et e-mail sont des fonctions du serveur COACH. Les secrets (jeton ntfy, mot de passe SMTP) sont au trousseau.
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct Notify {
+    #[serde(default)]
+    ntfy_url: String,
+    #[serde(default)]
+    ntfy_public_url: String,
+    #[serde(default)]
+    smtp_host: String,
+    #[serde(default)]
+    smtp_port: String,
+    #[serde(default)]
+    smtp_user: String,
+    #[serde(default)]
+    smtp_from: String,
+    /// AUTO_NOTIFY : rappels et résumé hebdomadaire automatiques.
+    #[serde(default)]
+    auto: bool,
+    #[serde(default)]
+    hour: String,
 }
 
 fn default_budget() -> f64 {
@@ -91,13 +115,24 @@ fn provider_needs_key(id: &str) -> Option<bool> {
     PROVIDERS.iter().find(|(p, _)| *p == id).map(|(_, k)| *k)
 }
 
+fn secret_entry(name: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(KEYRING_SERVICE, name).map_err(|e| e.to_string())
+}
+
 fn key_entry(provider: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new(KEYRING_SERVICE, &format!("llm-api-key:{provider}")).map_err(|e| e.to_string())
+    secret_entry(&format!("llm-api-key:{provider}"))
+}
+
+fn stored_secret(name: &str) -> Option<String> {
+    secret_entry(name).ok()?.get_password().ok().filter(|k| !k.is_empty())
 }
 
 fn stored_key(provider: &str) -> Option<String> {
-    key_entry(provider).ok()?.get_password().ok().filter(|k| !k.is_empty())
+    stored_secret(&format!("llm-api-key:{provider}"))
 }
+
+const NTFY_TOKEN: &str = "ntfy-token";
+const SMTP_PASSWORD: &str = "smtp-password";
 
 /// Clé de chiffrement des jetons Garmin (Fernet : 32 octets en base64 « url-safe » avec remplissage), créée au besoin.
 fn garmin_secret() -> Option<String> {
@@ -193,6 +228,8 @@ fn start_sidecar(app: &AppHandle) -> Result<u16, String> {
     for var in [
         "LLM_API_KEY", "LLM_API_KEY_FILE", "LLM_PROVIDER", "LLM_MODEL", "LLM_MODEL_FAST", "LLM_BASE_URL", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
         "GEMINI_API_KEY", "MISTRAL_API_KEY", "OPENROUTER_API_KEY", "OLLAMA_API_KEY", "SECRETS_KEY", "SECRETS_KEY_FILE", "DB_HOST", "DATABASE_URL_FILE",
+        "NTFY_URL", "NTFY_PUBLIC_URL", "NTFY_TOKEN", "NTFY_TOKEN_FILE", "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_FROM", "SMTP_PASSWORD", "SMTP_PASSWORD_FILE",
+        "AUTO_NOTIFY", "NOTIFY_HOUR",
     ] {
         cmd.env_remove(var);
     }
@@ -208,6 +245,27 @@ fn start_sidecar(app: &AppHandle) -> Result<u16, String> {
         let base = if settings.base_url.is_empty() && settings.provider == "ollama" { DEFAULT_OLLAMA_URL } else { &settings.base_url };
         if !base.is_empty() {
             cmd.env("LLM_BASE_URL", base);
+        }
+    }
+    let n = &settings.notify;
+    for (name, value) in [
+        ("NTFY_URL", &n.ntfy_url), ("NTFY_PUBLIC_URL", &n.ntfy_public_url), ("SMTP_HOST", &n.smtp_host), ("SMTP_PORT", &n.smtp_port),
+        ("SMTP_USER", &n.smtp_user), ("SMTP_FROM", &n.smtp_from),
+    ] {
+        if !value.is_empty() {
+            cmd.env(name, value);
+        }
+    }
+    if let Some(t) = stored_secret(NTFY_TOKEN).filter(|_| !n.ntfy_url.is_empty()) {
+        cmd.env("NTFY_TOKEN", t);
+    }
+    if let Some(p) = stored_secret(SMTP_PASSWORD).filter(|_| !n.smtp_host.is_empty()) {
+        cmd.env("SMTP_PASSWORD", p);
+    }
+    if n.auto && (!n.ntfy_url.is_empty() || !n.smtp_host.is_empty()) {
+        cmd.env("AUTO_NOTIFY", "1");
+        if !n.hour.is_empty() {
+            cmd.env("NOTIFY_HOUR", &n.hour);
         }
     }
     if let Some(k) = garmin_secret() {
@@ -252,6 +310,8 @@ struct State {
     configured: bool,
     settings: Option<Settings>,
     has_key: bool,
+    has_ntfy_token: bool,
+    has_smtp_password: bool,
     running: bool,
     data_dir: String,
     version: String,
@@ -265,6 +325,8 @@ fn get_state(app: AppHandle) -> State {
     State {
         configured: settings.is_some(),
         has_key,
+        has_ntfy_token: stored_secret(NTFY_TOKEN).is_some(),
+        has_smtp_password: stored_secret(SMTP_PASSWORD).is_some(),
         settings,
         running,
         data_dir: data_dir(&app).map(|d| d.display().to_string()).unwrap_or_default(),
@@ -290,6 +352,16 @@ struct SaveInput {
     #[serde(default)]
     base_url: String,
     budget: f64,
+    #[serde(default)]
+    notify: Notify,
+    #[serde(default)]
+    ntfy_token: String,
+    #[serde(default)]
+    clear_ntfy_token: bool,
+    #[serde(default)]
+    smtp_password: String,
+    #[serde(default)]
+    clear_smtp_password: bool,
 }
 
 fn clean_text(s: &str, max: usize) -> Result<String, String> {
@@ -298,6 +370,59 @@ fn clean_text(s: &str, max: usize) -> Result<String, String> {
         return Err("Texte invalide.".into());
     }
     Ok(t.to_string())
+}
+
+/// Valide les champs de rappels (ntfy, SMTP) : adresses http(s) sans identifiants, hôte, port et heure plausibles.
+fn clean_notify(n: &Notify) -> Result<Notify, String> {
+    let url = |v: &str| -> Result<String, String> {
+        let v = clean_text(v, 200)?;
+        if !v.is_empty() {
+            let u = Url::parse(&v).map_err(|_| "Adresse ntfy invalide.")?;
+            if !matches!(u.scheme(), "http" | "https") || u.host_str().is_none() || !u.username().is_empty() || u.password().is_some() {
+                return Err("Adresse ntfy invalide (http ou https, sans identifiants).".into());
+            }
+        }
+        Ok(v)
+    };
+    let host = clean_text(&n.smtp_host, 200)?;
+    if host.contains(['/', ':', ' ']) {
+        return Err("Hôte SMTP invalide (nom seul, sans port : le port se saisit à part).".into());
+    }
+    let port = clean_text(&n.smtp_port, 5)?;
+    if !port.is_empty() && port.parse::<u16>().map_or(true, |p| p == 0) {
+        return Err("Port SMTP invalide.".into());
+    }
+    let hour = clean_text(&n.hour, 2)?;
+    if !hour.is_empty() && hour.parse::<u8>().map_or(true, |h| h > 23) {
+        return Err("Heure invalide (0 à 23).".into());
+    }
+    Ok(Notify {
+        ntfy_url: url(&n.ntfy_url)?,
+        ntfy_public_url: url(&n.ntfy_public_url)?,
+        smtp_host: host,
+        smtp_port: port,
+        smtp_user: clean_text(&n.smtp_user, 200)?,
+        smtp_from: clean_text(&n.smtp_from, 200)?,
+        auto: n.auto,
+        hour,
+    })
+}
+
+/// Secret facultatif (jeton ntfy, mot de passe SMTP) : vide = on garde l'existant, `clear` = on le supprime.
+fn save_optional_secret(name: &str, value: &str, clear: bool) -> Result<(), String> {
+    if clear {
+        if let Ok(e) = secret_entry(name) {
+            let _ = e.delete_credential();
+        }
+    }
+    let v = value.trim();
+    if v.is_empty() {
+        return Ok(());
+    }
+    if v.chars().any(char::is_control) || v.len() > 400 {
+        return Err("Secret invalide (retour à la ligne collé par erreur ?).".into());
+    }
+    secret_entry(name)?.set_password(v).map_err(|_| "Le trousseau de l'ordinateur a refusé le secret.".to_string())
 }
 
 /// Valide et enregistre les réglages ; la clé va dans le trousseau. Ne démarre rien : l'interface appelle ensuite `start_app`.
@@ -333,11 +458,15 @@ fn save_settings(app: AppHandle, input: SaveInput) -> Result<(), String> {
     } else if stored_key(&input.provider).is_none() {
         return Err("Ce fournisseur demande une clé.".into());
     }
+    let notify = clean_notify(&input.notify)?;
+    save_optional_secret(NTFY_TOKEN, &input.ntfy_token, input.clear_ntfy_token)?;
+    save_optional_secret(SMTP_PASSWORD, &input.smtp_password, input.clear_smtp_password)?;
     let settings = Settings {
         provider: input.provider,
         model,
         base_url: if input.base_url.trim().is_empty() { String::new() } else { base_url },
         budget: input.budget,
+        notify,
     };
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(settings_path(&app)?, json).map_err(|e| e.to_string())
@@ -408,25 +537,104 @@ fn message(app: &AppHandle, text: &str) {
     app.dialog().message(text).title("COACH").show(|_| {});
 }
 
+/// Date du jour (UTC) en AAAA-MM-JJ, sans dépendance (algorithme de conversion jours -> calendrier grégorien).
+fn today_iso() -> String {
+    let days = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() / 86_400).unwrap_or(0) as i64;
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
 fn backup_data(app: &AppHandle) {
     let Ok(dir) = data_dir(app) else { return };
-    let db = dir.join("coach.db");
-    if !db.is_file() {
+    if !dir.join("coach.db").is_file() {
         message(app, "Aucune donnée à sauvegarder pour l'instant. / Nothing to back up yet.");
         return;
     }
     let handle = app.clone();
-    app.dialog().file().set_file_name("coach-backup.db").add_filter("SQLite", &["db"]).save_file(move |picked| {
+    let name = format!("coach-backup-{}.zip", today_iso());
+    app.dialog().file().set_file_name(name).add_filter("ZIP", &["zip"]).save_file(move |picked| {
         let Some(FilePath::Path(dest)) = picked else { return };
         let result = sidecar_path().and_then(|exe| {
             let mut cmd = Command::new(exe);
-            cmd.arg("backup").arg("--db").arg(&db).arg("--dest").arg(&dest).stdin(Stdio::null());
+            cmd.arg("backup").arg("--data-dir").arg(&dir).arg("--dest").arg(&dest).stdin(Stdio::null());
             quiet(&mut cmd);
             cmd.output().map_err(|e| e.to_string())
         });
         match result {
-            Ok(out) if out.status.success() => message(&handle, &format!("Sauvegarde créée / Backup created :\n{}", dest.display())),
+            Ok(out) if out.status.success() => message(&handle, &format!("Sauvegarde créée (base et photos) / Backup created (database and photos) :\n{}", dest.display())),
             _ => message(&handle, "La sauvegarde a échoué. / The backup failed."),
+        }
+    });
+}
+
+const RELEASES_API: &str = "https://api.github.com/repos/ECG-Rudy-Glt/COACH/releases?per_page=30";
+const RELEASES_PAGE: &str = "https://github.com/ECG-Rudy-Glt/COACH/releases/tag/";
+
+/// Tags `desktop-vX.Y.Z` -> (X, Y, Z) ; autre forme -> None.
+fn parse_desktop_tag(tag: &str) -> Option<(u64, u64, u64)> {
+    let v = tag.strip_prefix("desktop-v")?;
+    let mut it = v.split('.');
+    let t = (it.next()?.parse().ok()?, it.next()?.parse().ok()?, it.next()?.parse().ok()?);
+    if it.next().is_some() {
+        return None;
+    }
+    Some(t)
+}
+
+/// Dernière Release publiée `desktop-v*` (API publique GitHub, sans jeton, une seule requête HTTPS en lecture).
+fn latest_desktop_release() -> Result<Option<String>, String> {
+    let body: serde_json::Value = ureq::get(RELEASES_API)
+        .set("User-Agent", concat!("coach-desktop/", env!("CARGO_PKG_VERSION")))
+        .set("Accept", "application/vnd.github+json")
+        .timeout(Duration::from_secs(10))
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_json()
+        .map_err(|e| e.to_string())?;
+    let mut best: Option<((u64, u64, u64), String)> = None;
+    for r in body.as_array().ok_or("réponse inattendue")? {
+        if r["draft"].as_bool() == Some(true) || r["prerelease"].as_bool() == Some(true) {
+            continue;
+        }
+        let Some(tag) = r["tag_name"].as_str() else { continue };
+        if let Some(v) = parse_desktop_tag(tag) {
+            if best.as_ref().map_or(true, |(b, _)| v > *b) {
+                best = Some((v, tag.to_string()));
+            }
+        }
+    }
+    Ok(best.map(|(_, t)| t))
+}
+
+fn check_update(app: &AppHandle) {
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        let current = parse_desktop_tag(&format!("desktop-v{}", env!("CARGO_PKG_VERSION")));
+        match latest_desktop_release() {
+            Err(_) => message(&handle, "Impossible de joindre GitHub pour chercher une mise à jour. / Could not reach GitHub to check for updates."),
+            Ok(Some(tag)) if parse_desktop_tag(&tag) > current => {
+                let url = format!("{RELEASES_PAGE}{tag}");
+                let h2 = handle.clone();
+                handle
+                    .dialog()
+                    .message(format!("Une nouvelle version est disponible : {tag}. Ouvrir la page de téléchargement ?\nA new version is available: {tag}. Open the download page?"))
+                    .title("COACH")
+                    .buttons(MessageDialogButtons::OkCancelCustom("Télécharger / Download".into(), "Plus tard / Later".into()))
+                    .show(move |yes| {
+                        if yes {
+                            let _ = h2.opener().open_url(url, None::<&str>);
+                        }
+                    });
+            }
+            Ok(_) => message(&handle, &format!("COACH est à jour (version {}). / COACH is up to date.", env!("CARGO_PKG_VERSION"))),
         }
     });
 }
@@ -447,6 +655,7 @@ pub fn run() {
             let settings = MenuItemBuilder::with_id("settings", "Réglages… / Settings…").accelerator("CmdOrCtrl+,").build(app)?;
             let open_data = MenuItemBuilder::with_id("open_data", "Ouvrir le dossier de données / Open data folder").build(app)?;
             let backup = MenuItemBuilder::with_id("backup", "Sauvegarder mes données… / Back up my data…").build(app)?;
+            let update = MenuItemBuilder::with_id("update", "Rechercher une mise à jour… / Check for updates…").build(app)?;
             let reload = MenuItemBuilder::with_id("reload", "Recharger / Reload").accelerator("CmdOrCtrl+R").build(app)?;
             let about = PredefinedMenuItem::about(
                 app,
@@ -465,6 +674,7 @@ pub fn run() {
                 .item(&settings)
                 .item(&open_data)
                 .item(&backup)
+                .item(&update)
                 .item(&reload)
                 .separator()
                 .item(&about)
@@ -486,6 +696,7 @@ pub fn run() {
                     }
                 }
                 "backup" => backup_data(app),
+                "update" => check_update(app),
                 "reload" => {
                     if let Some(win) = app.get_webview_window(WINDOW) {
                         let _ = win.eval("window.location.reload()");
@@ -518,6 +729,32 @@ mod tests {
         assert!(!k.contains('+') && !k.contains('/'));
         assert_eq!(base64_url(b"Man"), "TWFu");
         assert_eq!(base64_url(b"Ma"), "TWE=");
+    }
+
+    #[test]
+    fn etiquettes_de_version() {
+        assert_eq!(parse_desktop_tag("desktop-v0.1.0"), Some((0, 1, 0)));
+        assert!(parse_desktop_tag("desktop-v0.10.0") > parse_desktop_tag("desktop-v0.9.9"));
+        assert_eq!(parse_desktop_tag("v0.2.0"), None);
+        assert_eq!(parse_desktop_tag("desktop-v1.2"), None);
+        assert_eq!(parse_desktop_tag("desktop-v1.2.3.4"), None);
+    }
+
+    #[test]
+    fn date_iso() {
+        let d = today_iso();
+        assert_eq!(d.len(), 10);
+        assert!(d.starts_with("20"));
+    }
+
+    #[test]
+    fn rappels_valides() {
+        let ok = Notify { ntfy_url: "https://ntfy.example.org".into(), smtp_host: "smtp.example.org".into(), smtp_port: "587".into(), hour: "18".into(), ..Default::default() };
+        assert!(clean_notify(&ok).is_ok());
+        assert!(clean_notify(&Notify { ntfy_url: "ftp://x".into(), ..Default::default() }).is_err());
+        assert!(clean_notify(&Notify { smtp_host: "smtp.example.org:587".into(), ..Default::default() }).is_err());
+        assert!(clean_notify(&Notify { smtp_port: "0".into(), ..Default::default() }).is_err());
+        assert!(clean_notify(&Notify { hour: "24".into(), ..Default::default() }).is_err());
     }
 
     #[test]

@@ -20,6 +20,8 @@ serde_json = "1"
 # Trousseau de l'OS : Credential Manager (Windows), Secret Service (Linux : GNOME Keyring, KWallet), Keychain (macOS).
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service", "crypto-rust", "vendored"] }
 getrandom = "0.2"
+# Une seule requête HTTPS en lecture : la recherche de mise à jour (API publique GitHub). Aucune autre requête sortante côté coque.
+ureq = { version = "2", features = ["json"] }
 
 [profile.release]
 opt-level = "s"
