@@ -33,7 +33,7 @@ from app.questionnaire.answers import AnswerError, to_facts
 from app.questionnaire.bank import load_bank, validate_bank
 from app.questionnaire.engine import next_questions, progress
 from app.questionnaire.models import Fact, Question, current_facts
-from app.repo import MemoryRepo, PostgresRepo, Repo
+from app.repo import Repo, open_repo
 from app.stats.api import build_router as build_stats_router
 from app.weather.api import build_router as build_weather_router
 
@@ -46,12 +46,7 @@ def build_state() -> tuple[list[Question], Repo]:
     problems = validate_bank(bank)
     if problems:
         raise RuntimeError("banque de questions invalide : " + "; ".join(problems))
-    dsn = load_settings().database_url
-    if dsn:
-        repo = PostgresRepo(dsn)
-        repo.migrate(Path(os.environ.get("MIGRATIONS_DIR", ROOT / "db" / "migrations")))
-        return bank, repo
-    return bank, MemoryRepo()
+    return bank, open_repo(load_settings().database_url)
 
 
 _docs = os.environ.get("ENABLE_DOCS", "") == "1"  # Swagger/OpenAPI : désactivés par défaut (surface inutile en production)

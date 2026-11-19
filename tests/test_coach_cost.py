@@ -56,6 +56,7 @@ def test_cost_cap_reached(two):
     assert not r["available"] and r["percent"] == 100
 
 
+@pytest.mark.memory_only  # fixe `created_at` dans les lignes internes de MemoryRepo
 def test_only_current_month_in_paris_timezone():
     repo = MemoryRepo()
     repo.log_llm_call(1, "chat", "m", (1, 1), 0.5, True, None)

@@ -209,7 +209,7 @@ class _Env:
         self.uid = self.client.post("/auth/register", json={"name": "R", "email": "edge@example.org", "password": "un-mot-de-passe-solide"}).json()["id"]
 
     def facts(self, **kw):
-        self.repo.add_facts(self.uid, [Fact(key=k.replace("__", "."), value=v, source="test") for k, v in kw.items()])
+        self.repo.add_facts(self.uid, [Fact(key=k.replace("__", "."), value=v, source="manual") for k, v in kw.items()])
 
     def generate(self, today, **body):
         class FakeDate(date):

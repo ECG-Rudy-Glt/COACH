@@ -57,7 +57,7 @@ flowchart TB
 | `app/garmin/` | Garmin adapter (`client.py`), sync (`api.py`, `scheduler.py`), session matching (`match.py`), token encryption (`crypto.py`) |
 | `app/coach/` | LLM coach: provider layer (`llm.py`), weekly review (`service.py`), onboarding analysis (`intake.py`), chat (`chat.py`), history tools (`history.py`), notifications (`notify.py`) |
 | `app/activity_import/` | FIT/TCX/GPX file import: pure parsers (`parse.py`) and upload route (`api.py`) |
-| `app/repo/` | storage: `protocol.py` (`Repo`), one module per domain (`accounts`, `exercises`, `goals`, `plan`, `garmin`, `coach`, `chat`, `nutrition`) holding its in-memory and Postgres halves, assembled by `memory.py` (`MemoryRepo`: tests, demo) and `postgres.py` (`PostgresRepo`: production) |
+| `app/repo/` | storage: `protocol.py` (`Repo`), one module per domain (`accounts`, `exercises`, `goals`, `plan`, `garmin`, `coach`, `chat`, `nutrition`) holding its in-memory and Postgres halves, assembled by `memory.py` (`MemoryRepo`: tests, demo) and `postgres.py` (`PostgresRepo`: production); `sqlite.py` (`SqliteRepo`: desktop app, schema in `db/sqlite/`) implements the whole protocol in one file; `open_repo(DATABASE_URL)` picks the storage |
 | `app/static/` | PWA: `app.js`, `style.css`, `sw.js` (service worker), `manifest.webmanifest` |
 | `db/migrations/` | Forward-only SQL migrations applied at start-up |
 | `data/` | Rules digest, evidence base, custom exercises, LLM provider catalog |

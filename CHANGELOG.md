@@ -3,6 +3,8 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Added
+- SQLite storage for the desktop app and local trials: `DATABASE_URL=sqlite:///path/to/coach.db` (relative or absolute path, Windows included) keeps everything in one local file with no server and no new dependency. Versioned schema in `db/sqlite/` applied at start-up (`schema_migrations`), WAL mode, foreign keys, one connection per thread, atomic writes, private file permissions. PostgreSQL and in-memory storage are unchanged. The whole test suite can be replayed against SQLite with `COACH_TEST_REPO=sqlite pytest`. See [docs/configuration.md](docs/configuration.md#sqlite-storage-desktop-app-local-trial).
 
 ## [0.2.0] — 2026-11-19
 ### Changed
