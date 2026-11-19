@@ -10,4 +10,4 @@ resources:
 images:
   - name: sport-coach
     newName: ghcr.io/ecg-rudy-glt/coach
-    newTag: "latest"          # pin a release tag (e.g. 0.1.0) in production
+    newTag: "latest"          # pin a release tag (e.g. 0.2.0) in production

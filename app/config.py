@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 def env(name: str, default: str = "") -> str:

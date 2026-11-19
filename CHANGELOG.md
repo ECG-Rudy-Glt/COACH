@@ -3,6 +3,8 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+
+## [0.2.0] — 2026-11-19
 ### Changed
 - The top bar of the main screens now stays visible while scrolling, and the diagonal copper band beside the home title is removed.
 - Header logo now shows the fir-green app icon instead of an empty gradient square.
