@@ -9,7 +9,6 @@ name: Desktop app
 on:
   push:
     tags: ["desktop-v*"]
-    branches: ["feat/desktop-updater"]  # TEMPORAIRE : validation avant fusion
   workflow_dispatch:
     inputs:
       publish:
