@@ -415,7 +415,7 @@ body.scanning { overflow: hidden; }
 :root.eco .home-band { display: none; }
 main:has(> .home-band) { position: relative; overflow-x: clip; isolation: isolate; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.125rem; letter-spacing: -.01em; }
-.logo { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--fir) 50%, var(--accent) 50%); }
+.logo { width: 26px; height: 26px; border-radius: 8px; background: #2f5d46 url("/icons/icon.svg") center / cover no-repeat; }
 .avatar { width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; background: var(--surface-2); color: var(--muted); display: inline-grid; place-items: center; }
 .avatar svg { width: 22px; height: 22px; stroke-width: 1.8; }
 .big-num { font-size: 2.125rem; line-height: 1; }
