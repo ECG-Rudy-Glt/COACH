@@ -4,6 +4,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 ### Changed
+- Header logo now shows the fir-green app icon instead of an empty gradient square.
 - UI refresh: new warm palette (dark `#12100d` / light `#f4efe6`, copper for actions, fir green for state), Barlow Condensed italic headings and figures (self-hosted, SIL OFL), slanted eyebrow marker, 14 px cards. The home screen leads with the goal countdown, a progress bar and the next session card; the tab bar has 5 entries and the profile opens from a round button at the top right of the home screen. Economy (monochrome) theme kept.
 
 ### Added
