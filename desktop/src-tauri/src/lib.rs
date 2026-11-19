@@ -167,7 +167,8 @@ fn healthy(port: u16) -> bool {
 fn stop_sidecar(app: &AppHandle) {
     let shell = app.state::<Shell>();
     *shell.port.lock().unwrap() = None;
-    if let Some(mut child) = shell.child.lock().unwrap().take() {
+    let taken = shell.child.lock().unwrap().take();
+    if let Some(mut child) = taken {
         drop(child.stdin.take()); // le sidecar surveille ce tube : sa fermeture lui demande de s'arrêter
         std::thread::sleep(Duration::from_millis(300));
         let _ = child.kill();
