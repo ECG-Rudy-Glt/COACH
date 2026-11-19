@@ -140,6 +140,7 @@ def test_llm_errors_and_garbage_are_handled(ctx):
     assert c.post(f"/users/{uid}/coach/review").json()["summary"] == "ok"
 
 
+@pytest.mark.memory_only  # vide `repo._llm` (liste interne de MemoryRepo) pour remettre à zéro la limite quotidienne
 def test_red_flag_blocks_review_and_daily_limit(ctx):
     c, uid, repo, llm = ctx
     llm.out = {"summary": "x", "proposals": []}
@@ -257,7 +258,7 @@ def test_failed_push_is_logged_and_digest_is_weekly_email(ctx):
     n = FakeNotifier()
     _prefs(repo, uid, push_enabled=False, email_enabled=True)
     from app.questionnaire.models import Fact
-    repo.add_facts(uid, [Fact(key="sports.practiced", value=["running", "strength"], source="user")])
+    repo.add_facts(uid, [Fact(key="sports.practiced", value=["running", "strength"], source="manual")])
     llm.out = {"subject": "Vos conseils", "intro": "Bonne semaine.", "sections": [{"discipline": "Course", "tips": ["Footing facile", "Hydratation"]}], "closing": "À dimanche."}
     assert notify.weekly_digest(repo, llm, n, uid, TODAY)
     kind, to, subject, text = n.sent[0]

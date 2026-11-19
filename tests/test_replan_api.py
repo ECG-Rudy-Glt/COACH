@@ -129,6 +129,7 @@ def test_g19_change_log_lists_applied_changes_with_reasons():
     from app.repo import MemoryRepo
 
     repo = MemoryRepo()
+    repo.create_user("R")
     repo.add_memory(1, "chat_adjust", (None, None), "x", {"proposals": [{"status": "applied", "action": "reduce", "session_title": "Footing", "reason": "Fatigue", "rule_ids": ["G1"]},
                                                                          {"status": "dismissed", "action": "move", "session_title": "Autre", "reason": "-", "rule_ids": ["G5"]}]})
     repo.add_memory(1, "replan_week", (None, None), "r", {"after": [1, 2], "rules": ["G13"], "undone": True})

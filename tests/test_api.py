@@ -138,9 +138,9 @@ def test_benchmarks_hidden_for_declared_beginner():
     try:
         c = TestClient(app)
         uid = c.post("/auth/register", json={"name": "Debutant", "email": "deb@example.org", "password": "un-mot-de-passe-solide"}).json()["id"]
-        repo.add_facts(uid, [Fact(key="sports.practiced", value=["strength"], source="user"), Fact(key="history.sport_years", value=0, source="user")])
+        repo.add_facts(uid, [Fact(key="sports.practiced", value=["strength"], source="manual"), Fact(key="history.sport_years", value=0, source="manual")])
         assert c.get(f"/users/{uid}/benchmarks").json()["novice"] is True
-        repo.add_facts(uid, [Fact(key="history.sport_years", value=5, source="user")])
+        repo.add_facts(uid, [Fact(key="history.sport_years", value=5, source="manual")])
         assert c.get(f"/users/{uid}/benchmarks").json()["novice"] is False
     finally:
         app.dependency_overrides.clear()
