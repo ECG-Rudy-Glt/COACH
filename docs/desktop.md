@@ -9,7 +9,7 @@ One installer, nothing else to install. The desktop app bundles the COACH server
 - A normal desktop window. Behind it, a COACH server starts on `127.0.0.1` only (never reachable from the network, on a random free port) and stops when you close the window.
 - Your accounts, plans and logs are stored in a local SQLite file. No account on any website, no telemetry.
 - The AI coach is **optional**. Without it COACH still builds your plan and your nutrition targets (they never come from an AI anyway). Details in [the AI key guide](#ai-key-guide).
-- Not included: access from your phone (use the [Docker setup](../README.md#quick-start-5-minutes-docker) for that), browser push notifications, automatic updates. See [Known limits](#known-limits).
+- Not included: access from your phone (use the [Docker setup](../README.md#quick-start-5-minutes-docker) for that), browser push notifications, code signing. Updates are one click but never silent. See [Known limits](#known-limits).
 
 ## 1. Download
 
@@ -220,7 +220,20 @@ Inside: `coach.db` (everything: accounts, plans, logs), `media/` (photos, cached
 
 ## Update
 
-**COACH > Check for updates...** asks GitHub's public API (one anonymous request, no account, nothing about you is sent) for the latest published `desktop-v*` release, compares it with your version and, if newer, offers to open the download page in your browser. Then download, check the SHA-256 and install over the old version (close COACH first). Your data and settings stay; database migrations run at the next start. Make a backup first. There is **no automatic update**: that needs a signing key that the maintainer has not set up.
+**COACH > Check for updates...** looks (one anonymous request to GitHub's public API, no account, nothing about you is sent) for the latest published `desktop-v*` release and compares it with your version. If it is newer:
+
+- **Windows, macOS and Linux AppImage**: COACH offers to **install it now**. It downloads the update from that release's `latest.json`, **verifies its signature** against the update public key built into the app, stops its local server, installs, and restarts. Nothing is installed without your confirmation, and an update whose signature does not match is refused. If anything fails (network, signature, rights), COACH starts again as before and opens the download page for a manual install.
+- **Linux `.deb`** (installed through the package manager): COACH opens the download page; install the new `.deb` as in step 3.
+
+Make a backup first. Your data and settings stay; database migrations run at the next start. COACH never checks by itself in the background: the check happens only when you click the menu entry, so to "turn updates off" simply do not use it.
+
+How the signature works: every release contains `latest.json` and one `.sig` file per update package, produced in the project's CI with a dedicated update-signing private key (stored only in the maintainer's secret vault and in the repository's GitHub secrets). The matching public key is embedded in the app (`desktop/src-tauri/tauri.conf.json`):
+
+```
+dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIyQzc0RDNEMDY4MkI5MUUKUldRZXVZSUdQVTNIc2pNaStxdnExblVCeWJaZUhOMVQrUG1yRzVvZkVqa09DU00zaTlUd3I0YlAK
+```
+
+It is independent from any code-signing certificate (the installers stay unsigned: see SmartScreen and Gatekeeper above). If the private key is ever lost or leaked, a release signed with a new key cannot be installed by apps that embed the old public key: the maintainer must then publish a version **manually** (download and install it yourself, as the first time) that embeds the new public key; from that version on, automatic updates work again. Only an app that already trusts the key will install an update, which is why the first install is always manual and checked with SHA-256.
 
 ## Uninstall
 
@@ -234,8 +247,8 @@ Your data folder is **not** deleted (so a reinstall finds everything). To erase 
 
 | Limit | Status |
 |---|---|
-| Installers not code-signed | **Remains.** Signing needs a certificate that costs money; see [SmartScreen](#windows-and-the-smartscreen-warning) and [macOS](#macos-and-gatekeeper). A free route for open source (SignPath Foundation) is noted in [desktop/README.md](../desktop/README.md) but not applied for. |
-| Automatic update | **Remains** (needs a signing key). Replaced by the *Check for updates...* menu entry that opens the download page. |
+| Installers not code-signed | **Remains** (the update packages are signed, with a separate key). Signing needs a certificate that costs money; see [SmartScreen](#windows-and-the-smartscreen-warning) and [macOS](#macos-and-gatekeeper). A free route for open source (SignPath Foundation) is noted in [desktop/README.md](../desktop/README.md) but not applied for. |
+| Automatic update | **Added**: *Check for updates...* downloads, verifies and installs on Windows, macOS and Linux AppImage (not `.deb`). It is not silent and not in the background. Not yet tested across two real releases (see the maintainer notes). |
 | Browser push and desktop pop-up notifications | **Remains.** Web push needs a push service tied to a web origin, which the embedded local address cannot register; the app has no bridge to native pop-ups. ntfy (on your phone) and e-mail work instead. |
 | Backup of photos | **Fixed**: the archive includes `media/`. |
 | macOS | **Added**, unsigned, interface never run by the maintainers on a Mac. |

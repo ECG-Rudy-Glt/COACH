@@ -9,7 +9,7 @@ Un seul installateur, rien d'autre à installer. L'application de bureau embarqu
 - Une fenêtre de bureau classique. Derrière, un serveur COACH démarre sur `127.0.0.1` uniquement (jamais joignable depuis le réseau, sur un port libre choisi au hasard) et s'arrête quand vous fermez la fenêtre.
 - Vos comptes, plans et journaux sont dans un fichier SQLite local. Aucun compte sur un site, aucune télémétrie.
 - Le coach IA est **facultatif**. Sans lui, COACH construit quand même votre plan et vos objectifs nutritionnels (ils ne viennent jamais d'une IA de toute façon). Détails dans [le guide de la clé IA](#guide-de-la-clé-ia).
-- Non inclus : accès depuis le téléphone (utilisez l'[installation Docker](../README.md#quick-start-5-minutes-docker)), notifications push du navigateur, mises à jour automatiques. Voir [Limites connues](#limites-connues).
+- Non inclus : accès depuis le téléphone (utilisez l'[installation Docker](../README.md#quick-start-5-minutes-docker)), notifications push du navigateur, signature de code. Les mises à jour se font en un clic mais jamais en silence. Voir [Limites connues](#limites-connues).
 
 ## 1. Télécharger
 
@@ -220,7 +220,20 @@ Dedans : `coach.db` (tout : comptes, plans, journaux), `media/` (photos, images 
 
 ## Mettre à jour
 
-**COACH > Rechercher une mise à jour…** interroge l'API publique de GitHub (une requête anonyme, sans compte, rien sur vous n'est envoyé) pour trouver la dernière release `desktop-v*` publiée, la compare à votre version et, si elle est plus récente, propose d'ouvrir la page de téléchargement dans votre navigateur. Téléchargez ensuite, vérifiez la somme SHA-256 et installez par-dessus l'ancienne version (fermez COACH avant). Vos données et réglages restent ; les migrations de base s'exécutent au démarrage suivant. Faites d'abord une sauvegarde. Il n'y a **pas de mise à jour automatique** : elle demande une clé de signature que le mainteneur n'a pas mise en place.
+**COACH > Rechercher une mise à jour…** cherche (une requête anonyme à l'API publique de GitHub, sans compte, rien sur vous n'est envoyé) la dernière release `desktop-v*` publiée et la compare à votre version. Si elle est plus récente :
+
+- **Windows, macOS et AppImage Linux** : COACH propose de **l'installer maintenant**. Il télécharge la mise à jour depuis le `latest.json` de cette release, **vérifie sa signature** avec la clé publique de mise à jour intégrée à l'application, arrête son serveur local, installe, puis redémarre. Rien n'est installé sans votre confirmation, et une mise à jour dont la signature ne correspond pas est refusée. Si quelque chose échoue (réseau, signature, droits), COACH redémarre comme avant et ouvre la page de téléchargement pour une installation manuelle.
+- **`.deb` Linux** (installé par le gestionnaire de paquets) : COACH ouvre la page de téléchargement ; installez le nouveau `.deb` comme à l'étape 3.
+
+Faites d'abord une sauvegarde. Vos données et réglages restent ; les migrations de base s'exécutent au démarrage suivant. COACH ne vérifie jamais de lui-même en arrière-plan : la recherche n'a lieu que lorsque vous cliquez sur l'entrée de menu ; pour « désactiver » les mises à jour, il suffit donc de ne pas l'utiliser.
+
+Fonctionnement de la signature : chaque release contient `latest.json` et un fichier `.sig` par paquet de mise à jour, produits par la CI du projet avec une clé privée de signature de mise à jour dédiée (conservée uniquement dans le coffre de secrets du mainteneur et dans les secrets GitHub du dépôt). La clé publique correspondante est intégrée à l'application (`desktop/src-tauri/tauri.conf.json`) :
+
+```
+dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIyQzc0RDNEMDY4MkI5MUUKUldRZXVZSUdQVTNIc2pNaStxdnExblVCeWJaZUhOMVQrUG1yRzVvZkVqa09DU00zaTlUd3I0YlAK
+```
+
+Elle est indépendante de tout certificat de signature de code (les installateurs restent non signés : voir SmartScreen et Gatekeeper plus haut). Si la clé privée est perdue ou compromise, une release signée avec une nouvelle clé ne peut pas être installée par les applications qui embarquent l'ancienne clé publique : le mainteneur doit alors publier une version à installer **manuellement** (vous la téléchargez et l'installez vous-même, comme la première fois) qui embarque la nouvelle clé publique ; à partir de cette version, la mise à jour automatique refonctionne. Seule une application qui fait déjà confiance à la clé installera une mise à jour : c'est pourquoi la première installation est toujours manuelle et vérifiée par SHA-256.
 
 ## Désinstaller
 
@@ -234,8 +247,8 @@ Le dossier de données n'est **pas** supprimé (une réinstallation retrouve tou
 
 | Limite | État |
 |---|---|
-| Installateurs non signés | **Subsiste.** La signature demande un certificat payant ; voir [SmartScreen](#windows-et-lavertissement-smartscreen) et [macOS](#macos-et-gatekeeper). Une piste gratuite pour l'open source (SignPath Foundation) est notée dans [desktop/README.md](../desktop/README.md) mais n'a pas été demandée. |
-| Mise à jour automatique | **Subsiste** (elle demande une clé de signature). Remplacée par l'entrée de menu *Rechercher une mise à jour…* qui ouvre la page de téléchargement. |
+| Installateurs non signés | **Subsiste** (les paquets de mise à jour, eux, sont signés avec une clé distincte). La signature demande un certificat payant ; voir [SmartScreen](#windows-et-lavertissement-smartscreen) et [macOS](#macos-et-gatekeeper). Une piste gratuite pour l'open source (SignPath Foundation) est notée dans [desktop/README.md](../desktop/README.md) mais n'a pas été demandée. |
+| Mise à jour automatique | **Ajoutée** : *Rechercher une mise à jour…* télécharge, vérifie et installe sous Windows, macOS et AppImage Linux (pas le `.deb`). Elle n'est ni silencieuse ni en arrière-plan. Pas encore testée entre deux vraies releases (voir les notes du mainteneur). |
 | Notifications push du navigateur et fenêtres de notification du bureau | **Subsiste.** Le push web exige un service de push lié à une origine web, ce que l'adresse locale embarquée ne peut pas enregistrer ; l'application n'a pas de pont vers les notifications natives. ntfy (sur votre téléphone) et l'e-mail fonctionnent à la place. |
 | Sauvegarde des photos | **Corrigé** : l'archive inclut `media/`. |
 | macOS | **Ajouté**, non signé, interface jamais lancée par les mainteneurs sur un Mac. |
