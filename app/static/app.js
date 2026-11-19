@@ -469,7 +469,6 @@ async function home() {
   const goal = goalsData.goals.find((g) => g.target_date) || null;
   const headline = goal ? homeHeadline(goal) : h("h1", null, finished ? "Profil complet" : "Votre profil");
   show(
-    h("span", { class: "home-band", "aria-hidden": "true" }),
     h("div", { class: "head" }, h("span", { class: "brand" }, h("span", { class: "logo", "aria-hidden": "true" }), "Coach"),
       h("button", { type: "button", class: "avatar", "aria-label": "Profil", onclick: () => profile() }, icon("user"))),
     h("div", { class: "stack", style: "gap:8px" }, h("span", { class: "eyebrow" }, userName ? __("Bonjour {userName}", { userName }) : "Bonjour"), headline,
@@ -2612,7 +2611,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v46";
+const UI_BUILD = "sc-v47";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";
