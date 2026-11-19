@@ -9,6 +9,7 @@ description: Change the PostgreSQL schema of COACH with a forward-only migration
 1. New file `db/migrations/00NN_<topic>.sql` (next number, never edit an applied file). Use `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`; every per-user table has `user_id BIGINT REFERENCES users(id) ON DELETE CASCADE` and an index matching its main query.
 2. Keep migrations idempotent and additive; destructive changes need an explicit data-migration plan and a CHANGELOG note (users self-host and upgrade by `docker compose up -d --build`).
 3. Add methods to the `Repo` protocol in `app/repo/protocol.py`, implement them in the domain module (`app/repo/<domain>.py`) twice: in its `…Memory` class (dict-based, used by `MemoryRepo`) **and** its `…Postgres` class (`psycopg`, parameterised SQL only, used by `PostgresRepo`). A new domain = a new module plus one base class in each of `memory.py` and `postgres.py`.
+3b. Mirror the change for the desktop app: a new `db/sqlite/00NN_<topic>.sql` (same columns; JSON and arrays as `TEXT`, booleans as `INTEGER`, timestamps as UTC text) and the method in `app/repo/sqlite.py`. `tests/test_sqlite.py` fails when the table/column names of the two schemas differ, and `tests/test_repo_contract.py` covers every protocol method on memory and SQLite.
 4. Tests: behaviour on `MemoryRepo` in the normal suite; `tests/test_postgres.py` for the SQL (runs when `TEST_DATABASE_URL` is set).
 5. Privacy: if the table holds personal data, keep the `ON DELETE CASCADE` so deleting a user removes it, and mention it in `DISCLAIMER.md` (data we store).
 

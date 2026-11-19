@@ -28,7 +28,8 @@ scripts/init-secrets.sh --vapid    # also generate Web Push (VAPID) keys
 | Variable | Default | Meaning |
 |---|---|---|
 | `POSTGRES_DB`, `POSTGRES_USER` | `coach` | database name / role created by the `db` container on first start |
-| `DATABASE_URL` | – | full DSN; alternative to `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD(_FILE)`. Empty everywhere = in-memory storage (demo, tests) |
+| `DATABASE_URL` | – | full DSN; alternative to `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD(_FILE)`. `sqlite:///path/to/coach.db` = local SQLite file (see [SQLite storage](#sqlite-storage-desktop-app-local-trial)). Empty everywhere = in-memory storage (demo, tests) |
+| `SQLITE_MIGRATIONS_DIR` | `db/sqlite` | directory of SQLite schema files (only for SQLite storage; bundle it with a packaged app) |
 | `REGISTRATION` | `first` | `first`: open until the first account exists · `open` · `closed` |
 | `COOKIE_SECURE` | `0` | `1` forces the `Secure` cookie flag (auto-enabled when HTTPS is detected) |
 | `TRUST_PROXY` | `0` (compose sets `1`) | read the client IP from `X-Forwarded-For` (last hop) for login throttling. Enable **only** behind a proxy/tunnel you control |
@@ -127,6 +128,22 @@ Each user must also switch the channel on in the app.
 ```sh
 docker compose --profile https --profile backup up -d
 ```
+
+## SQLite storage (desktop app, local trial)
+
+`DATABASE_URL=sqlite:///path/to/coach.db` stores everything in one local file: no server, no extra dependency (Python's standard `sqlite3`, SQLite 3.35 or newer). It is meant for a packaged desktop application or a quick local trial. For a server shared by several people, keep PostgreSQL.
+
+| Value | File used |
+|---|---|
+| `sqlite:///coach.db` | `coach.db` in the working directory (relative path) |
+| `sqlite:////home/me/.local/share/coach/coach.db` | absolute path on Linux/macOS (the path starts with a fourth slash) |
+| `sqlite:///C:/Users/me/AppData/Roaming/COACH/coach.db` | absolute path on Windows (forward or back slashes; spaces and accents are fine) |
+
+- The parent directory is created if missing; a new file is created readable by its owner only (`0600`, on systems that support it). It holds health data and password hashes: keep it in the user's private folder.
+- The schema lives in `db/sqlite/*.sql`, is applied at start-up and recorded in a `schema_migrations` table, so restarting (or two processes starting together) is safe. Upgrade = start the new version on the same file. A database written by a newer version is not downgraded (a warning is logged).
+- The database runs in WAL mode with foreign keys enforced; each web worker thread has its own connection and every write is one transaction (all or nothing). Several processes may open the same file, but one machine only: do not put it on a network share.
+- **Backup**: close the app and copy the `.db` file (also the `-wal` and `-shm` files if they are still there), or, while the app runs, `sqlite3 coach.db ".backup backup.db"`. Never copy the bare `.db` of a running app on its own: recent writes may still be in the `-wal` file.
+- `:memory:` is refused (it would not persist; leave `DATABASE_URL` empty for in-memory storage). Moving data between PostgreSQL and SQLite is not supported.
 
 ## Exercise library
 

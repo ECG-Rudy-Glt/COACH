@@ -3,6 +3,8 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Added
+- SQLite storage for the desktop app and local trials: `DATABASE_URL=sqlite:///path/to/coach.db` (relative or absolute path, Windows included) keeps everything in one local file with no server and no new dependency. Versioned schema in `db/sqlite/` applied at start-up (`schema_migrations`), WAL mode, foreign keys, one connection per thread, atomic writes, private file permissions. PostgreSQL and in-memory storage are unchanged. The whole test suite can be replayed against SQLite with `COACH_TEST_REPO=sqlite pytest`. See [docs/configuration.md](docs/configuration.md#sqlite-storage-desktop-app-local-trial).
 
 ### Added
 - Desktop app for Windows (msi, NSIS) and Linux (AppImage, deb), built by `.github/workflows/desktop.yml` on `desktop-v*` tags: a Tauri shell that starts the COACH server (frozen with PyInstaller) on `127.0.0.1` with a local SQLite database, a first-run wizard and Settings screen for the optional AI provider (key kept in the OS keyring, never in a file or log), and menu entries to open the data folder and back up the database. Guides in English and French (`docs/desktop.md`, `docs/desktop.fr.md`): download and SHA-256 check, SmartScreen warning, AI key creation per provider and spending caps, what is left to fill in, backup, update, uninstall, troubleshooting. Installers are unsigned by default.

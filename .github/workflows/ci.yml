@@ -38,6 +38,10 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: pytest -q --cov --cov-report=term
+      - name: Whole suite replayed on SQLite (desktop storage)
+        env:
+          TEST_DATABASE_URL: ""  # the Postgres tests already ran above
+        run: COACH_TEST_REPO=sqlite pytest -q
       - name: Coverage summary
         if: always()
         run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY" || true
