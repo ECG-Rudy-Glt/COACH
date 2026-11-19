@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>COACH</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card" aria-live="polite">
+    <img class="logo" src="icon.png" width="72" height="72" alt="">
+
+    <section id="view-splash" hidden>
+      <h1 data-i18n="splash">Démarrage de COACH…</h1>
+      <p class="lead" data-i18n="splash_lead">Le serveur local se lance, quelques secondes au premier démarrage.</p>
+      <div class="spinner" aria-hidden="true"></div>
+    </section>
+
+    <section id="view-error" hidden>
+      <h1 data-i18n="err_title">COACH n'a pas pu démarrer</h1>
+      <p class="msg err" id="error-text" role="alert"></p>
+      <div class="row">
+        <button type="button" id="retry" data-i18n="retry">Réessayer</button>
+        <button type="button" id="to-settings" class="secondary" data-i18n="open_settings">Ouvrir les réglages</button>
+      </div>
+    </section>
+
+    <section id="view-form" hidden>
+      <h1 id="form-title" data-i18n="welcome">Bienvenue dans COACH</h1>
+      <p class="lead" id="form-lead" data-i18n="welcome_lead">Tout tourne sur cet ordinateur. L'assistant IA est facultatif : COACH construit votre plan et vos objectifs nutritionnels sans lui.</p>
+
+      <form id="form" novalidate autocomplete="off">
+        <label for="provider" data-i18n="provider">Assistant IA</label>
+        <select id="provider" name="provider">
+          <option value="none" data-i18n="p_none">Aucun : désactiver l'IA</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="mistral">Mistral AI</option>
+          <option value="openrouter">OpenRouter</option>
+          <option value="ollama" data-i18n="p_ollama">Ollama (local, sans clé)</option>
+        </select>
+
+        <div id="ai-fields" hidden>
+          <div id="key-block">
+            <label for="api-key" data-i18n="key">Clé d'API</label>
+            <input id="api-key" name="api-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="key-help">
+            <p class="hint" id="key-help" data-i18n="key_help">Rangée dans le trousseau de votre système, jamais dans un fichier. Elle ne s'affiche plus ensuite.</p>
+            <p class="hint ok" id="key-stored" hidden data-i18n="key_stored">Une clé est déjà enregistrée. Laissez vide pour la garder, ou saisissez-en une nouvelle.</p>
+            <p class="links">
+              <button type="button" class="link" id="get-key" data-i18n="get_key">Créer une clé chez ce fournisseur</button>
+              <button type="button" class="link" id="clear-key" hidden data-i18n="clear_key">Supprimer la clé enregistrée</button>
+            </p>
+          </div>
+
+          <div id="url-block" hidden>
+            <label for="base-url" data-i18n="url">Adresse du serveur Ollama</label>
+            <input id="base-url" name="base-url" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:11434/v1">
+            <p class="hint" data-i18n="url_help">Laissez la valeur par défaut si Ollama tourne sur cet ordinateur. Installez Ollama puis téléchargez un modèle, comme indiqué dans le guide.</p>
+          </div>
+
+          <label for="model" data-i18n="model">Modèle (facultatif)</label>
+          <input id="model" name="model" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <p class="hint" data-i18n="model_help">Vide = modèle conseillé par COACH pour ce fournisseur.</p>
+
+          <label for="budget" data-i18n="budget">Budget mensuel d'IA (€)</label>
+          <input id="budget" name="budget" type="number" min="0" max="10000" step="0.5" value="5" inputmode="decimal">
+          <p class="hint" data-i18n="budget_help">COACH arrête d'appeler l'IA quand ce budget est atteint dans le mois. Fixez aussi un plafond chez le fournisseur (voir le guide).</p>
+        </div>
+
+        <p id="msg" class="msg" role="status"></p>
+        <div class="row">
+          <button type="submit" id="go" data-i18n="start">Démarrer COACH</button>
+          <button type="button" id="cancel" class="secondary" hidden data-i18n="cancel">Annuler</button>
+        </div>
+      </form>
+
+      <p class="hint" id="data-hint"></p>
+      <p class="lang"><button type="button" class="link" id="lang">English</button></p>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

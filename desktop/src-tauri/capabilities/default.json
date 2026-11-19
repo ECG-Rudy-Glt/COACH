@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Pages locales de la coque (assistant et réglages) uniquement. Le contenu servi par le serveur COACH embarqué (127.0.0.1) n'a aucun accès aux API natives.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
