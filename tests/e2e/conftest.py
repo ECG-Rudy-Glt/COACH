@@ -95,4 +95,9 @@ def logged(page: Page) -> Page:
 
 
 def tab(pg: Page, label: str) -> None:
+    if label == "Profil":  # plus d'onglet : pastille ronde en haut à droite de l'Accueil
+        if not pg.locator("button.avatar").count():
+            pg.locator(".tabbar button", has_text="Accueil").click()
+        pg.locator("button.avatar").click()
+        return
     pg.locator(".tabbar button", has_text=label).click()

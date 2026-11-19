@@ -11,6 +11,7 @@ def test_weather_setting_badge_and_detail(page: Page, base_url: str):
     page.context.clear_cookies()
     login(page)
     tab(page, "Plan")
+    expect(page.get_by_role("heading", name="Mon plan")).to_be_visible()  # l'Accueil (pastille Profil) reste affiché le temps du chargement
     expect(page.locator(".wx")).to_have_count(0)  # désactivée par défaut : aucun badge
     tab(page, "Profil")
     page.get_by_text("Préférences").click()

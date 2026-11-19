@@ -71,8 +71,9 @@ function icon(name) {
 }
 
 function tabbar(active) {
+  // le Profil n'a plus d'onglet : il s'ouvre par la pastille ronde en haut à droite de l'Accueil
   const tabs = [["home", "Accueil", () => home()], ["plan", "Plan", () => planScreen()], ["food", "Nutrition", () => nutritionScreen()], ["goals", "Objectifs", () => goalsScreen()],
-    ["chat", "Coach", () => coachChat()], ["user", "Profil", () => profile()]];
+    ["chat", "Coach", () => coachChat()]];
   return h("div", { class: "tabbar" }, h("nav", { "aria-label": "Navigation" }, tabs.map(([k, name, fn]) =>
     h("button", { type: "button", "aria-current": k === active ? "page" : false, onclick: fn }, icon(k), name))));
 }
@@ -287,7 +288,7 @@ function fail(err) {
 
 // ---------- thème (clair, sombre, éco) ----------
 const THEMES = [["light", "☀", "Clair"], ["dark", "☾", "Sombre"], ["eco", "◐", "Éco (noir et blanc)"]];
-const THEME_COLORS = { light: "#ece6d9", dark: "#14100c", eco: "#f7f5f1" };
+const THEME_COLORS = { light: "#f4efe6", dark: "#12100d", eco: "#f2f1ee" };
 
 function currentTheme() {
   const stored = store.get("theme");
@@ -407,6 +408,43 @@ async function logout() {
   authScreen();
 }
 
+// Titre de l'accueil : « Trail 50 km, dans 17 semaines » ; le nombre est mis en valeur (chiffres Barlow, cuivre)
+function homeHeadline(goal) {
+  const days = Math.round((new Date(goal.target_date) - new Date(new Date().toDateString())) / 86400000);
+  if (days <= 0) return h("h1", null, goal.title);
+  const weeks = days >= 14;
+  const mark = "\u0000";
+  const text = __(weeks ? "{title}, dans {n} semaines" : "{title}, dans {n} jours", { title: goal.title, n: mark });
+  const [before, after] = text.split(mark);
+  return h("h1", null, before, h("span", { class: "num" }, String(weeks ? Math.round(days / 7) : days)), after || "");
+}
+
+// Avancement vers l'objectif : part du temps écoulé entre sa création et l'échéance
+function goalProgress(goal) {
+  const end = new Date(goal.target_date).getTime(), start = goal.created_at ? new Date(goal.created_at).getTime() : NaN;
+  if (!(end > start)) return null;
+  const pct = Math.max(2, Math.min(100, Math.round(((Date.now() - start) / (end - start)) * 100)));
+  return h("div", { class: "st-meter", role: "img", "aria-label": __("Objectif : {pct} % du temps écoulé", { pct }) }, h("i", { style: `width:${pct}%` }));
+}
+
+// Carte de la prochaine séance prévue (aujourd'hui ou demain en général), ou du plan à générer
+function nextSessionCard(plan) {
+  const next = plan ? plan.sessions.filter((x) => x.status === "planned" && x.day >= plan.today).sort((a, b) => a.day.localeCompare(b.day))[0] : null;
+  if (!next) return planCard();
+  const d = next.details || {};
+  const mark = "\u0000";
+  const [pre, post] = __("{duration_min} min", { duration_min: mark }).split(mark);  // le nombre prend les chiffres Barlow
+  const chips = [
+    h("span", { class: "chip" }, pre, h("span", { class: "num" }, String(next.duration_min)), post),
+    d.zone ? h("span", { class: "chip" }, d.zone) : null,
+    d.distance_km ? h("span", { class: "chip" }, h("span", { class: "num" }, String(d.distance_km)), " km") : null];
+  return h("div", { class: "card stack next-card" },
+    h("span", { class: "next-when" }, fmtDay(next.day, plan.today)),
+    h("h2", { class: "next-title" }, next.title),
+    h("div", { class: "chips" }, chips),
+    h("button", { class: "btn primary", onclick: () => sessionScreen(next, plan.today) }, "Voir la séance"));
+}
+
 async function home() {
   let prof, bench, goalsData;
   try {
@@ -417,15 +455,8 @@ async function home() {
   }
   const total = prof.answered + prof.remaining_visible;
   const pct = total ? Math.round((prof.answered / total) * 100) : 0;
-  const C = 2 * Math.PI * 46;
-  const ring = h("div", { class: "ring" },
-    (() => {
-      const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      s.setAttribute("viewBox", "0 0 112 112");
-      s.innerHTML = `<circle class="t" cx="56" cy="56" r="46"/><circle class="v" cx="56" cy="56" r="46" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/>`;
-      return s;
-    })(),
-    h("b", null, `${pct}%`));
+  let plan = null;
+  try { plan = await api(`/users/${userId}/plan?weeks=2`); } catch { /* l'accueil s'affiche sans la carte de séance */ }
   const finished = prof.remaining_visible === 0;
   const domainRows = Object.entries(prof.domains || {}).map(([d, st]) => {
     const t = st.answered + st.remaining;
@@ -435,15 +466,20 @@ async function home() {
       h("span", { class: "count num" }, `${st.answered}/${t}`),
       st.remaining ? icon("next") : null);
   });
+  const goal = goalsData.goals.find((g) => g.target_date) || null;
+  const headline = goal ? homeHeadline(goal) : h("h1", null, finished ? "Profil complet" : "Votre profil");
   show(
-    h("div", { class: "head" }, h("span", { class: "eyebrow" }, userName ? __("Bonjour {userName}", { userName }) : "Bonjour"), themeToggle()),
-    h("div", { class: "hero" }, ring,
-      h("div", { class: "stack grow" },
-        h("h1", null, finished ? "Profil complet" : "Votre profil"),
-        h("p", { class: "muted" }, finished ? "Il s'enrichira avec vos séances." : __("{remaining_visible} questions pour l'instant. Elles s'adaptent à vos réponses.", { remaining_visible: prof.remaining_visible })))),
-    finished ? null : h("button", { class: "btn primary", onclick: () => nextQuestion() }, prof.answered ? "Continuer le questionnaire" : "Commencer le questionnaire"),
-    goalsCard(goalsData),
-    planCard(),
+    h("span", { class: "home-band", "aria-hidden": "true" }),
+    h("div", { class: "head" }, h("span", { class: "brand" }, h("span", { class: "logo", "aria-hidden": "true" }), "Coach"),
+      h("button", { type: "button", class: "avatar", "aria-label": "Profil", onclick: () => profile() }, icon("user"))),
+    h("div", { class: "stack", style: "gap:8px" }, h("span", { class: "eyebrow" }, userName ? __("Bonjour {userName}", { userName }) : "Bonjour"), headline,
+      goal ? goalProgress(goal) : null),
+    nextSessionCard(plan),
+    h("div", { class: "card row" },
+      h("span", { class: "num big-num fir" }, `${pct}%`),
+      h("div", { class: "grow stack", style: "gap:2px" }, h("strong", null, finished ? "Profil complet" : "Votre profil"),
+        h("p", { class: "muted" }, finished ? "Il s'enrichira avec vos séances." : __("{remaining_visible} questions pour l'instant. Elles s'adaptent à vos réponses.", { remaining_visible: prof.remaining_visible }))),
+      finished ? null : h("button", { class: "btn sm", style: "flex:none", onclick: () => nextQuestion() }, prof.answered ? "Continuer" : "Commencer")),
     typeof statsCard === "function" ? statsCard() : null,
     bench.novice
       ? h("div", { class: "card" }, h("h3", null, "Vos repères"), h("p", { class: "muted" }, "Pas de record à saisir pour l'instant : vos premières séances serviront de référence, et le coach en déduira vos charges."))
@@ -2576,7 +2612,7 @@ async function start() {
 }
 
 // Version de l'interface exécutée (même valeur que le cache de sw.js, vérifié par tests/test_version.py), affichée dans le Profil.
-const UI_BUILD = "sc-v43";
+const UI_BUILD = "sc-v45";
 // Un nouveau service worker prend le contrôle : on recharge une seule fois pour exécuter la dernière interface, jamais pendant une saisie ou un enregistrement.
 function reloadWhenSafe() {
   const KEY = "sc-reloaded-at";
