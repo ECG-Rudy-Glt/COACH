@@ -1,6 +1,5 @@
 """Import de la bibliothèque : `python -m app.exercises.importer [--dry-run] [--if-empty]` (réseau requis ; relançable, mise à jour sans doublon)."""
 import json
-import os
 import sys
 import time
 import urllib.request
@@ -9,7 +8,7 @@ from typing import Any
 
 from app.config import database_url
 from app.exercises.sources import custom_exercises, free_exercise, merge, wger_exercise
-from app.repo import PostgresRepo
+from app.repo import open_repo
 
 WGER = "https://wger.de/api/v2"
 FREE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json"
@@ -38,8 +37,7 @@ def main(dry: bool, if_empty: bool = False) -> None:
         dsn = database_url()
         if not dsn:
             sys.exit("DATABASE_URL manquant")
-        repo = PostgresRepo(dsn)
-        repo.migrate(Path(os.environ.get("MIGRATIONS_DIR", ROOT / "db" / "migrations")))
+        repo = open_repo(dsn)
         if repo.search_exercises(None, None, None, None, 1, 0)[1]:
             print("bibliothèque déjà importée : rien à faire (relancer sans --if-empty pour la mettre à jour)")
             return
@@ -56,8 +54,7 @@ def main(dry: bool, if_empty: bool = False) -> None:
     dsn = database_url()
     if not dsn:
         sys.exit("DATABASE_URL manquant")
-    repo = PostgresRepo(dsn)
-    repo.migrate(Path(os.environ.get("MIGRATIONS_DIR", ROOT / "db" / "migrations")))
+    repo = open_repo(dsn)
     print(f"{repo.replace_exercises(merged)} exercices enregistrés")
 
 
