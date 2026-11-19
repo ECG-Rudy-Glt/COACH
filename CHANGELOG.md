@@ -4,6 +4,9 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+- Desktop app for Windows (msi, NSIS) and Linux (AppImage, deb), built by `.github/workflows/desktop.yml` on `desktop-v*` tags: a Tauri shell that starts the COACH server (frozen with PyInstaller) on `127.0.0.1` with a local SQLite database, a first-run wizard and Settings screen for the optional AI provider (key kept in the OS keyring, never in a file or log), and menu entries to open the data folder and back up the database. Guides in English and French (`docs/desktop.md`, `docs/desktop.fr.md`): download and SHA-256 check, SmartScreen warning, AI key creation per provider and spending caps, what is left to fill in, backup, update, uninstall, troubleshooting. Installers are unsigned by default.
+
 ## [0.2.0] — 2026-11-19
 ### Changed
 - README screenshots (`docs/img`) regenerated with the new interface; `scripts/screenshots.py` opens the profile through the round avatar.
