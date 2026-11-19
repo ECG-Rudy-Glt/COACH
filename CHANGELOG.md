@@ -3,6 +3,9 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Changed
+- UI refresh: new warm palette (dark `#12100d` / light `#f4efe6`, copper for actions, fir green for state), Barlow Condensed italic headings and figures (self-hosted, SIL OFL), slanted eyebrow marker, 14 px cards. The home screen leads with the goal countdown, a progress bar and the next session card; the tab bar has 5 entries and the profile opens from a round button at the top right of the home screen. Economy (monochrome) theme kept.
+
 ### Added
 - Chat with the coach can now adapt the week: the coach proposes up to 3 bounded adjustments (shorten, swap a quality session for an easy run, move within the week) that you apply or dismiss with a button; the server validates them with the same checks as the weekly review (rules cited, load can never increase, blocked days). It can also offer to replan the rest of the week (G13 to G17). Migration 0017.
 - Rule N12: a meal estimated from a photo alone (no quantity, no answer) is raised by 15 % (25 % from 700 kcal) because photos underestimate; the note says so and a declared quantity overrides it. The estimation prompt now asks to account for hidden fats and sauces.
