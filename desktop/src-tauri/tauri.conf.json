@@ -20,7 +20,9 @@
     "shortDescription": "COACH: your self-hosted sports coach, as a desktop app",
     "longDescription": "COACH desktop bundles the COACH server and a local SQLite database: one installer, nothing else to set up. Your data stays on this computer.",
     "copyright": "AGPL-3.0-only",
-    "externalBin": ["binaries/coach-sidecar"],
+    "externalBin": [
+      "binaries/coach-sidecar"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -29,11 +31,33 @@
       "icons/icon.ico"
     ],
     "windows": {
-      "nsis": { "installMode": "currentUser", "languages": ["French", "English"] },
-      "wix": { "language": ["fr-FR", "en-US"] }
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "French",
+          "English"
+        ]
+      },
+      "wix": {
+        "language": [
+          "fr-FR",
+          "en-US"
+        ]
+      }
     },
     "linux": {
-      "deb": { "depends": [] }
+      "deb": {
+        "depends": []
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIyQzc0RDNEMDY4MkI5MUUKUldRZXVZSUdQVTNIc2pNaStxdnExblVCeWJaZUhOMVQrUG1yRzVvZkVqa09DU00zaTlUd3I0YlAK",
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

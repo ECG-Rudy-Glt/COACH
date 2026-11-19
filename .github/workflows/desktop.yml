@@ -9,7 +9,7 @@ name: Desktop app
 on:
   push:
     tags: ["desktop-v*"]
-    branches: ["feat/desktop-app"]  # TEMPORAIRE : validation avant fusion (workflow_dispatch exige le fichier sur main)
+    branches: ["feat/desktop-updater"]  # TEMPORAIRE : validation avant fusion
   workflow_dispatch:
     inputs:
       publish:
@@ -41,8 +41,8 @@ jobs:
           - { name: Linux, os: ubuntu-22.04, bundles: "appimage,deb", target: "" }
           # macOS, non signé (Gatekeeper : voir docs/desktop.md). Apple Silicon sur macos-latest, Intel sur macos-15-intel (runner natif :
           # le serveur figé par PyInstaller n'est pas multi-architecture).
-          - { name: macOS Apple Silicon, os: macos-latest, bundles: "dmg", target: aarch64-apple-darwin }
-          - { name: macOS Intel, os: macos-15-intel, bundles: "dmg", target: x86_64-apple-darwin }
+          - { name: macOS Apple Silicon, os: macos-latest, bundles: "app,dmg", target: aarch64-apple-darwin }
+          - { name: macOS Intel, os: macos-15-intel, bundles: "app,dmg", target: x86_64-apple-darwin }
     steps:
       - uses: actions/checkout@v7
 
@@ -114,6 +114,9 @@ jobs:
         working-directory: desktop
         shell: bash
         env:
+          # Clé de signature des mises à jour (distincte de toute signature de code) : requise, `createUpdaterArtifacts` signe chaque bundle.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Signature macOS (optionnelle) : variables lues par Tauri si elles sont définies et non vides.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -130,14 +133,24 @@ jobs:
           if [ "$RUNNER_OS" = "Windows" ] && [ -f "$RUNNER_TEMP/sign.json" ]; then args+=(--config "$RUNNER_TEMP/sign.json"); fi
           npx tauri build "${args[@]}"
 
-      - name: Rassembler les installateurs
+      - name: Rassembler les installateurs et les signatures de mise à jour
         shell: bash
         run: |
           mkdir -p dist-out
-          find desktop/src-tauri/target -path '*/release/bundle/*' -type f \
-            \( -name '*.msi' -o -name '*-setup.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) \
+          bundle=$(find desktop/src-tauri/target -type d -path '*/release/bundle' | head -1)
+          find "$bundle" -type f \
+            \( -name '*.msi' -o -name '*-setup.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.sig' \) \
             -exec cp {} dist-out/ \;
-          # Les deux builds macOS produisent des noms distincts (aarch64 / x64) ; on vérifie qu'il y a quelque chose.
+          # macOS : l'archive de mise à jour s'appelle toujours COACH.app.tar.gz ; on y met la version et l'architecture.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            version=$(python3 -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")
+            arch=$([ "${{ matrix.target }}" = "aarch64-apple-darwin" ] && echo aarch64 || echo x64)
+            for f in COACH.app.tar.gz COACH.app.tar.gz.sig; do
+              src=$(find "$bundle" -name "$f" | head -1)
+              cp "$src" "dist-out/COACH_${version}_${arch}.${f#COACH.}"
+            done
+          fi
+          rm -f dist-out/COACH.app.tar.gz.sig
           ls -l dist-out
           [ -n "$(ls -A dist-out)" ]
 
@@ -148,9 +161,46 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Toujours exécuté : produit latest.json et SHA256SUMS.txt (en artefact, sans rien publier) pour pouvoir les vérifier avant une vraie Release.
+  assemble:
+    name: Manifeste de mise à jour et sommes
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4.1.8
+        with:
+          path: assets
+          pattern: installateurs-*
+          merge-multiple: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: latest.json et sommes SHA-256
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+        run: |
+          [ -n "$TAG" ] || TAG="desktop-v$(python3 -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")"
+          echo "Tag utilisé pour les URLs : $TAG"
+          python3 desktop/make_latest_json.py assets "$TAG" "$GITHUB_REPOSITORY" "COACH desktop $TAG"
+          cat assets/latest.json
+          cd assets
+          sha256sum -- $(ls | grep -v '^SHA256SUMS.txt$') > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4.4.3
+        with:
+          name: release-assets
+          path: assets/*
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publier la Release
-    needs: build
+    needs: assemble
     if: startsWith(github.ref, 'refs/tags/desktop-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
     runs-on: ubuntu-22.04
     permissions:
@@ -158,16 +208,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4.1.8
         with:
+          name: release-assets
           path: assets
-          pattern: installateurs-*
-          merge-multiple: true
-
-      - name: Sommes SHA-256
-        working-directory: assets
-        run: |
-          ls -l
-          sha256sum -- * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
 
       - name: Créer la Release
         env:
@@ -176,6 +218,7 @@ jobs:
         run: |
           [ -n "$TAG" ] || { echo "Aucun tag : renseignez « tag » pour une publication manuelle."; exit 1; }
           case "$TAG" in desktop-v*) ;; *) echo "Le tag doit commencer par desktop-v"; exit 1 ;; esac
-          notes="Application de bureau COACH ($TAG). Unsigned installers by default: see docs/desktop.md (Windows SmartScreen warning and SHA-256 check with SHA256SUMS.txt) or docs/desktop.fr.md (French)."
+          grep -q "/releases/download/$TAG/" assets/latest.json || { echo "latest.json ne correspond pas au tag $TAG : relancez avec le même tag."; exit 1; }
+          notes="Application de bureau COACH ($TAG). Unsigned installers (no code-signing certificate): see docs/desktop.md (Windows SmartScreen / macOS Gatekeeper warnings, SHA-256 check with SHA256SUMS.txt) or docs/desktop.fr.md (French). Update files (latest.json, .sig) are signed with the project's updater key."
           gh release create "$TAG" assets/* --repo "$GITHUB_REPOSITORY" --title "COACH desktop $TAG" --notes "$notes" --target "$GITHUB_SHA" \
             || gh release upload "$TAG" assets/* --repo "$GITHUB_REPOSITORY" --clobber
