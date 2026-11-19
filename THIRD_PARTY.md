@@ -18,6 +18,16 @@ COACH is licensed AGPL-3.0-only. It uses the following; please respect their ter
 
 Dev only: pytest (MIT), httpx (BSD-3), ruff (MIT).
 
+## Desktop app (`desktop/`, not part of the server image)
+| Component | Licence |
+|---|---|
+| [Tauri](https://tauri.app) 2 and its plugins (opener, dialog, single-instance) | MIT / Apache-2.0 |
+| [`keyring`](https://crates.io/crates/keyring) (OS keyring access), `getrandom`, `serde` | MIT / Apache-2.0 |
+| [PyInstaller](https://pyinstaller.org) (freezes the server; bootloader exception allows redistribution under any licence) | GPL-2.0-or-later with bootloader exception |
+| WebKitGTK (Linux, system library) / WebView2 (Windows, system component) | LGPL / Microsoft redistributable |
+
+The installers bundle the Python interpreter and the packages of `requirements.txt` with their own licences (table above).
+
 ## Front-end libraries (self-hosted in `app/static/vendor/`, no CDN, loaded only when the barcode scanner opens)
 | Component | Version / integrity | Licence |
 |---|---|---|

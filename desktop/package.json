@@ -1,0 +1,14 @@
+{
+  "name": "coach-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Application de bureau COACH (coque Tauri + serveur embarqué)",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build",
+    "icons": "tauri icon icon-source.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}

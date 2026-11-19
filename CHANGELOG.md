@@ -6,6 +6,9 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Added
 - SQLite storage for the desktop app and local trials: `DATABASE_URL=sqlite:///path/to/coach.db` (relative or absolute path, Windows included) keeps everything in one local file with no server and no new dependency. Versioned schema in `db/sqlite/` applied at start-up (`schema_migrations`), WAL mode, foreign keys, one connection per thread, atomic writes, private file permissions. PostgreSQL and in-memory storage are unchanged. The whole test suite can be replayed against SQLite with `COACH_TEST_REPO=sqlite pytest`. See [docs/configuration.md](docs/configuration.md#sqlite-storage-desktop-app-local-trial).
 
+### Added
+- Desktop app for Windows (msi, NSIS), Linux (AppImage, deb) and macOS (dmg, unsigned), built by `.github/workflows/desktop.yml` on `desktop-v*` tags: a Tauri shell that starts the COACH server (frozen with PyInstaller) on `127.0.0.1` with a local SQLite database, a first-run wizard and Settings screen for the optional AI provider (key kept in the OS keyring, never in a file or log), optional ntfy/SMTP reminder settings (secrets in the keyring), and menu entries to open the data folder, back up the database and photos as a dated zip, and check for a newer release. Guides in English and French (`docs/desktop.md`, `docs/desktop.fr.md`): download and SHA-256 check, SmartScreen warning, AI key creation per provider and spending caps, what is left to fill in, backup, update, uninstall, troubleshooting. Installers are unsigned by default.
+
 ## [0.2.0] — 2026-11-19
 ### Changed
 - README screenshots (`docs/img`) regenerated with the new interface; `scripts/screenshots.py` opens the profile through the round avatar.
