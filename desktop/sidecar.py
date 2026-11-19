@@ -2,7 +2,7 @@
 
 Deux modes :
   coach-sidecar serve  --port N --data-dir D   lance l'application sur 127.0.0.1 uniquement
-  coach-sidecar backup --db FICHIER --dest FICHIER   copie cohérente de la base SQLite (API de sauvegarde de SQLite)
+  coach-sidecar backup --data-dir D --dest FICHIER.zip   archive : copie cohérente de la base SQLite + dossier media/
 
 Les secrets (clé LLM, clé de chiffrement Garmin) arrivent par variables d'environnement, posées par la coque
 depuis le trousseau de l'OS : ce programme ne les écrit nulle part et ne les journalise pas.
@@ -12,7 +12,9 @@ import argparse
 import os
 import sqlite3
 import sys
+import tempfile
 import threading
+import zipfile
 from pathlib import Path
 
 
@@ -65,22 +67,32 @@ def serve(port: int, data_dir: Path) -> int:
     return 0
 
 
-def backup(db: Path, dest: Path) -> int:
+def backup(data_dir: Path, dest: Path) -> int:
+    """Archive .zip : copie cohérente de la base (API de sauvegarde de SQLite, sûre pendant que l'application tourne) + dossier media/."""
+    db = sqlite_path(data_dir)
     if not db.is_file():
         print("Base introuvable : rien à sauvegarder.", file=sys.stderr)
         return 2
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.exists():
-        dest.unlink()
-    src = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
-    try:
-        out = sqlite3.connect(dest)
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp) / "coach.db"
+        src = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
         try:
-            src.backup(out)
+            out = sqlite3.connect(copy)
+            try:
+                src.backup(out)
+            finally:
+                out.close()
         finally:
-            out.close()
-    finally:
-        src.close()
+            src.close()
+        tmp_zip = dest.with_name(dest.name + ".part")
+        with zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(copy, "coach.db")
+            media = data_dir / "media"
+            for f in sorted(media.rglob("*")) if media.is_dir() else []:
+                if f.is_file() and not f.is_symlink():
+                    z.write(f, "media/" + f.relative_to(media).as_posix())
+        tmp_zip.replace(dest)
     return 0
 
 
@@ -91,10 +103,10 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--port", type=int, required=True)
     s.add_argument("--data-dir", type=Path, required=True)
     b = sub.add_parser("backup")
-    b.add_argument("--db", type=Path, required=True)
+    b.add_argument("--data-dir", type=Path, required=True)
     b.add_argument("--dest", type=Path, required=True)
     a = ap.parse_args(argv)
-    return serve(a.port, a.data_dir) if a.cmd == "serve" else backup(a.db, a.dest)
+    return serve(a.port, a.data_dir) if a.cmd == "serve" else backup(a.data_dir, a.dest)
 
 
 if __name__ == "__main__":
