@@ -42,7 +42,7 @@ db/migrations/         forward-only SQL                       docs/             
 ## Conventions
 
 - Python 3.12, type hints, `ruff` (line length 200), no new heavy dependencies without discussion (see `THIRD_PARTY.md`).
-- Any new persistence = migration + `Repo` protocol method + **both** implementations (the domain's `…Memory` and `…Postgres` classes in `app/repo/<domain>.py`) + test.
+- Any new persistence = migration (Postgres `db/migrations` **and** SQLite `db/sqlite`) + `Repo` protocol method + **all** implementations (the domain's `…Memory` and `…Postgres` classes in `app/repo/<domain>.py`, and `app/repo/sqlite.py`) + test. `COACH_TEST_REPO=sqlite .venv/bin/pytest -q` replays the whole suite on SQLite.
 - Parse separately from I/O (`parse_*` pure functions) so tests need no network.
 - User-visible strings are written in French (the source language) and translated through `app/static/i18n/<lang>.json` (French text = key, see [docs/i18n.md](docs/i18n.md)). Add the English translation of any new text (`python scripts/i18n_check.py`, `tests/test_i18n.py`), keep texts in the UI/engine and not scattered in logic, and don't mix languages inside one sentence.
 - Frontend: plain JS in `app/static/app.js`, no framework or bundler; strict CSP means **no inline `<script>` and no `eval`**. Bump the cache name in `sw.js` when shell files change.
