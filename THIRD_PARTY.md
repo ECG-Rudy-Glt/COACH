@@ -38,6 +38,7 @@ PostgreSQL (PostgreSQL licence), Caddy (Apache-2.0), Ollama (MIT, optional profi
 | Muscle diagram (front/back SVG) | Drawn for the project in `app/static/stats.js` | AGPL-3.0 with the project (no third-party image) |
 | Publications metadata and summaries | PubMed / Europe PMC / publishers | Only bibliographic facts and short original summaries are included; cited works remain the property of their authors |
 | Inter typeface (`app/static/fonts`) | Rasmus Andersson | SIL OFL 1.1 |
+| Barlow Condensed typeface (`app/static/fonts`, latin subset, weights 600/700 and italic 700/800, via `@fontsource/barlow-condensed`; used for headings and figures) | The Barlow Project Authors | SIL OFL 1.1 (`OFL-BarlowCondensed.txt`) |
 
 Imported wger media are fetched from wger's servers on demand and cached locally; they are **not** redistributed in this repository.
 
