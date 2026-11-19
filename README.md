@@ -82,7 +82,7 @@ open http://127.0.0.1:8000       # the first account you create is the owner; re
 
 Prefer a ready-made image over building? Set `COACH_IMAGE=ghcr.io/ecg-rudy-glt/coach:0.2.0` in `.env` and run `docker compose pull && docker compose up -d` (images are published for every `vX.Y.Z` tag, `linux/amd64` and `linux/arm64`).
 
-**No Docker?** Use the [desktop app for Windows and Linux](docs/desktop.md) (one installer, local database, [guide in French](docs/desktop.fr.md) too, including how to get an AI key).
+**No Docker?** Use the [desktop app for Windows, Linux and macOS](docs/desktop.md) (one installer, local database, [guide in French](docs/desktop.fr.md) too, including how to get an AI key).
 
 Add an AI coach (optional): put your key in `secrets/llm_api_key`, set `LLM_PROVIDER` in `.env`, then `docker compose up -d`. No key → the app runs fully, minus the coach, chat and meal-photo estimate.
 
