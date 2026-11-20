@@ -25,6 +25,7 @@ use tauri::{
 };
 use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_updater::UpdaterExt;
 
 const WINDOW: &str = "main";
 const KEYRING_SERVICE: &str = "COACH";
@@ -614,27 +615,70 @@ fn latest_desktop_release() -> Result<Option<String>, String> {
     Ok(best.map(|(_, t)| t))
 }
 
+/// Vrai si le format d'installation de ce système sait se mettre à jour seul : Windows, macOS, et Linux seulement en AppImage (un .deb passe par le gestionnaire de paquets).
+fn can_self_update() -> bool {
+    !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some()
+}
+
+/// Télécharge la mise à jour signée depuis le `latest.json` de la Release `tag`, vérifie sa signature (clé publique de tauri.conf.json),
+/// l'installe puis redémarre. Le serveur embarqué est arrêté avant l'installation (Windows ne remplace pas un fichier en cours d'usage).
+async fn install_update(app: &AppHandle, tag: &str) -> Result<(), String> {
+    let url = Url::parse(&format!("https://github.com/ECG-Rudy-Glt/COACH/releases/download/{tag}/latest.json")).map_err(|e| e.to_string())?;
+    let updater = app.updater_builder().endpoints(vec![url]).map_err(|e| e.to_string())?.build().map_err(|e| e.to_string())?;
+    let update = updater.check().await.map_err(|e| e.to_string())?.ok_or("aucune mise à jour pour cette plateforme")?;
+    stop_sidecar(app);
+    update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
+    app.restart()
+}
+
 fn check_update(app: &AppHandle) {
     let handle = app.clone();
-    std::thread::spawn(move || {
+    tauri::async_runtime::spawn(async move {
         let current = parse_desktop_tag(&format!("desktop-v{}", env!("CARGO_PKG_VERSION")));
-        match latest_desktop_release() {
-            Err(_) => message(&handle, "Impossible de joindre GitHub pour chercher une mise à jour. / Could not reach GitHub to check for updates."),
-            Ok(Some(tag)) if parse_desktop_tag(&tag) > current => {
-                let url = format!("{RELEASES_PAGE}{tag}");
+        let latest = tauri::async_runtime::spawn_blocking(latest_desktop_release).await.map_err(|e| e.to_string()).and_then(|r| r);
+        let tag = match latest {
+            Err(_) => return message(&handle, "Impossible de joindre GitHub pour chercher une mise à jour. / Could not reach GitHub to check for updates."),
+            Ok(Some(tag)) if parse_desktop_tag(&tag) > current => tag,
+            Ok(_) => return message(&handle, &format!("COACH est à jour (version {}). / COACH is up to date.", env!("CARGO_PKG_VERSION"))),
+        };
+        let page = format!("{RELEASES_PAGE}{tag}");
+        let h = handle.clone();
+        let installable = can_self_update();
+        let ask = if installable {
+            format!("Une nouvelle version est disponible : {tag}. L'installer maintenant (téléchargement vérifié par signature, puis redémarrage) ?\nA new version is available: {tag}. Install it now (signature-verified download, then restart)?")
+        } else {
+            format!("Une nouvelle version est disponible : {tag}. Ouvrir la page de téléchargement ?\nA new version is available: {tag}. Open the download page?")
+        };
+        let yes = tauri::async_runtime::spawn_blocking(move || {
+            h.dialog()
+                .message(ask)
+                .title("COACH")
+                .buttons(MessageDialogButtons::OkCancelCustom(if installable { "Installer / Install" } else { "Télécharger / Download" }.into(), "Plus tard / Later".into()))
+                .blocking_show()
+        })
+        .await
+        .unwrap_or(false);
+        if !yes {
+            return;
+        }
+        if installable {
+            if let Err(e) = install_update(&handle, &tag).await {
+                // Échec (signature, réseau, droits, plateforme) : on remet le serveur en marche et on propose la page de téléchargement.
+                eprintln!("mise à jour : {e}");
                 let h2 = handle.clone();
-                handle
-                    .dialog()
-                    .message(format!("Une nouvelle version est disponible : {tag}. Ouvrir la page de téléchargement ?\nA new version is available: {tag}. Open the download page?"))
-                    .title("COACH")
-                    .buttons(MessageDialogButtons::OkCancelCustom("Télécharger / Download".into(), "Plus tard / Later".into()))
-                    .show(move |yes| {
-                        if yes {
-                            let _ = h2.opener().open_url(url, None::<&str>);
+                let _ = tauri::async_runtime::spawn_blocking(move || {
+                    if let Ok(port) = start_sidecar(&h2) {
+                        if let (Some(win), Ok(u)) = (h2.get_webview_window(WINDOW), Url::parse(&format!("http://127.0.0.1:{port}/"))) {
+                            let _ = win.navigate(u);
                         }
-                    });
+                    }
+                })
+                .await;
+                message(&handle, "L'installation automatique a échoué : la page de téléchargement va s'ouvrir. / Automatic install failed: the download page will open.");
+                let _ = handle.opener().open_url(page, None::<&str>);
             }
-            Ok(_) => message(&handle, &format!("COACH est à jour (version {}). / COACH is up to date.", env!("CARGO_PKG_VERSION"))),
+        } else {
+            let _ = handle.opener().open_url(page, None::<&str>);
         }
     });
 }
@@ -649,6 +693,8 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Seule fonction du plugin : la mise à jour lancée depuis le menu (aucune commande n'est exposée à une page web).
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Shell::default())
         .invoke_handler(tauri::generate_handler![get_state, has_key, save_settings, start_app, open_external])
         .setup(|app| {
