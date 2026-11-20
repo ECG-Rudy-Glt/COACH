@@ -126,8 +126,8 @@ L'assistant a un bouton **Créer une clé chez ce fournisseur** qui ouvre la bon
 1. Connectez-vous avec un compte Google et acceptez les conditions : AI Studio crée un projet Google Cloud par défaut et une clé pour les nouveaux utilisateurs. Les utilisateurs Google Cloud existants importent d'abord leur projet (Dashboard > Projects > Import projects), puis créent une clé dans la page API Keys.
 2. Un niveau gratuit existe (limites strictes ; les projets importés peuvent demander une vérification). Pour le niveau payant, vous activez la facturation dans Google Cloud.
 3. Plafond : Google conseille des **alertes de facturation** dans la console Google Cloud. Nous n'avons trouvé aucun plafond strict dans la page lue : une alerte prévient, elle n'arrête pas la dépense.
-- Prix par million de jetons, niveau payant, [page des tarifs](https://aistudio.google.com/docs/pricing) : gemini-2.5-flash 0,30 $ en entrée / 2,50 $ en sortie (défaut de COACH), gemini-2.5-pro 1,25 $ / 10 $ pour les prompts jusqu'à 200 000 jetons.
-- **À savoir** : cette page indique que les deux modèles 2.5 sont dépréciés et redirigés vers d'autres modèles, facturés à leurs tarifs, à partir du 1er décembre 2026. Après cette date, indiquez dans COACH (champ « Modèle ») le modèle actuel que vous voulez.
+- Prix par million de jetons, niveau payant, [page des tarifs](https://aistudio.google.com/docs/pricing) (vérifié le 19 novembre 2026) : gemini-3.8-flash (défaut de COACH) 0,75 $ en entrée / 3,75 $ en sortie jusqu'au 31 décembre 2026, puis 1,50 $ / 7,50 $ ; gemini-3.5-flash-lite (modèle rapide de COACH) 0,30 $ / 2,50 $.
+- **À savoir** : la [page des dépréciations](https://aistudio.google.com/docs/deprecations) annonce l'arrêt de gemini-2.5-pro et gemini-2.5-flash au 1er décembre 2026 au plus tôt, avec redirection vers d'autres modèles. COACH utilise désormais des modèles actuels ; si vous avez saisi un ancien modèle à la main, changez-le dans « Modèle ».
 - Source : [page des clés API](https://aistudio.google.com/docs/api-key).
 
 **Mistral AI** : [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys).

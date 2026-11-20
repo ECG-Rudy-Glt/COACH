@@ -3,6 +3,9 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+### Fixed
+- Gemini catalog: default models moved off `gemini-2.5-flash`/`gemini-2.5-pro` (shutdown announced for 1 December 2026) to `gemini-3.8-flash` (main) and `gemini-3.5-flash-lite` (fast); model list and desktop guides updated, `gemini-2.0-flash` (already shut down) removed.
+
 
 ### Added
 - Desktop app: signed automatic update. *Check for updates...* downloads the update from the latest `desktop-v*` release, verifies its signature against the public key embedded in the app, installs and restarts (Windows, macOS, Linux AppImage; the `.deb` opens the download page). Releases now carry `latest.json` and `.sig` files, produced with a dedicated updater key. Nothing runs in the background.

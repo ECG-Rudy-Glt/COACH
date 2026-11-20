@@ -55,7 +55,7 @@
     gemini: "https://aistudio.google.com/apikey", mistral: "https://console.mistral.ai/api-keys",
     openrouter: "https://openrouter.ai/keys", ollama: "https://ollama.com/download"
   };
-  var MODELS = { anthropic: "claude-sonnet-5-5", openai: "gpt-4o", gemini: "gemini-2.5-flash", mistral: "mistral-large-latest", openrouter: "openrouter/auto", ollama: "qwen2.5:7b" };
+  var MODELS = { anthropic: "claude-sonnet-5-5", openai: "gpt-4o", gemini: "gemini-3.8-flash", mistral: "mistral-large-latest", openrouter: "openrouter/auto", ollama: "qwen2.5:7b" };
 
   var lang = "fr";
   try { lang = localStorage.getItem("lang") || (navigator.language || "fr").slice(0, 2); } catch (e) { lang = (navigator.language || "fr").slice(0, 2); }

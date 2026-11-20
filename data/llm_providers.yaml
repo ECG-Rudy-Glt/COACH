@@ -46,12 +46,13 @@ providers:
     base_url: https://generativelanguage.googleapis.com/v1beta/openai
     key_env: GEMINI_API_KEY
     key_required: true
-    model: gemini-2.5-flash
-    fast: gemini-2.5-flash
+    model: gemini-3.8-flash
+    fast: gemini-3.5-flash-lite
     models:
-      - { id: gemini-2.5-pro, label: Gemini 2.5 Pro, vision: true, tools: true }
-      - { id: gemini-2.5-flash, label: Gemini 2.5 Flash, vision: true, tools: true }
-      - { id: gemini-2.0-flash, label: Gemini 2.0 Flash, vision: true, tools: true }
+      - { id: gemini-3.8-flash, label: Gemini 3.8 Flash, vision: true, tools: true }
+      - { id: gemini-3.6-flash, label: Gemini 3.6 Flash, vision: true, tools: true }
+      - { id: gemini-3.5-flash-lite, label: Gemini 3.5 Flash-Lite, vision: true, tools: true }
+      - { id: gemini-3.1-flash-lite, label: Gemini 3.1 Flash-Lite, vision: true, tools: true }
   mistral:
     label: Mistral AI
     kind: openai

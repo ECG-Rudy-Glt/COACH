@@ -126,8 +126,8 @@ The wizard has a **Create a key with this provider** button that opens the right
 1. Sign in with a Google account and accept the terms: AI Studio creates a default Google Cloud project and an API key for new users. Existing Google Cloud users import their project first (Dashboard > Projects > Import projects), then create a key on the API Keys page.
 2. A free tier exists (strict limits; imported projects may need verification). For the paid tier you set up billing in Google Cloud.
 3. Spending cap: Google advises **billing alerts** in the Google Cloud console. We found no hard cap in the page we read: an alert warns you, it does not stop spending.
-- Price per million tokens, paid tier, [pricing page](https://aistudio.google.com/docs/pricing): gemini-2.5-flash $0.30 input / $2.50 output (COACH default), gemini-2.5-pro $1.25 / $10 for prompts up to 200k tokens.
-- **Heads-up**: that page says both 2.5 models are deprecated and are redirected to other models, billed at those models' rates, from 1 December 2026. After that date set `Model` in COACH to the current model you want.
+- Price per million tokens, paid tier, [pricing page](https://aistudio.google.com/docs/pricing) (checked 19 November 2026): gemini-3.8-flash (COACH default) $0.75 input / $3.75 output through 31 December 2026, then $1.50 / $7.50; gemini-3.5-flash-lite (COACH fast model) $0.30 / $2.50.
+- **Heads-up**: the [deprecations page](https://aistudio.google.com/docs/deprecations) lists gemini-2.5-pro and gemini-2.5-flash as shut down from 1 December 2026 at the earliest, redirected to other models. COACH now defaults to current models; if you set an older model by hand, change it in `Model`.
 - Source: [API key page](https://aistudio.google.com/docs/api-key).
 
 **Mistral AI**: [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys).
