@@ -3,7 +3,9 @@
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/) (pre-1.0: minor versions may break).
 
 ## [Unreleased]
+
 ### Added
+- Desktop app: signed automatic update. *Check for updates...* downloads the update from the latest `desktop-v*` release, verifies its signature against the public key embedded in the app, installs and restarts (Windows, macOS, Linux AppImage; the `.deb` opens the download page). Releases now carry `latest.json` and `.sig` files, produced with a dedicated updater key. Nothing runs in the background.
 - SQLite storage for the desktop app and local trials: `DATABASE_URL=sqlite:///path/to/coach.db` (relative or absolute path, Windows included) keeps everything in one local file with no server and no new dependency. Versioned schema in `db/sqlite/` applied at start-up (`schema_migrations`), WAL mode, foreign keys, one connection per thread, atomic writes, private file permissions. PostgreSQL and in-memory storage are unchanged. The whole test suite can be replayed against SQLite with `COACH_TEST_REPO=sqlite pytest`. See [docs/configuration.md](docs/configuration.md#sqlite-storage-desktop-app-local-trial).
 
 ### Added
